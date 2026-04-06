@@ -66,32 +66,76 @@ export function isLoggingCall(expression: ts.Expression): boolean {
   return targetText === "console" || targetText === "logger";
 }
 
+export function unwrapExpression(expression: ts.Expression): ts.Expression {
+  if (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) || ts.isSatisfiesExpression(expression)) {
+    return unwrapExpression(expression.expression);
+  }
+
+  if (ts.isNonNullExpression(expression)) {
+    return unwrapExpression(expression.expression);
+  }
+
+  return expression;
+}
+
+export function getExpressionPath(expression: ts.Expression): string[] {
+  const unwrapped = unwrapExpression(expression);
+
+  if (ts.isIdentifier(unwrapped)) {
+    return [unwrapped.text];
+  }
+
+  if (ts.isPropertyAccessExpression(unwrapped)) {
+    return [...getExpressionPath(unwrapped.expression), unwrapped.name.text];
+  }
+
+  if (ts.isElementAccessExpression(unwrapped)) {
+    const base = getExpressionPath(unwrapped.expression);
+    if (ts.isStringLiteral(unwrapped.argumentExpression)) {
+      return [...base, unwrapped.argumentExpression.text];
+    }
+    return base;
+  }
+
+  if (ts.isCallExpression(unwrapped)) {
+    return getExpressionPath(unwrapped.expression);
+  }
+
+  if (ts.isNewExpression(unwrapped) && unwrapped.expression) {
+    return getExpressionPath(unwrapped.expression);
+  }
+
+  return [];
+}
+
 export function isDefaultLiteral(expression: ts.Expression | undefined): boolean {
   if (!expression) {
     return true;
   }
 
-  if (expression.kind === ts.SyntaxKind.NullKeyword || expression.kind === ts.SyntaxKind.FalseKeyword) {
+  const unwrapped = unwrapExpression(expression);
+
+  if (unwrapped.kind === ts.SyntaxKind.NullKeyword || unwrapped.kind === ts.SyntaxKind.FalseKeyword) {
     return true;
   }
 
-  if (ts.isIdentifier(expression) && expression.text === "undefined") {
+  if (ts.isIdentifier(unwrapped) && unwrapped.text === "undefined") {
     return true;
   }
 
-  if (ts.isStringLiteral(expression) && expression.text === "") {
+  if (ts.isStringLiteral(unwrapped) && unwrapped.text === "") {
     return true;
   }
 
-  if (ts.isArrayLiteralExpression(expression) && expression.elements.length === 0) {
+  if (ts.isArrayLiteralExpression(unwrapped) && unwrapped.elements.length === 0) {
     return true;
   }
 
-  if (ts.isObjectLiteralExpression(expression) && expression.properties.length === 0) {
+  if (ts.isObjectLiteralExpression(unwrapped) && unwrapped.properties.length === 0) {
     return true;
   }
 
-  if (ts.isNumericLiteral(expression) && expression.text === "0") {
+  if (ts.isNumericLiteral(unwrapped) && unwrapped.text === "0") {
     return true;
   }
 

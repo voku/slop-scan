@@ -1,19 +1,40 @@
 import type { RulePlugin } from "../../core/types";
-import type { FunctionSummary } from "../../facts/types";
+import type { CommentSummary, FunctionSummary } from "../../facts/types";
+
+const ALIAS_COMMENT_PATTERNS = [
+  /\balias\b/i,
+  /backward\s+compat/i,
+  /backwards\s+compat/i,
+  /backward\s+compatibility/i,
+  /legacy/i,
+  /keep\s+the\s+old\s+name/i,
+];
+
+function hasNearbyAliasComment(summary: FunctionSummary, comments: CommentSummary[]): boolean {
+  return comments.some((comment) => {
+    const lineDelta = summary.line - comment.line;
+    return lineDelta >= 1 && lineDelta <= 2 && ALIAS_COMMENT_PATTERNS.some((pattern) => pattern.test(comment.text));
+  });
+}
 
 export const passThroughWrappersRule: RulePlugin = {
   id: "structure.pass-through-wrappers",
   family: "structure",
   severity: "strong",
   scope: "file",
-  requires: ["file.functionSummaries"],
+  requires: ["file.functionSummaries", "file.comments"],
   supports(context) {
     return context.scope === "file" && Boolean(context.file);
   },
   evaluate(context) {
     const functions =
       context.runtime.store.getFileFact<FunctionSummary[]>(context.file!.path, "file.functionSummaries") ?? [];
-    const wrappers = functions.filter((summary) => summary.isPassThroughWrapper);
+    const comments =
+      context.runtime.store.getFileFact<CommentSummary[]>(context.file!.path, "file.comments") ?? [];
+
+    const wrappers = functions.filter(
+      (summary) => summary.isPassThroughWrapper && !hasNearbyAliasComment(summary, comments),
+    );
 
     if (wrappers.length === 0) {
       return [];
@@ -27,8 +48,10 @@ export const passThroughWrappersRule: RulePlugin = {
         scope: "file",
         path: context.file!.path,
         message: `Found ${wrappers.length} pass-through wrapper${wrappers.length === 1 ? "" : "s"}`,
-        evidence: wrappers.map((summary) => `${summary.name} at line ${summary.line}`),
-        score: Math.min(6, wrappers.length * 2.5),
+        evidence: wrappers.map(
+          (summary) => `${summary.name} at line ${summary.line}${summary.passThroughTarget ? ` -> ${summary.passThroughTarget}` : ""}`,
+        ),
+        score: Math.min(5, wrappers.length * 2),
         locations: wrappers.map((summary) => ({ path: context.file!.path, line: summary.line })),
       },
     ];

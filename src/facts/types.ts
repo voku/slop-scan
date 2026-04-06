@@ -10,6 +10,7 @@ export interface FunctionSummary {
   hasAwait: boolean;
   statementCount: number;
   isPassThroughWrapper: boolean;
+  passThroughTarget: string | null;
   hasReturnAwaitCall: boolean;
 }
 
@@ -21,6 +22,7 @@ export interface ExportSummary {
 
 export interface TryCatchSummary {
   line: number;
+  hasCatchClause: boolean;
   tryStatementCount: number;
   catchStatementCount: number;
   catchLogsOnly: boolean;
@@ -29,6 +31,7 @@ export interface TryCatchSummary {
   catchHasDefaultReturn: boolean;
   catchIsEmpty: boolean;
   catchThrowsGeneric: boolean;
+  boundaryCategories: string[];
 }
 
 export interface DirectoryMetrics {

@@ -2,15 +2,13 @@ import type { RulePlugin } from "../../core/types";
 import type { CommentSummary } from "../../facts/types";
 
 const PLACEHOLDER_PATTERNS = [
-  /additional\s+cases?/i,
-  /if\s+needed/i,
-  /as\s+needed/i,
-  /can\s+be\s+extended/i,
-  /extend\s+this/i,
-  /customize\s+this/i,
-  /future\s+enhancement/i,
-  /handle\s+more/i,
   /add\s+more\s+validation/i,
+  /handle\s+(?:additional|more)\s+cases?/i,
+  /can\s+be\s+extended\s+in\s+the\s+future/i,
+  /extend\s+this\s+(?:logic|function|method|handler|module)/i,
+  /customize\s+this\s+(?:logic|behavior|function|method|handler)/i,
+  /future\s+enhancement/i,
+  /implement\s+.+\s+here/i,
 ];
 
 export const placeholderCommentsRule: RulePlugin = {

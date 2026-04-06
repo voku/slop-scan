@@ -86,6 +86,80 @@ describe("heuristic rule pack", () => {
     expect(result.repoScore).toBeGreaterThan(0);
   });
 
+  test("downweights boundary-oriented try/catch and ignores try/finally", async () => {
+    const rootDir = await createTempRepo({
+      "src/io.ts": [
+        'import * as fs from "node:fs";',
+        "",
+        "export function loadConfig(filePath: string) {",
+        "  try {",
+        '    return JSON.parse(fs.readFileSync(filePath, "utf8"));',
+        "  } catch (error) {",
+        "    return null;",
+        "  }",
+        "}",
+        "",
+        "export function cleanup(lockPath: string) {",
+        "  try {",
+        "    fs.unlinkSync(lockPath);",
+        "  } finally {",
+        "    fs.existsSync(lockPath);",
+        "  }",
+        "}",
+        "",
+      ].join("\n"),
+      "src/leaf.ts": [
+        "function transform(input: string) {",
+        "  return input.trim();",
+        "}",
+        "",
+        "export function safeTransform(input: string) {",
+        "  try {",
+        "    return transform(input);",
+        "  } catch (error) {",
+        "    return null;",
+        "  }",
+        "}",
+        "",
+      ].join("\n"),
+    });
+
+    const result = await analyzeRepository(rootDir, DEFAULT_CONFIG, createDefaultRegistry());
+    const ioFinding = result.findings.find((finding) => finding.path === "src/io.ts" && finding.ruleId === "defensive.needless-try-catch");
+    const leafFinding = result.findings.find((finding) => finding.path === "src/leaf.ts" && finding.ruleId === "defensive.needless-try-catch");
+
+    expect(ioFinding).toBeDefined();
+    expect(leafFinding).toBeDefined();
+    expect(ioFinding?.score ?? 0).toBeLessThan(leafFinding?.score ?? 0);
+    expect(ioFinding?.evidence.some((entry) => entry.includes("boundary=config|filesystem"))).toBe(true);
+    expect(ioFinding?.locations).toHaveLength(1);
+  });
+
+  test("does not flag routine phrasing or alias compatibility wrappers", async () => {
+    const rootDir = await createTempRepo({
+      "src/comments.ts": [
+        "/** Wrap code for page.evaluate(), using async IIFE with block or expression body as needed. */",
+        "export const wrapped = true;",
+        "",
+      ].join("\n"),
+      "src/aliases.ts": [
+        "function describeToolCall(input: string) {",
+        "  return input;",
+        "}",
+        "",
+        "// Keep the old name as an alias for backward compat",
+        "export function summarizeToolInput(input: string) {",
+        "  return describeToolCall(input);",
+        "}",
+        "",
+      ].join("\n"),
+    });
+
+    const result = await analyzeRepository(rootDir, DEFAULT_CONFIG, createDefaultRegistry());
+
+    expect(result.findings).toHaveLength(0);
+  });
+
   test("stays quiet on a small clean repo", async () => {
     const rootDir = await createTempRepo({
       "src/index.ts": [

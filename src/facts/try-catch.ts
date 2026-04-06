@@ -1,7 +1,115 @@
 import * as ts from "typescript";
 import type { FactProvider } from "../core/types";
 import type { TryCatchSummary } from "./types";
-import { getLineNumber, isDefaultLiteral, isLoggingCall, walk } from "./ts-helpers";
+import { getExpressionPath, getLineNumber, isDefaultLiteral, isLoggingCall, walk } from "./ts-helpers";
+
+const FILE_SYSTEM_ROOTS = new Set(["fs", "fsp", "fsPromises", "promises"]);
+const FILE_SYSTEM_METHODS = new Set([
+  "access",
+  "accessSync",
+  "appendFile",
+  "appendFileSync",
+  "chmod",
+  "chmodSync",
+  "copyFile",
+  "copyFileSync",
+  "createReadStream",
+  "createWriteStream",
+  "existsSync",
+  "lstat",
+  "lstatSync",
+  "mkdir",
+  "mkdirSync",
+  "mkdtemp",
+  "mkdtempSync",
+  "open",
+  "openSync",
+  "readFile",
+  "readFileSync",
+  "readdir",
+  "readdirSync",
+  "readlink",
+  "readlinkSync",
+  "realpath",
+  "realpathSync",
+  "rename",
+  "renameSync",
+  "rm",
+  "rmSync",
+  "stat",
+  "statSync",
+  "symlink",
+  "symlinkSync",
+  "unlink",
+  "unlinkSync",
+  "watch",
+  "watchFile",
+  "writeFile",
+  "writeFileSync",
+]);
+const PROCESS_METHODS = new Set(["exec", "execFile", "execFileSync", "execSync", "kill", "spawn", "spawnSync"]);
+const NETWORK_ROOTS = new Set(["axios", "fetch", "got", "request"]);
+const BROWSER_ROOTS = new Set([
+  "browser",
+  "chrome",
+  "context",
+  "document",
+  "history",
+  "localStorage",
+  "location",
+  "navigator",
+  "page",
+  "sessionStorage",
+  "window",
+]);
+const BROWSER_METHODS = new Set(["click", "evaluate", "goto", "hover", "reload", "screenshot", "type"]);
+
+function collectBoundaryCategories(node: ts.TryStatement): string[] {
+  const categories = new Set<string>();
+
+  walk(node.tryBlock, (child) => {
+    if (ts.isCallExpression(child) || ts.isNewExpression(child)) {
+      const path = getExpressionPath(ts.isCallExpression(child) ? child.expression : child.expression ?? child);
+      if (path.length === 0) {
+        return;
+      }
+
+      const [root] = path;
+      const last = path.at(-1) ?? "";
+      const joinedPath = path.join(".");
+
+      if (FILE_SYSTEM_ROOTS.has(root) || FILE_SYSTEM_METHODS.has(last)) {
+        categories.add("filesystem");
+      }
+
+      if (NETWORK_ROOTS.has(root) || last === "fetch") {
+        categories.add("network");
+      }
+
+      if (root === "Bun" || root === "Deno" || root === "process" || PROCESS_METHODS.has(last)) {
+        categories.add("process");
+      }
+
+      if (BROWSER_ROOTS.has(root) || BROWSER_METHODS.has(last)) {
+        categories.add("browser");
+      }
+
+      if (joinedPath === "JSON.parse" || joinedPath === "process.env") {
+        categories.add("config");
+      }
+    }
+
+    if (ts.isPropertyAccessExpression(child)) {
+      const path = getExpressionPath(child);
+      const joinedPath = path.join(".");
+      if (joinedPath === "process.env") {
+        categories.add("config");
+      }
+    }
+  });
+
+  return [...categories].sort();
+}
 
 function summarizeTryStatement(node: ts.TryStatement, sourceFile: ts.SourceFile): TryCatchSummary {
   const catchBlock = node.catchClause?.block;
@@ -34,6 +142,7 @@ function summarizeTryStatement(node: ts.TryStatement, sourceFile: ts.SourceFile)
 
   return {
     line: getLineNumber(sourceFile, node.getStart(sourceFile)),
+    hasCatchClause: Boolean(node.catchClause),
     tryStatementCount: node.tryBlock.statements.length,
     catchStatementCount: catchStatements.length,
     catchLogsOnly,
@@ -42,6 +151,7 @@ function summarizeTryStatement(node: ts.TryStatement, sourceFile: ts.SourceFile)
     catchHasDefaultReturn,
     catchIsEmpty: catchStatements.length === 0,
     catchThrowsGeneric,
+    boundaryCategories: collectBoundaryCategories(node),
   };
 }
 
