@@ -1,0 +1,852 @@
+{
+  "schemaVersion": 1,
+  "benchmarkSetId": "known-ai-vs-solid-oss",
+  "benchmarkSetName": "Known AI repos vs older solid OSS repos",
+  "generatedAt": "2026-04-07T01:25:07.445Z",
+  "analyzerVersion": "0.1.0",
+  "configMode": "default",
+  "repos": [
+    {
+      "id": "universal-pm",
+      "repo": "golusprasad12-arch/universal-pm",
+      "cohort": "explicit-ai",
+      "ref": "2d90bde0dd58d79174eb4c9037aad6fe235cda71",
+      "summary": {
+        "fileCount": 18,
+        "directoryCount": 7,
+        "findingCount": 23,
+        "repoScore": 88.7,
+        "physicalLineCount": 4845,
+        "logicalLineCount": 1295,
+        "functionCount": 149,
+        "normalized": {
+          "scorePerFile": 4.927777777777778,
+          "scorePerKloc": 68.4942084942085,
+          "scorePerFunction": 0.5953020134228189,
+          "findingsPerFile": 1.2777777777777777,
+          "findingsPerKloc": 17.760617760617762,
+          "findingsPerFunction": 0.15436241610738255
+        }
+      },
+      "ruleCounts": {
+        "defensive.needless-try-catch": 11,
+        "defensive.async-noise": 8,
+        "structure.pass-through-wrappers": 3,
+        "structure.directory-fanout-hotspot": 1
+      },
+      "topFiles": [
+        {
+          "path": "src/index.ts",
+          "score": 14,
+          "findingCount": 3
+        },
+        {
+          "path": "src/commands/index.ts",
+          "score": 12,
+          "findingCount": 2
+        },
+        {
+          "path": "src/commands/utilities.ts",
+          "score": 11.400000000000002,
+          "findingCount": 2
+        },
+        {
+          "path": "src/commands/update.ts",
+          "score": 10,
+          "findingCount": 2
+        },
+        {
+          "path": "src/services/manager.ts",
+          "score": 10,
+          "findingCount": 3
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "src/commands",
+          "score": 3,
+          "findingCount": 1
+        }
+      ]
+    },
+    {
+      "id": "voice-notifications",
+      "repo": "ZeldOcarina/claude-code-voice-notifications",
+      "cohort": "explicit-ai",
+      "ref": "8a984b8245f2b4026fb49746e9797138ae8115e6",
+      "summary": {
+        "fileCount": 5,
+        "directoryCount": 1,
+        "findingCount": 3,
+        "repoScore": 7.5,
+        "physicalLineCount": 294,
+        "logicalLineCount": 156,
+        "functionCount": 7,
+        "normalized": {
+          "scorePerFile": 1.5,
+          "scorePerKloc": 48.07692307692308,
+          "scorePerFunction": 1.0714285714285714,
+          "findingsPerFile": 0.6,
+          "findingsPerKloc": 19.23076923076923,
+          "findingsPerFunction": 0.42857142857142855
+        }
+      },
+      "ruleCounts": {
+        "defensive.needless-try-catch": 2,
+        "defensive.async-noise": 1
+      },
+      "topFiles": [
+        {
+          "path": "src/test-fallback.ts",
+          "score": 3,
+          "findingCount": 1
+        },
+        {
+          "path": "src/tts-service.ts",
+          "score": 3,
+          "findingCount": 1
+        },
+        {
+          "path": "src/hook-handler.ts",
+          "score": 1.5,
+          "findingCount": 1
+        }
+      ],
+      "topDirectories": []
+    },
+    {
+      "id": "openusage",
+      "repo": "robinebers/openusage",
+      "cohort": "explicit-ai",
+      "ref": "857f537a243483acf98ccd9ea32e20b380c63823",
+      "summary": {
+        "fileCount": 139,
+        "directoryCount": 29,
+        "findingCount": 46,
+        "repoScore": 193.14444444444442,
+        "physicalLineCount": 33794,
+        "logicalLineCount": 22270,
+        "functionCount": 491,
+        "normalized": {
+          "scorePerFile": 1.3895283772981613,
+          "scorePerKloc": 8.67285336526468,
+          "scorePerFunction": 0.39336954062004975,
+          "findingsPerFile": 0.33093525179856115,
+          "findingsPerKloc": 2.0655590480466994,
+          "findingsPerFunction": 0.09368635437881874
+        }
+      },
+      "ruleCounts": {
+        "tests.duplicate-mock-setup": 26,
+        "defensive.needless-try-catch": 9,
+        "structure.directory-fanout-hotspot": 5,
+        "structure.pass-through-wrappers": 5,
+        "defensive.async-noise": 1
+      },
+      "topFiles": [
+        {
+          "path": "plugins/antigravity/plugin.js",
+          "score": 9,
+          "findingCount": 2
+        },
+        {
+          "path": "src/hooks/app/use-settings-bootstrap.ts",
+          "score": 8,
+          "findingCount": 1
+        },
+        {
+          "path": "src/hooks/app/use-panel.ts",
+          "score": 6.5,
+          "findingCount": 1
+        },
+        {
+          "path": "plugins/factory/plugin.js",
+          "score": 5.5,
+          "findingCount": 2
+        },
+        {
+          "path": "plugins/amp/plugin.test.js",
+          "score": 5,
+          "findingCount": 1
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "src/hooks/app",
+          "score": 4.777777777777778,
+          "findingCount": 1
+        },
+        {
+          "path": "src/lib",
+          "score": 4.555555555555555,
+          "findingCount": 1
+        },
+        {
+          "path": "src/components",
+          "score": 3.7777777777777777,
+          "findingCount": 1
+        },
+        {
+          "path": "src/components/ui",
+          "score": 3.2222222222222223,
+          "findingCount": 1
+        },
+        {
+          "path": "src/hooks",
+          "score": 3.111111111111111,
+          "findingCount": 1
+        }
+      ]
+    },
+    {
+      "id": "devworkbench",
+      "repo": "jiayun/DevWorkbench",
+      "cohort": "explicit-ai",
+      "ref": "ea50862107c377b0cdd6e508073ad0330b367576",
+      "summary": {
+        "fileCount": 32,
+        "directoryCount": 7,
+        "findingCount": 14,
+        "repoScore": 31.424999999999997,
+        "physicalLineCount": 9408,
+        "logicalLineCount": 2986,
+        "functionCount": 147,
+        "normalized": {
+          "scorePerFile": 0.9820312499999999,
+          "scorePerKloc": 10.524112525117213,
+          "scorePerFunction": 0.21377551020408161,
+          "findingsPerFile": 0.4375,
+          "findingsPerKloc": 4.688546550569323,
+          "findingsPerFunction": 0.09523809523809523
+        }
+      },
+      "ruleCounts": {
+        "defensive.needless-try-catch": 11,
+        "structure.barrel-density": 1,
+        "structure.directory-fanout-hotspot": 1,
+        "structure.pass-through-wrappers": 1
+      },
+      "topFiles": [
+        {
+          "path": "src/components/TextUtilities.tsx",
+          "score": 6.2,
+          "findingCount": 2
+        },
+        {
+          "path": "src/components/JwtTool.tsx",
+          "score": 3,
+          "findingCount": 1
+        },
+        {
+          "path": "src/components/ui/index.ts",
+          "score": 3,
+          "findingCount": 1
+        },
+        {
+          "path": "src/components/Base58EncoderDecoder.tsx",
+          "score": 2.4000000000000004,
+          "findingCount": 1
+        },
+        {
+          "path": "src/components/Base64EncoderDecoder.tsx",
+          "score": 2.4000000000000004,
+          "findingCount": 1
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "src/components",
+          "score": 4.125,
+          "findingCount": 1
+        }
+      ]
+    },
+    {
+      "id": "fulling",
+      "repo": "FullAgent/fulling",
+      "cohort": "explicit-ai",
+      "ref": "d95060f8421b5888564fc8517c1fe99ded463985",
+      "summary": {
+        "fileCount": 219,
+        "directoryCount": 78,
+        "findingCount": 55,
+        "repoScore": 167.6,
+        "physicalLineCount": 26787,
+        "logicalLineCount": 12154,
+        "functionCount": 574,
+        "normalized": {
+          "scorePerFile": 0.765296803652968,
+          "scorePerKloc": 13.789698864571335,
+          "scorePerFunction": 0.29198606271777,
+          "findingsPerFile": 0.2511415525114155,
+          "findingsPerKloc": 4.525259173934507,
+          "findingsPerFunction": 0.09581881533101046
+        }
+      },
+      "ruleCounts": {
+        "defensive.async-noise": 17,
+        "defensive.needless-try-catch": 17,
+        "structure.directory-fanout-hotspot": 10,
+        "structure.barrel-density": 4,
+        "structure.pass-through-wrappers": 4,
+        "tests.duplicate-mock-setup": 3
+      },
+      "topFiles": [
+        {
+          "path": "components/terminal/xterm-terminal.tsx",
+          "score": 8,
+          "findingCount": 1
+        },
+        {
+          "path": "lib/jobs/project-task/projectTaskReconcile.ts",
+          "score": 8,
+          "findingCount": 1
+        },
+        {
+          "path": "lib/jwt.ts",
+          "score": 8,
+          "findingCount": 1
+        },
+        {
+          "path": "lib/util/ttyd-exec.ts",
+          "score": 6.5,
+          "findingCount": 1
+        },
+        {
+          "path": "components/terminal/hooks/use-file-drop.ts",
+          "score": 6,
+          "findingCount": 1
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "components/ui",
+          "score": 5.666666666666666,
+          "findingCount": 1
+        },
+        {
+          "path": "lib/util",
+          "score": 4,
+          "findingCount": 1
+        },
+        {
+          "path": "lib",
+          "score": 3.5,
+          "findingCount": 1
+        },
+        {
+          "path": "lib/k8s",
+          "score": 3.333333333333333,
+          "findingCount": 1
+        },
+        {
+          "path": "app/(dashboard)/projects/(list)/_components",
+          "score": 3.166666666666667,
+          "findingCount": 1
+        }
+      ]
+    },
+    {
+      "id": "ni",
+      "repo": "antfu-collective/ni",
+      "cohort": "mature-oss",
+      "ref": "6d9690555dcc75c2ef5badd2e61e7cfe5d605ffd",
+      "summary": {
+        "fileCount": 87,
+        "directoryCount": 16,
+        "findingCount": 14,
+        "repoScore": 62.87142857142857,
+        "physicalLineCount": 3569,
+        "logicalLineCount": 2138,
+        "functionCount": 99,
+        "normalized": {
+          "scorePerFile": 0.7226600985221674,
+          "scorePerKloc": 29.40665508485901,
+          "scorePerFunction": 0.635064935064935,
+          "findingsPerFile": 0.16091954022988506,
+          "findingsPerKloc": 6.548175865294668,
+          "findingsPerFunction": 0.1414141414141414
+        }
+      },
+      "ruleCounts": {
+        "structure.over-fragmentation": 7,
+        "defensive.async-noise": 5,
+        "structure.barrel-density": 1,
+        "structure.directory-fanout-hotspot": 1
+      },
+      "topFiles": [
+        {
+          "path": "src/catalog/pnpm.ts",
+          "score": 3,
+          "findingCount": 1
+        },
+        {
+          "path": "src/index.ts",
+          "score": 3,
+          "findingCount": 1
+        },
+        {
+          "path": "src/commands/ni.ts",
+          "score": 1.5,
+          "findingCount": 1
+        },
+        {
+          "path": "src/commands/nr.ts",
+          "score": 1.5,
+          "findingCount": 1
+        },
+        {
+          "path": "src/commands/nun.ts",
+          "score": 1.5,
+          "findingCount": 1
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "bin",
+          "score": 7,
+          "findingCount": 1
+        },
+        {
+          "path": "test/na",
+          "score": 7,
+          "findingCount": 1
+        },
+        {
+          "path": "test/nlx",
+          "score": 7,
+          "findingCount": 1
+        },
+        {
+          "path": "test/nun",
+          "score": 7,
+          "findingCount": 1
+        },
+        {
+          "path": "test/nup",
+          "score": 7,
+          "findingCount": 1
+        }
+      ]
+    },
+    {
+      "id": "node-notifier",
+      "repo": "mikaelbr/node-notifier",
+      "cohort": "mature-oss",
+      "ref": "b36c237f0d913f9df3a2bd45adc08b33ff717f6a",
+      "summary": {
+        "fileCount": 24,
+        "directoryCount": 5,
+        "findingCount": 2,
+        "repoScore": 4.9,
+        "physicalLineCount": 2716,
+        "logicalLineCount": 2114,
+        "functionCount": 42,
+        "normalized": {
+          "scorePerFile": 0.2041666666666667,
+          "scorePerKloc": 2.317880794701987,
+          "scorePerFunction": 0.11666666666666667,
+          "findingsPerFile": 0.08333333333333333,
+          "findingsPerKloc": 0.946073793755913,
+          "findingsPerFunction": 0.047619047619047616
+        }
+      },
+      "ruleCounts": {
+        "defensive.needless-try-catch": 1,
+        "structure.directory-fanout-hotspot": 1
+      },
+      "topFiles": [
+        {
+          "path": "lib/utils.js",
+          "score": 1.9000000000000001,
+          "findingCount": 1
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "test",
+          "score": 3,
+          "findingCount": 1
+        }
+      ]
+    },
+    {
+      "id": "tsup",
+      "repo": "egoist/tsup",
+      "cohort": "mature-oss",
+      "ref": "b906f86102c02f1ef66ebd4a3f7ff50bdc07af65",
+      "summary": {
+        "fileCount": 48,
+        "directoryCount": 8,
+        "findingCount": 4,
+        "repoScore": 10.454545454545455,
+        "physicalLineCount": 6686,
+        "logicalLineCount": 2813,
+        "functionCount": 140,
+        "normalized": {
+          "scorePerFile": 0.2178030303030303,
+          "scorePerKloc": 3.716511004104321,
+          "scorePerFunction": 0.07467532467532467,
+          "findingsPerFile": 0.08333333333333333,
+          "findingsPerKloc": 1.4219694276573054,
+          "findingsPerFunction": 0.02857142857142857
+        }
+      },
+      "ruleCounts": {
+        "structure.pass-through-wrappers": 2,
+        "defensive.needless-try-catch": 1,
+        "structure.directory-fanout-hotspot": 1
+      },
+      "topFiles": [
+        {
+          "path": "src/utils.ts",
+          "score": 5,
+          "findingCount": 2
+        },
+        {
+          "path": "src/load.ts",
+          "score": 2,
+          "findingCount": 1
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "src",
+          "score": 3.4545454545454546,
+          "findingCount": 1
+        }
+      ]
+    },
+    {
+      "id": "execa",
+      "repo": "sindresorhus/execa",
+      "cohort": "mature-oss",
+      "ref": "f3a2e8481a1e9138de3895827895c834078b9456",
+      "summary": {
+        "fileCount": 581,
+        "directoryCount": 46,
+        "findingCount": 47,
+        "repoScore": 139.31256743890827,
+        "physicalLineCount": 36103,
+        "logicalLineCount": 20432,
+        "functionCount": 1008,
+        "normalized": {
+          "scorePerFile": 0.23978066684837912,
+          "scorePerKloc": 6.8183519694062396,
+          "scorePerFunction": 0.13820691214177408,
+          "findingsPerFile": 0.08089500860585198,
+          "findingsPerKloc": 2.300313234142522,
+          "findingsPerFunction": 0.04662698412698413
+        }
+      },
+      "ruleCounts": {
+        "defensive.async-noise": 27,
+        "defensive.needless-try-catch": 12,
+        "structure.directory-fanout-hotspot": 5,
+        "structure.over-fragmentation": 2,
+        "structure.barrel-density": 1
+      },
+      "topFiles": [
+        {
+          "path": "lib/convert/shared.js",
+          "score": 7,
+          "findingCount": 1
+        },
+        {
+          "path": "lib/io/pipeline.js",
+          "score": 7,
+          "findingCount": 1
+        },
+        {
+          "path": "lib/io/iterate.js",
+          "score": 5,
+          "findingCount": 2
+        },
+        {
+          "path": "lib/ipc/ipc-input.js",
+          "score": 5,
+          "findingCount": 1
+        },
+        {
+          "path": "test/terminate/kill-force.js",
+          "score": 5,
+          "findingCount": 2
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "test/fixtures",
+          "score": 12.934306569343066,
+          "findingCount": 2
+        },
+        {
+          "path": "test/fixtures/nested",
+          "score": 7,
+          "findingCount": 1
+        },
+        {
+          "path": "test-d/stdio/option",
+          "score": 5.130434782608695,
+          "findingCount": 1
+        },
+        {
+          "path": "test/helpers",
+          "score": 3.1304347826086953,
+          "findingCount": 1
+        },
+        {
+          "path": "test/stdio",
+          "score": 3.1304347826086953,
+          "findingCount": 1
+        }
+      ]
+    },
+    {
+      "id": "hyper",
+      "repo": "vercel/hyper",
+      "cohort": "mature-oss",
+      "ref": "2a7bb18259d975f27b30b502af1be7576f6f5656",
+      "summary": {
+        "fileCount": 115,
+        "directoryCount": 22,
+        "findingCount": 21,
+        "repoScore": 84.77499999999999,
+        "physicalLineCount": 162828,
+        "logicalLineCount": 65160,
+        "functionCount": 5356,
+        "normalized": {
+          "scorePerFile": 0.7371739130434782,
+          "scorePerKloc": 1.3010282381829343,
+          "scorePerFunction": 0.01582804331590739,
+          "findingsPerFile": 0.1826086956521739,
+          "findingsPerKloc": 0.32228360957642727,
+          "findingsPerFunction": 0.00392083644510829
+        }
+      },
+      "ruleCounts": {
+        "defensive.needless-try-catch": 9,
+        "structure.pass-through-wrappers": 5,
+        "structure.directory-fanout-hotspot": 3,
+        "defensive.async-noise": 2,
+        "structure.over-fragmentation": 2
+      },
+      "topFiles": [
+        {
+          "path": "bin/yarn-standalone.js",
+          "score": 13,
+          "findingCount": 2
+        },
+        {
+          "path": "app/plugins.ts",
+          "score": 8.5,
+          "findingCount": 2
+        },
+        {
+          "path": "bin/rimraf-standalone.js",
+          "score": 8.5,
+          "findingCount": 2
+        },
+        {
+          "path": "app/utils/system-context-menu.ts",
+          "score": 8,
+          "findingCount": 1
+        },
+        {
+          "path": "lib/components/term.tsx",
+          "score": 6,
+          "findingCount": 1
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "lib",
+          "score": 6,
+          "findingCount": 1
+        },
+        {
+          "path": "typings/constants",
+          "score": 5.875,
+          "findingCount": 1
+        },
+        {
+          "path": "lib/components",
+          "score": 3.2,
+          "findingCount": 1
+        },
+        {
+          "path": "lib/utils",
+          "score": 3.1,
+          "findingCount": 1
+        },
+        {
+          "path": "app",
+          "score": 3,
+          "findingCount": 1
+        }
+      ]
+    },
+    {
+      "id": "umami",
+      "repo": "umami-software/umami",
+      "cohort": "mature-oss",
+      "ref": "0a838649b773122cc68cbd0c3df78d4251b981c5",
+      "summary": {
+        "fileCount": 674,
+        "directoryCount": 155,
+        "findingCount": 136,
+        "repoScore": 442.63483006355347,
+        "physicalLineCount": 37986,
+        "logicalLineCount": 24859,
+        "functionCount": 1209,
+        "normalized": {
+          "scorePerFile": 0.656728234515658,
+          "scorePerKloc": 17.805818016153243,
+          "scorePerFunction": 0.36611648475066455,
+          "findingsPerFile": 0.20178041543026706,
+          "findingsPerKloc": 5.470855625729111,
+          "findingsPerFunction": 0.11248966087675766
+        }
+      },
+      "ruleCounts": {
+        "defensive.async-noise": 78,
+        "structure.directory-fanout-hotspot": 25,
+        "structure.pass-through-wrappers": 14,
+        "defensive.needless-try-catch": 10,
+        "structure.barrel-density": 5,
+        "structure.over-fragmentation": 4
+      },
+      "topFiles": [
+        {
+          "path": "src/lib/jwt.ts",
+          "score": 11.5,
+          "findingCount": 3
+        },
+        {
+          "path": "src/queries/prisma/link.ts",
+          "score": 6,
+          "findingCount": 2
+        },
+        {
+          "path": "src/queries/prisma/pixel.ts",
+          "score": 6,
+          "findingCount": 2
+        },
+        {
+          "path": "src/queries/prisma/report.ts",
+          "score": 6,
+          "findingCount": 2
+        },
+        {
+          "path": "src/queries/prisma/segment.ts",
+          "score": 6,
+          "findingCount": 2
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "src/components/svg",
+          "score": 12.84090909090909,
+          "findingCount": 2
+        },
+        {
+          "path": "src/components/hooks/queries",
+          "score": 11.851063829787234,
+          "findingCount": 2
+        },
+        {
+          "path": ".",
+          "score": 9.625,
+          "findingCount": 2
+        },
+        {
+          "path": "src/app/(main)/admin/users/[userId]",
+          "score": 6.142857142857142,
+          "findingCount": 1
+        },
+        {
+          "path": "src/lib",
+          "score": 6,
+          "findingCount": 1
+        }
+      ]
+    }
+  ],
+  "cohorts": {
+    "explicit-ai": {
+      "repoCount": 5,
+      "medians": {
+        "scorePerFile": 1.3895283772981613,
+        "scorePerKloc": 13.789698864571335,
+        "scorePerFunction": 0.39336954062004975,
+        "findingsPerFile": 0.4375,
+        "findingsPerKloc": 4.688546550569323,
+        "findingsPerFunction": 0.09581881533101046
+      }
+    },
+    "mature-oss": {
+      "repoCount": 6,
+      "medians": {
+        "scorePerFile": 0.4482544506820185,
+        "scorePerKloc": 5.26743148675528,
+        "scorePerFunction": 0.12743678940422037,
+        "findingsPerFile": 0.1221264367816092,
+        "findingsPerKloc": 1.8611413308999136,
+        "findingsPerFunction": 0.04712301587301587
+      }
+    }
+  },
+  "pairings": [
+    {
+      "aiRepoId": "universal-pm",
+      "solidRepoId": "ni",
+      "notes": "Package-manager CLI vs package-manager CLI.",
+      "ratios": {
+        "scorePerFile": 6.818942664545938,
+        "scorePerKloc": 2.3292077353427048,
+        "scorePerFunction": 0.9373876284980993,
+        "findingsPerFile": 7.94047619047619,
+        "findingsPerKloc": 2.712300055157198,
+        "findingsPerFunction": 1.091562799616491
+      }
+    },
+    {
+      "aiRepoId": "voice-notifications",
+      "solidRepoId": "node-notifier",
+      "notes": "Notification utility vs notification utility.",
+      "ratios": {
+        "scorePerFile": 7.346938775510203,
+        "scorePerKloc": 20.74175824175824,
+        "scorePerFunction": 9.183673469387754,
+        "findingsPerFile": 7.2,
+        "findingsPerKloc": 20.326923076923073,
+        "findingsPerFunction": 9
+      }
+    },
+    {
+      "aiRepoId": "devworkbench",
+      "solidRepoId": "hyper",
+      "notes": "GUI-oriented TypeScript app vs older terminal/desktop-style TS app.",
+      "ratios": {
+        "scorePerFile": 1.3321568121498082,
+        "scorePerKloc": 8.089073100992481,
+        "scorePerFunction": 13.506123652645961,
+        "findingsPerFile": 2.3958333333333335,
+        "findingsPerKloc": 14.547890154052242,
+        "findingsPerFunction": 24.290249433106574
+      }
+    },
+    {
+      "aiRepoId": "openusage",
+      "solidRepoId": "umami",
+      "notes": "Full-stack analytics-adjacent SaaS-style app comparison and negative control.",
+      "ratios": {
+        "scorePerFile": 2.1158346851387453,
+        "scorePerKloc": 0.4870797487313845,
+        "scorePerFunction": 1.0744382102541634,
+        "findingsPerFile": 1.640076174354634,
+        "findingsPerKloc": 0.37755685570141845,
+        "findingsPerFunction": 0.8328441356175871
+      }
+    }
+  ]
+}

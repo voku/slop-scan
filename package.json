@@ -6,7 +6,11 @@
   "description": "Deterministic Bun + TypeScript CLI for finding AI-associated slop patterns in codebases.",
   "scripts": {
     "scan": "bun run src/cli.ts scan .",
-    "test": "bun test"
+    "test": "bun test",
+    "benchmark:fetch": "bun run scripts/benchmark-fetch.ts",
+    "benchmark:scan": "bun run scripts/benchmark-scan.ts",
+    "benchmark:report": "bun run scripts/benchmark-report.ts",
+    "benchmark:update": "bun run benchmark:fetch && bun run benchmark:scan && bun run benchmark:report"
   },
   "dependencies": {
     "typescript": "^5.8.3"

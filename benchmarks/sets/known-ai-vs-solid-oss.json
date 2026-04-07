@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "id": "known-ai-vs-solid-oss",
+  "name": "Known AI repos vs older solid OSS repos",
+  "description": "Compare a small cohort of explicitly AI-generated JavaScript/TypeScript repos against older, well-regarded OSS repos using pinned commit SHAs and normalized analyzer metrics.",
+  "artifacts": {
+    "checkoutsDir": "benchmarks/.cache/checkouts/known-ai-vs-solid-oss",
+    "snapshotPath": "benchmarks/results/known-ai-vs-solid-oss.json",
+    "reportPath": "reports/known-ai-vs-solid-oss-benchmark.md"
+  },
+  "repos": [
+    {
+      "id": "universal-pm",
+      "repo": "golusprasad12-arch/universal-pm",
+      "url": "https://github.com/golusprasad12-arch/universal-pm.git",
+      "cohort": "explicit-ai",
+      "ref": "2d90bde0dd58d79174eb4c9037aad6fe235cda71",
+      "createdAt": "2026-03-25T00:00:00Z",
+      "stars": 0,
+      "provenance": "README: \"This project is 100% AI-generated code.\"",
+      "notes": "Small package-manager CLI used as the original AI baseline."
+    },
+    {
+      "id": "voice-notifications",
+      "repo": "ZeldOcarina/claude-code-voice-notifications",
+      "url": "https://github.com/ZeldOcarina/claude-code-voice-notifications.git",
+      "cohort": "explicit-ai",
+      "ref": "8a984b8245f2b4026fb49746e9797138ae8115e6",
+      "createdAt": "2025-08-12T16:22:04Z",
+      "stars": 12,
+      "provenance": "README: \"This entire project was built from scratch using Claude Code with 100% AI-generated code!\"",
+      "notes": "Tiny TypeScript CLI utility with explicit Claude Code provenance."
+    },
+    {
+      "id": "openusage",
+      "repo": "robinebers/openusage",
+      "url": "https://github.com/robinebers/openusage.git",
+      "cohort": "explicit-ai",
+      "ref": "857f537a243483acf98ccd9ea32e20b380c63823",
+      "createdAt": "2026-02-01T07:37:03Z",
+      "stars": 1715,
+      "provenance": "README: \"Not a single line of code in this project was read or written by hand. 100% AI-generated, AI-reviewed, AI-shipped\"",
+      "notes": "Useful negative control because it does not look uniformly slop-heavy on every normalized metric."
+    },
+    {
+      "id": "devworkbench",
+      "repo": "jiayun/DevWorkbench",
+      "url": "https://github.com/jiayun/DevWorkbench.git",
+      "cohort": "explicit-ai",
+      "ref": "ea50862107c377b0cdd6e508073ad0330b367576",
+      "createdAt": "2025-06-25T03:39:53Z",
+      "stars": 17,
+      "provenance": "README: \"100% AI-Generated Code - A Totally Vibed Application\"",
+      "notes": "Desktop-style TypeScript application with explicit AI-generation disclosure."
+    },
+    {
+      "id": "fulling",
+      "repo": "FullAgent/fulling",
+      "url": "https://github.com/FullAgent/fulling.git",
+      "cohort": "explicit-ai",
+      "ref": "d95060f8421b5888564fc8517c1fe99ded463985",
+      "createdAt": "2025-10-11T02:31:07Z",
+      "stars": 2413,
+      "provenance": "README: \"100% AI-generated code.\"",
+      "notes": "Large AI-built full-stack engineering agent project."
+    },
+    {
+      "id": "ni",
+      "repo": "antfu-collective/ni",
+      "url": "https://github.com/antfu-collective/ni.git",
+      "cohort": "mature-oss",
+      "ref": "6d9690555dcc75c2ef5badd2e61e7cfe5d605ffd",
+      "createdAt": "2020-11-05T07:56:23Z",
+      "stars": 8146,
+      "provenance": "Mature TypeScript package-manager CLI by Anthony Fu.",
+      "notes": "Original manual baseline for universal-pm."
+    },
+    {
+      "id": "node-notifier",
+      "repo": "mikaelbr/node-notifier",
+      "url": "https://github.com/mikaelbr/node-notifier.git",
+      "cohort": "mature-oss",
+      "ref": "b36c237f0d913f9df3a2bd45adc08b33ff717f6a",
+      "createdAt": "2012-12-02T09:53:24Z",
+      "stars": 5843,
+      "provenance": "Long-running OSS notification library for Node.js.",
+      "notes": "Useful older utility-style baseline for a notification-oriented AI repo."
+    },
+    {
+      "id": "tsup",
+      "repo": "egoist/tsup",
+      "url": "https://github.com/egoist/tsup.git",
+      "cohort": "mature-oss",
+      "ref": "b906f86102c02f1ef66ebd4a3f7ff50bdc07af65",
+      "createdAt": "2020-03-19T16:23:41Z",
+      "stars": 11198,
+      "provenance": "Mature TypeScript build tool widely used in the ecosystem.",
+      "notes": "Compact older TS tool with fairly low normalized slop scores."
+    },
+    {
+      "id": "execa",
+      "repo": "sindresorhus/execa",
+      "url": "https://github.com/sindresorhus/execa.git",
+      "cohort": "mature-oss",
+      "ref": "f3a2e8481a1e9138de3895827895c834078b9456",
+      "createdAt": "2015-12-05T22:57:03Z",
+      "stars": 7481,
+      "provenance": "Long-lived process execution library for Node.js.",
+      "notes": "Helpful benchmark for command-heavy code that still avoids extreme normalized scores."
+    },
+    {
+      "id": "hyper",
+      "repo": "vercel/hyper",
+      "url": "https://github.com/vercel/hyper.git",
+      "cohort": "mature-oss",
+      "ref": "2a7bb18259d975f27b30b502af1be7576f6f5656",
+      "createdAt": "2016-07-01T06:01:21Z",
+      "stars": 44687,
+      "provenance": "Older high-visibility TypeScript/Electron terminal project.",
+      "notes": "Large, mature TS app baseline for GUI-oriented codebases."
+    },
+    {
+      "id": "umami",
+      "repo": "umami-software/umami",
+      "url": "https://github.com/umami-software/umami.git",
+      "cohort": "mature-oss",
+      "ref": "0a838649b773122cc68cbd0c3df78d4251b981c5",
+      "createdAt": "2020-07-17T07:59:00Z",
+      "stars": 36012,
+      "provenance": "Mature privacy-focused analytics platform with a large TypeScript codebase.",
+      "notes": "Good counterweight for explicit-AI full-stack app comparisons."
+    }
+  ],
+  "pairings": [
+    {
+      "aiRepoId": "universal-pm",
+      "solidRepoId": "ni",
+      "notes": "Package-manager CLI vs package-manager CLI."
+    },
+    {
+      "aiRepoId": "voice-notifications",
+      "solidRepoId": "node-notifier",
+      "notes": "Notification utility vs notification utility."
+    },
+    {
+      "aiRepoId": "devworkbench",
+      "solidRepoId": "hyper",
+      "notes": "GUI-oriented TypeScript app vs older terminal/desktop-style TS app."
+    },
+    {
+      "aiRepoId": "openusage",
+      "solidRepoId": "umami",
+      "notes": "Full-stack analytics-adjacent SaaS-style app comparison and negative control."
+    }
+  ]
+}

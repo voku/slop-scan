@@ -48,6 +48,17 @@ bun run src/cli.ts scan . --json
 bun run src/cli.ts scan tests/fixtures/repos/slop-heavy
 ```
 
+### Recreate the pinned benchmark set
+
+```bash
+bun run benchmark:update
+```
+
+Benchmark assets live in:
+- `benchmarks/sets/known-ai-vs-solid-oss.json`
+- `benchmarks/results/known-ai-vs-solid-oss.json`
+- `reports/known-ai-vs-solid-oss-benchmark.md`
+
 ## Testing
 
 Run the full regression suite:
