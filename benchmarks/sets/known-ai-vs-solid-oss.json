@@ -10,28 +10,6 @@
   },
   "repos": [
     {
-      "id": "universal-pm",
-      "repo": "golusprasad12-arch/universal-pm",
-      "url": "https://github.com/golusprasad12-arch/universal-pm.git",
-      "cohort": "explicit-ai",
-      "ref": "2d90bde0dd58d79174eb4c9037aad6fe235cda71",
-      "createdAt": "2026-03-25T00:00:00Z",
-      "stars": 0,
-      "provenance": "README: \"This project is 100% AI-generated code.\"",
-      "notes": "Small package-manager CLI used as the original AI baseline."
-    },
-    {
-      "id": "voice-notifications",
-      "repo": "ZeldOcarina/claude-code-voice-notifications",
-      "url": "https://github.com/ZeldOcarina/claude-code-voice-notifications.git",
-      "cohort": "explicit-ai",
-      "ref": "8a984b8245f2b4026fb49746e9797138ae8115e6",
-      "createdAt": "2025-08-12T16:22:04Z",
-      "stars": 12,
-      "provenance": "README: \"This entire project was built from scratch using Claude Code with 100% AI-generated code!\"",
-      "notes": "Tiny TypeScript CLI utility with explicit Claude Code provenance."
-    },
-    {
       "id": "openusage",
       "repo": "robinebers/openusage",
       "url": "https://github.com/robinebers/openusage.git",
@@ -198,16 +176,6 @@
     }
   ],
   "pairings": [
-    {
-      "aiRepoId": "universal-pm",
-      "solidRepoId": "ni",
-      "notes": "Package-manager CLI vs package-manager CLI."
-    },
-    {
-      "aiRepoId": "voice-notifications",
-      "solidRepoId": "node-notifier",
-      "notes": "Notification utility vs notification utility."
-    },
     {
       "aiRepoId": "devworkbench",
       "solidRepoId": "hyper",

@@ -28,8 +28,6 @@ Blended score = geometric mean of the six normalized-metric ratios versus the ma
 
 | Repo | Ref | Age | Stars | Blended | Files | Logical LOC | Functions | Score/file | Score/KLOC | Score/function | Findings/file | Findings/KLOC | Findings/function |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| [golusprasad12-arch/universal-pm](https://github.com/golusprasad12-arch/universal-pm) | `2d90bde` | 0.0y | 0 | **10.99** | 18 | 1295 | 149 | 3.43 | 47.64 | 0.41 | 0.83 | 11.58 | 0.10 |
-| [ZeldOcarina/claude-code-voice-notifications](https://github.com/ZeldOcarina/claude-code-voice-notifications) | `8a984b8` | 0.7y | 12 | **10.76** | 5 | 156 | 7 | 1.20 | 38.46 | 0.86 | 0.40 | 12.82 | 0.29 |
 | [garrytan/gstack](https://github.com/garrytan/gstack) | `6cc094c` | 0.1y | 65613 | **6.68** | 176 | 18958 | 832 | 2.12 | 19.67 | 0.45 | 0.45 | 4.17 | 0.09 |
 | [jiayun/DevWorkbench](https://github.com/jiayun/DevWorkbench) | `ea50862` | 0.8y | 17 | **4.81** | 32 | 2986 | 147 | 1.00 | 10.76 | 0.22 | 0.44 | 4.69 | 0.10 |
 | [openclaw/openclaw](https://github.com/openclaw/openclaw) | `44cf747` | 0.4y | 350232 | **4.15** | 10580 | 1037965 | 40714 | 1.01 | 10.31 | 0.26 | 0.30 | 3.02 | 0.08 |
@@ -44,7 +42,7 @@ Blended score = geometric mean of the six normalized-metric ratios versus the ma
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | [vitejs/vite](https://github.com/vitejs/vite) | `bdc53ab` | 6.0y | 79637 | **2.07** | 1433 | 46593 | 2300 | 0.26 | 7.98 | 0.16 | 0.08 | 2.36 | 0.05 |
 | [withastro/astro](https://github.com/withastro/astro) | `2c9bf5e` | 5.1y | 58212 | **1.80** | 2812 | 131236 | 4359 | 0.24 | 5.04 | 0.15 | 0.08 | 1.71 | 0.05 |
-| [egoist/tsup](https://github.com/egoist/tsup) | `b906f86` | 6.0y | 11198 | **1.31** | 48 | 2813 | 140 | 0.21 | 3.61 | 0.07 | 0.08 | 1.42 | 0.03 |
+| [egoist/tsup](https://github.com/egoist/tsup) | `b906f86` | 6.1y | 11198 | **1.31** | 48 | 2813 | 140 | 0.21 | 3.61 | 0.07 | 0.08 | 1.42 | 0.03 |
 | [sindresorhus/execa](https://github.com/sindresorhus/execa) | `f3a2e84` | 10.3y | 7481 | **1.07** | 581 | 20432 | 1008 | 0.16 | 4.48 | 0.09 | 0.04 | 1.08 | 0.02 |
 | [antfu-collective/ni](https://github.com/antfu-collective/ni) | `6d96905` | 5.4y | 8146 | **0.93** | 87 | 2138 | 99 | 0.11 | 4.68 | 0.10 | 0.02 | 0.94 | 0.02 |
 | [umami-software/umami](https://github.com/umami-software/umami) | `0a83864` | 5.7y | 36012 | **0.92** | 674 | 24859 | 1209 | 0.12 | 3.26 | 0.07 | 0.04 | 1.05 | 0.02 |
@@ -55,32 +53,30 @@ Blended score = geometric mean of the six normalized-metric ratios versus the ma
 
 | Metric | AI median | Solid median | Ratio |
 |---|---:|---:|---:|
-| Blended score | **4.15** | **1.00** | **4.15x** |
-| Score / file | **1.01** | **0.18** | **5.49x** |
-| Score / KLOC | **10.31** | **4.04** | **2.55x** |
-| Score / function | **0.26** | **0.08** | **3.22x** |
-| Findings / file | **0.30** | **0.06** | **5.10x** |
-| Findings / KLOC | **3.02** | **1.06** | **2.85x** |
-| Findings / function | **0.09** | **0.02** | **3.75x** |
+| Blended score | **4.10** | **1.00** | **4.10x** |
+| Score / file | **1.00** | **0.18** | **5.45x** |
+| Score / KLOC | **9.41** | **4.04** | **2.33x** |
+| Score / function | **0.22** | **0.08** | **2.68x** |
+| Findings / file | **0.30** | **0.06** | **5.01x** |
+| Findings / KLOC | **2.80** | **1.06** | **2.64x** |
+| Findings / function | **0.08** | **0.02** | **3.38x** |
 
 ## Spot-check pairings
 
 | AI repo | Solid repo | Score/file ratio | Score/KLOC ratio | Score/function ratio | Findings/file ratio | Findings/KLOC ratio | Findings/function ratio |
 |---|---|---:|---:|---:|---:|---:|---:|
-| `universal-pm` | `ni` | 29.82x | 10.19x | 4.10x | 36.25x | 12.38x | 4.98x |
-| `voice-notifications` | `node-notifier` | 15.16x | 42.79x | 18.95x | 9.60x | 27.10x | 12.00x |
 | `devworkbench` | `hyper` | 1.69x | 10.25x | 17.11x | 2.96x | 17.97x | 30.01x |
 | `openusage` | `umami` | 10.59x | 2.44x | 5.38x | 7.83x | 1.80x | 3.98x |
 
 ## Top rule families by cohort
 
 ### AI cohort
-- `tests.duplicate-mock-setup` — 1057 (30.0%)
-- `defensive.needless-try-catch` — 891 (25.2%)
-- `structure.pass-through-wrappers` — 677 (19.2%)
+- `tests.duplicate-mock-setup` — 1057 (30.1%)
+- `defensive.needless-try-catch` — 878 (25.0%)
+- `structure.pass-through-wrappers` — 674 (19.2%)
 - `structure.barrel-density` — 454 (12.9%)
-- `defensive.async-noise` — 326 (9.2%)
-- `structure.directory-fanout-hotspot` — 98 (2.8%)
+- `defensive.async-noise` — 326 (9.3%)
+- `structure.directory-fanout-hotspot` — 97 (2.8%)
 
 ### Mature OSS cohort
 - `defensive.needless-try-catch` — 148 (36.5%)

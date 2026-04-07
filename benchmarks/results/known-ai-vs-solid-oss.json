@@ -2,113 +2,10 @@
   "schemaVersion": 1,
   "benchmarkSetId": "known-ai-vs-solid-oss",
   "benchmarkSetName": "Known AI repos vs older solid OSS repos",
-  "generatedAt": "2026-04-07T03:48:12.851Z",
+  "generatedAt": "2026-04-07T13:46:17.638Z",
   "analyzerVersion": "0.1.0",
   "configMode": "default",
   "repos": [
-    {
-      "id": "universal-pm",
-      "repo": "golusprasad12-arch/universal-pm",
-      "cohort": "explicit-ai",
-      "ref": "2d90bde0dd58d79174eb4c9037aad6fe235cda71",
-      "summary": {
-        "fileCount": 18,
-        "directoryCount": 7,
-        "findingCount": 15,
-        "repoScore": 61.70000000000001,
-        "physicalLineCount": 4845,
-        "logicalLineCount": 1295,
-        "functionCount": 149,
-        "normalized": {
-          "scorePerFile": 3.4277777777777785,
-          "scorePerKloc": 47.644787644787655,
-          "scorePerFunction": 0.41409395973154367,
-          "findingsPerFile": 0.8333333333333334,
-          "findingsPerKloc": 11.583011583011583,
-          "findingsPerFunction": 0.10067114093959731
-        }
-      },
-      "blendedScore": 10.991458647574063,
-      "ruleCounts": {
-        "defensive.needless-try-catch": 11,
-        "structure.pass-through-wrappers": 3,
-        "structure.directory-fanout-hotspot": 1
-      },
-      "topFiles": [
-        {
-          "path": "src/index.ts",
-          "score": 10,
-          "findingCount": 2
-        },
-        {
-          "path": "src/services/manager.ts",
-          "score": 8.5,
-          "findingCount": 2
-        },
-        {
-          "path": "src/commands/index.ts",
-          "score": 8,
-          "findingCount": 1
-        },
-        {
-          "path": "src/commands/utilities.ts",
-          "score": 7.400000000000001,
-          "findingCount": 1
-        },
-        {
-          "path": "src/commands/update.ts",
-          "score": 6.000000000000001,
-          "findingCount": 1
-        }
-      ],
-      "topDirectories": [
-        {
-          "path": "src/commands",
-          "score": 3,
-          "findingCount": 1
-        }
-      ]
-    },
-    {
-      "id": "voice-notifications",
-      "repo": "ZeldOcarina/claude-code-voice-notifications",
-      "cohort": "explicit-ai",
-      "ref": "8a984b8245f2b4026fb49746e9797138ae8115e6",
-      "summary": {
-        "fileCount": 5,
-        "directoryCount": 1,
-        "findingCount": 2,
-        "repoScore": 6,
-        "physicalLineCount": 294,
-        "logicalLineCount": 156,
-        "functionCount": 7,
-        "normalized": {
-          "scorePerFile": 1.2,
-          "scorePerKloc": 38.46153846153846,
-          "scorePerFunction": 0.8571428571428571,
-          "findingsPerFile": 0.4,
-          "findingsPerKloc": 12.820512820512821,
-          "findingsPerFunction": 0.2857142857142857
-        }
-      },
-      "blendedScore": 10.763901334330917,
-      "ruleCounts": {
-        "defensive.needless-try-catch": 2
-      },
-      "topFiles": [
-        {
-          "path": "src/test-fallback.ts",
-          "score": 3,
-          "findingCount": 1
-        },
-        {
-          "path": "src/tts-service.ts",
-          "score": 3,
-          "findingCount": 1
-        }
-      ],
-      "topDirectories": []
-    },
     {
       "id": "openusage",
       "repo": "robinebers/openusage",
@@ -1168,16 +1065,16 @@
   ],
   "cohorts": {
     "explicit-ai": {
-      "repoCount": 9,
+      "repoCount": 7,
       "medians": {
-        "scorePerFile": 1.0115508020684767,
-        "scorePerKloc": 10.310759501413326,
-        "scorePerFunction": 0.2628630811486094,
-        "findingsPerFile": 0.302158273381295,
-        "findingsPerKloc": 3.021296479168373,
-        "findingsPerFunction": 0.0855397148676171
+        "scorePerFile": 1.0041666666666667,
+        "scorePerKloc": 9.411853436454392,
+        "scorePerFunction": 0.21859410430839002,
+        "findingsPerFile": 0.29640831758034025,
+        "findingsPerKloc": 2.797432943886786,
+        "findingsPerFunction": 0.07702510193053987
       },
-      "blendedScoreMedian": 4.145376297529845
+      "blendedScoreMedian": 4.1038426510392165
     },
     "mature-oss": {
       "repoCount": 8,
@@ -1193,32 +1090,6 @@
     }
   },
   "pairings": [
-    {
-      "aiRepoId": "universal-pm",
-      "solidRepoId": "ni",
-      "notes": "Package-manager CLI vs package-manager CLI.",
-      "ratios": {
-        "scorePerFile": 29.821666666666673,
-        "scorePerKloc": 10.1864555984556,
-        "scorePerFunction": 4.099530201342282,
-        "findingsPerFile": 36.25,
-        "findingsPerKloc": 12.382239382239382,
-        "findingsPerFunction": 4.983221476510066
-      }
-    },
-    {
-      "aiRepoId": "voice-notifications",
-      "solidRepoId": "node-notifier",
-      "notes": "Notification utility vs notification utility.",
-      "ratios": {
-        "scorePerFile": 15.157894736842103,
-        "scorePerKloc": 42.79352226720647,
-        "scorePerFunction": 18.947368421052627,
-        "findingsPerFile": 9.600000000000001,
-        "findingsPerKloc": 27.102564102564102,
-        "findingsPerFunction": 12
-      }
-    },
     {
       "aiRepoId": "devworkbench",
       "solidRepoId": "hyper",

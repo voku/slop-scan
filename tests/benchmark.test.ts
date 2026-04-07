@@ -18,7 +18,7 @@ describe("benchmark support", () => {
 
     expect(set.id).toBe("known-ai-vs-solid-oss");
     expect(set.repos.length).toBeGreaterThanOrEqual(10);
-    expect(set.repos.some((repo) => repo.id === "universal-pm" && repo.cohort === "explicit-ai")).toBe(true);
+    expect(set.repos.some((repo) => repo.id === "gstack" && repo.cohort === "explicit-ai")).toBe(true);
     expect(set.repos.some((repo) => repo.id === "ni" && repo.cohort === "mature-oss")).toBe(true);
   });
 

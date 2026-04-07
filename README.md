@@ -93,13 +93,13 @@ The repo ships with a **pinned, recreatable benchmark set** comparing known AI-g
 
 | Metric | AI median | Mature OSS median | Ratio |
 |---|---:|---:|---:|
-| Blended score | **4.15** | **1.00** | **4.15x** |
-| Score / file | **1.01** | **0.18** | **5.49x** |
-| Score / KLOC | **10.31** | **4.04** | **2.55x** |
-| Score / function | **0.26** | **0.08** | **3.22x** |
-| Findings / file | **0.30** | **0.06** | **5.10x** |
-| Findings / KLOC | **3.02** | **1.06** | **2.85x** |
-| Findings / function | **0.09** | **0.02** | **3.75x** |
+| Blended score | **4.10** | **1.00** | **4.10x** |
+| Score / file | **1.00** | **0.18** | **5.45x** |
+| Score / KLOC | **9.41** | **4.04** | **2.33x** |
+| Score / function | **0.22** | **0.08** | **2.68x** |
+| Findings / file | **0.30** | **0.06** | **5.01x** |
+| Findings / KLOC | **2.80** | **1.06** | **2.64x** |
+| Findings / function | **0.08** | **0.02** | **3.38x** |
 
 ### Pinned benchmark snapshot
 
@@ -107,8 +107,6 @@ Ordered by blended score.
 
 | Repository | Cohort | Ref | Blended | Score/file | Score/KLOC | Findings/file | Findings/KLOC |
 |---|---|---|---:|---:|---:|---:|---:|
-| [`golusprasad12-arch/universal-pm`](https://github.com/golusprasad12-arch/universal-pm) | ai | `2d90bde` | **10.99** | 3.43 | 47.64 | 0.83 | 11.58 |
-| [`ZeldOcarina/claude-code-voice-notifications`](https://github.com/ZeldOcarina/claude-code-voice-notifications) | ai | `8a984b8` | **10.76** | 1.20 | 38.46 | 0.40 | 12.82 |
 | [`garrytan/gstack`](https://github.com/garrytan/gstack) | ai | `6cc094c` | **6.68** | 2.12 | 19.67 | 0.45 | 4.17 |
 | [`jiayun/DevWorkbench`](https://github.com/jiayun/DevWorkbench) | ai | `ea50862` | **4.81** | 1.00 | 10.76 | 0.44 | 4.69 |
 | [`openclaw/openclaw`](https://github.com/openclaw/openclaw) | ai | `44cf747` | **4.15** | 1.01 | 10.31 | 0.30 | 3.02 |
