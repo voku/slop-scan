@@ -17,6 +17,7 @@ export const DEFAULT_CONFIG: AnalyzerConfig = {
     "**/node_modules/**",
     "**/.git/**",
     "**/dist/**",
+    "**/.next/**",
     "**/coverage/**",
     "**/*.generated.*",
   ],

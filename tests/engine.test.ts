@@ -27,8 +27,10 @@ async function createTempRepo(files?: Record<string, string>): Promise<string> {
 
   await mkdir(path.join(rootDir, "src"), { recursive: true });
   await mkdir(path.join(rootDir, "dist"), { recursive: true });
+  await mkdir(path.join(rootDir, ".next"), { recursive: true });
   await writeFile(path.join(rootDir, "src", "index.ts"), "export const value = 1;\n");
   await writeFile(path.join(rootDir, "dist", "ignored.ts"), "export const ignored = true;\n");
+  await writeFile(path.join(rootDir, ".next", "ignored.ts"), "export const built = true;\n");
   await writeFile(path.join(rootDir, "README.md"), "ignored by language detection\n");
   return rootDir;
 }
