@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "benchmarkSetId": "known-ai-vs-solid-oss",
   "benchmarkSetName": "Known AI repos vs older solid OSS repos",
-  "generatedAt": "2026-04-07T03:28:13.769Z",
+  "generatedAt": "2026-04-07T03:32:14.477Z",
   "analyzerVersion": "0.1.0",
   "configMode": "default",
   "repos": [
@@ -548,6 +548,79 @@
       ]
     },
     {
+      "id": "hunk",
+      "repo": "modem-dev/hunk",
+      "cohort": "explicit-ai",
+      "ref": "b37663f3c3055f860290587865199192e15d9f35",
+      "summary": {
+        "fileCount": 166,
+        "directoryCount": 36,
+        "findingCount": 19,
+        "repoScore": 63.87349206349206,
+        "physicalLineCount": 32498,
+        "logicalLineCount": 13564,
+        "functionCount": 752,
+        "normalized": {
+          "scorePerFile": 0.3847800726716389,
+          "scorePerKloc": 4.70904541901298,
+          "scorePerFunction": 0.08493815433975008,
+          "findingsPerFile": 0.1144578313253012,
+          "findingsPerKloc": 1.4007667354762607,
+          "findingsPerFunction": 0.02526595744680851
+        }
+      },
+      "ruleCounts": {
+        "defensive.needless-try-catch": 9,
+        "structure.pass-through-wrappers": 6,
+        "structure.directory-fanout-hotspot": 3,
+        "defensive.async-noise": 1
+      },
+      "topFiles": [
+        {
+          "path": "src/session/commands.ts",
+          "score": 7,
+          "findingCount": 1
+        },
+        {
+          "path": "src/mcp/daemonLauncher.ts",
+          "score": 6.200000000000001,
+          "findingCount": 1
+        },
+        {
+          "path": "src/ui/App.tsx",
+          "score": 6,
+          "findingCount": 1
+        },
+        {
+          "path": "test/session/broker-e2e.test.ts",
+          "score": 5.7,
+          "findingCount": 1
+        },
+        {
+          "path": "src/core/updateNotice.ts",
+          "score": 5.2,
+          "findingCount": 2
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "scripts",
+          "score": 3.2857142857142856,
+          "findingCount": 1
+        },
+        {
+          "path": "src/ui/lib",
+          "score": 3.2777777777777777,
+          "findingCount": 1
+        },
+        {
+          "path": "src/core",
+          "score": 3.16,
+          "findingCount": 1
+        }
+      ]
+    },
+    {
       "id": "ni",
       "repo": "antfu-collective/ni",
       "cohort": "mature-oss",
@@ -1078,14 +1151,14 @@
   ],
   "cohorts": {
     "explicit-ai": {
-      "repoCount": 8,
+      "repoCount": 9,
       "medians": {
-        "scorePerFile": 1.1057754010342382,
-        "scorePerKloc": 10.5360450777886,
-        "scorePerFunction": 0.3117381710336846,
-        "findingsPerFile": 0.3510791366906475,
-        "findingsPerKloc": 3.594201357001636,
-        "findingsPerFunction": 0.09024581897227009
+        "scorePerFile": 1.0115508020684767,
+        "scorePerKloc": 10.310759501413326,
+        "scorePerFunction": 0.2628630811486094,
+        "findingsPerFile": 0.302158273381295,
+        "findingsPerKloc": 3.021296479168373,
+        "findingsPerFunction": 0.0855397148676171
       }
     },
     "mature-oss": {
