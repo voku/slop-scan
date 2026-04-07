@@ -1,5 +1,6 @@
 import type { RulePlugin } from "../../core/types";
 import type { CommentSummary, FunctionSummary } from "../../facts/types";
+import { isBoundaryWrapperTarget } from "../helpers";
 
 const ALIAS_COMMENT_PATTERNS = [
   /\balias\b/i,
@@ -33,7 +34,9 @@ export const passThroughWrappersRule: RulePlugin = {
       context.runtime.store.getFileFact<CommentSummary[]>(context.file!.path, "file.comments") ?? [];
 
     const wrappers = functions.filter(
-      (summary) => summary.isPassThroughWrapper && !hasNearbyAliasComment(summary, comments),
+      (summary) => summary.isPassThroughWrapper
+        && !hasNearbyAliasComment(summary, comments)
+        && !isBoundaryWrapperTarget(summary.passThroughTarget),
     );
 
     if (wrappers.length === 0) {

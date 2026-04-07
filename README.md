@@ -91,28 +91,28 @@ The repo ships with a **pinned, recreatable benchmark set** comparing explicit-A
 
 | Metric | Explicit-AI median | Mature OSS median | Ratio |
 |---|---:|---:|---:|
-| Score / file | **1.39** | **0.45** | **3.10x** |
-| Score / KLOC | **13.79** | **5.27** | **2.62x** |
-| Score / function | **0.39** | **0.13** | **3.09x** |
-| Findings / file | **0.44** | **0.12** | **3.58x** |
-| Findings / KLOC | **4.69** | **1.86** | **2.52x** |
-| Findings / function | **0.10** | **0.05** | **2.03x** |
+| Score / file | **1.20** | **0.14** | **8.64x** |
+| Score / KLOC | **10.76** | **3.43** | **3.13x** |
+| Score / function | **0.36** | **0.07** | **5.17x** |
+| Findings / file | **0.40** | **0.04** | **9.97x** |
+| Findings / KLOC | **4.69** | **0.99** | **4.73x** |
+| Findings / function | **0.10** | **0.02** | **4.40x** |
 
 ### Pinned benchmark snapshot
 
 | Repo | Cohort | Ref | Score/file | Score/KLOC | Findings/file | Findings/KLOC |
 |---|---|---|---:|---:|---:|---:|
-| `universal-pm` | explicit-ai | `2d90bde` | 4.93 | 68.49 | 1.28 | 17.76 |
-| `voice-notifications` | explicit-ai | `8a984b8` | 1.50 | 48.08 | 0.60 | 19.23 |
-| `openusage` | explicit-ai | `857f537` | 1.39 | 8.67 | 0.33 | 2.07 |
-| `devworkbench` | explicit-ai | `ea50862` | 0.98 | 10.52 | 0.44 | 4.69 |
-| `fulling` | explicit-ai | `d95060f` | 0.77 | 13.79 | 0.25 | 4.53 |
-| `ni` | mature-oss | `6d96905` | 0.72 | 29.41 | 0.16 | 6.55 |
-| `node-notifier` | mature-oss | `b36c237` | 0.20 | 2.32 | 0.08 | 0.95 |
-| `tsup` | mature-oss | `b906f86` | 0.22 | 3.72 | 0.08 | 1.42 |
-| `execa` | mature-oss | `f3a2e84` | 0.24 | 6.82 | 0.08 | 2.30 |
-| `hyper` | mature-oss | `2a7bb18` | 0.74 | 1.30 | 0.18 | 0.32 |
-| `umami` | mature-oss | `0a83864` | 0.66 | 17.81 | 0.20 | 5.47 |
+| `universal-pm` | explicit-ai | `2d90bde` | 3.43 | 47.64 | 0.83 | 11.58 |
+| `voice-notifications` | explicit-ai | `8a984b8` | 1.20 | 38.46 | 0.40 | 12.82 |
+| `openusage` | explicit-ai | `857f537` | 1.27 | 7.95 | 0.30 | 1.89 |
+| `devworkbench` | explicit-ai | `ea50862` | 1.00 | 10.76 | 0.44 | 4.69 |
+| `fulling` | explicit-ai | `d95060f` | 0.52 | 9.41 | 0.16 | 2.80 |
+| `ni` | mature-oss | `6d96905` | 0.11 | 4.68 | 0.02 | 0.94 |
+| `node-notifier` | mature-oss | `b36c237` | 0.08 | 0.90 | 0.04 | 0.47 |
+| `tsup` | mature-oss | `b906f86` | 0.21 | 3.61 | 0.08 | 1.42 |
+| `execa` | mature-oss | `f3a2e84` | 0.16 | 4.48 | 0.04 | 1.08 |
+| `hyper` | mature-oss | `2a7bb18` | 0.60 | 1.05 | 0.15 | 0.26 |
+| `umami` | mature-oss | `0a83864` | 0.12 | 3.26 | 0.04 | 1.05 |
 
 Full benchmark assets:
 - manifest: [`benchmarks/sets/known-ai-vs-solid-oss.json`](benchmarks/sets/known-ai-vs-solid-oss.json)

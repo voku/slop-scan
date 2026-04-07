@@ -20,7 +20,7 @@ describe("fixture regression suite", () => {
   test("slop-heavy fixture keeps a stable rule footprint", async () => {
     const result = await analyzeRepository(fixturePath("slop-heavy"), DEFAULT_CONFIG, createDefaultRegistry());
 
-    expect(result.repoScore).toBeCloseTo(28.1166666667, 6);
+    expect(result.repoScore).toBeCloseTo(28.2833333333, 6);
     expect(result.findings).toHaveLength(8);
     expect([...new Set(result.findings.map((finding) => finding.ruleId))].sort()).toEqual([
       "comments.placeholder-comments",
@@ -45,7 +45,7 @@ describe("fixture regression suite", () => {
 
     expect(result.repoScore).toBeCloseTo(27.1166666667, 6);
     expect(result.fileScores[0]?.path).toBe("src/slop/service.ts");
-    expect(result.directoryScores[0]?.path).toBe("src/slop/chunks");
+    expect(result.directoryScores[0]?.path).toBe("src/slop");
     expect(result.fileScores.every((score) => score.path.startsWith("src/slop/"))).toBe(true);
   });
 
@@ -57,7 +57,7 @@ describe("fixture regression suite", () => {
     expect(output.status).toBe(0);
 
     const report = JSON.parse(output.stdout);
-    expect(report.summary.repoScore).toBeCloseTo(28.1166666667, 6);
+    expect(report.summary.repoScore).toBeCloseTo(28.2833333333, 6);
     expect(report.summary.findingCount).toBe(8);
     expect(report.directoryScores[0].path).toBe("src/fragments");
     expect(report.fileScores[0].path).toBe("src/service.ts");

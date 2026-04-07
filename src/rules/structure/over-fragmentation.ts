@@ -1,5 +1,7 @@
 import type { RulePlugin } from "../../core/types";
+import { isTestFile } from "../../facts/ts-helpers";
 import type { DirectoryMetrics } from "../../facts/types";
+import { countMatching, isAssetLikeDirectoryPath, ratio } from "../helpers";
 
 export const overFragmentationRule: RulePlugin = {
   id: "structure.over-fragmentation",
@@ -14,14 +16,32 @@ export const overFragmentationRule: RulePlugin = {
     const metrics =
       context.runtime.store.getDirectoryFact<DirectoryMetrics>(context.directory!.path, "directory.metrics") ?? null;
 
-    if (!metrics) {
+    if (!metrics || context.directory!.path === ".") {
       return [];
     }
 
-    const tinyRatio = metrics.fileCount === 0 ? 0 : metrics.tinyFileCount / metrics.fileCount;
-    const ceremonyRatio = metrics.fileCount === 0 ? 0 : (metrics.wrapperFileCount + metrics.barrelFileCount) / metrics.fileCount;
+    const tinyRatio = ratio(metrics.tinyFileCount, metrics.fileCount);
+    const ceremonyRatio = ratio(metrics.wrapperFileCount + metrics.barrelFileCount, metrics.fileCount);
+    const testFileRatio = ratio(
+      countMatching(context.directory!.filePaths, (filePath) => isTestFile(filePath)),
+      metrics.fileCount,
+    );
+    const averageFileLines = ratio(metrics.totalLineCount, metrics.fileCount);
+    const isAssetDirectory = isAssetLikeDirectoryPath(context.directory!.path);
 
     if (metrics.fileCount < 6 || tinyRatio < 0.6) {
+      return [];
+    }
+
+    if (testFileRatio >= 0.8) {
+      return [];
+    }
+
+    if (isAssetDirectory && tinyRatio >= 0.75) {
+      return [];
+    }
+
+    if (ceremonyRatio < 0.2 && averageFileLines > 20) {
       return [];
     }
 
@@ -36,6 +56,8 @@ export const overFragmentationRule: RulePlugin = {
         evidence: [
           `tinyRatio=${tinyRatio.toFixed(2)}`,
           `ceremonyRatio=${ceremonyRatio.toFixed(2)}`,
+          `testFileRatio=${testFileRatio.toFixed(2)}`,
+          `averageFileLines=${averageFileLines.toFixed(1)}`,
           `wrapperFiles=${metrics.wrapperFileCount}`,
           `barrelFiles=${metrics.barrelFileCount}`,
         ],

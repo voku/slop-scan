@@ -236,6 +236,80 @@ describe("heuristic rule pack", () => {
     expect(duplicateFindings[0]?.evidence.some((entry) => entry.includes("mockResolvedValue"))).toBe(true);
   });
 
+  test("does not treat test matrices or svg/icon packs as structural slop", async () => {
+    const rootDir = await createTempRepo({
+      "test/na/npm.test.ts": "export const value = 1;\n",
+      "test/na/pnpm.test.ts": "export const value = 2;\n",
+      "test/na/bun.test.ts": "export const value = 3;\n",
+      "test/na/yarn.test.ts": "export const value = 4;\n",
+      "test/na/deno.test.ts": "export const value = 5;\n",
+      "test/na/cnpm.test.ts": "export const value = 6;\n",
+      "src/components/svg/Add.tsx": "export default function Add() { return null; }\n",
+      "src/components/svg/Edit.tsx": "export default function Edit() { return null; }\n",
+      "src/components/svg/Delete.tsx": "export default function Delete() { return null; }\n",
+      "src/components/svg/Copy.tsx": "export default function Copy() { return null; }\n",
+      "src/components/svg/Paste.tsx": "export default function Paste() { return null; }\n",
+      "src/components/svg/Save.tsx": "export default function Save() { return null; }\n",
+      "src/components/svg/index.ts": [
+        "export { default as Add } from './Add';",
+        "export { default as Edit } from './Edit';",
+        "export { default as Delete } from './Delete';",
+        "export { default as Copy } from './Copy';",
+        "export { default as Paste } from './Paste';",
+        "export { default as Save } from './Save';",
+        "",
+      ].join("\n"),
+    });
+
+    const result = await analyzeRepository(rootDir, DEFAULT_CONFIG, createDefaultRegistry());
+    const directoryFindings = result.findings.filter((finding) => finding.scope === "directory");
+
+    expect(directoryFindings.some((finding) => finding.path === "test/na")).toBe(false);
+    expect(directoryFindings.some((finding) => finding.path === "src/components/svg")).toBe(false);
+  });
+
+  test("does not treat contract-driven async helpers as async noise", async () => {
+    const rootDir = await createTempRepo({
+      "src/permissions/user.ts": [
+        "type Auth = { user: { id: string; isAdmin: boolean } };",
+        "",
+        "export async function canCreateUser({ user }: Auth) {",
+        "  return user.isAdmin;",
+        "}",
+        "",
+        "export async function canViewUser({ user }: Auth, viewedUserId: string) {",
+        "  if (user.isAdmin) {",
+        "    return true;",
+        "  }",
+        "",
+        "  return user.id === viewedUserId;",
+        "}",
+        "",
+      ].join("\n"),
+      "src/queries/prisma/user.ts": [
+        "const prisma = {",
+        "  client: {",
+        "    user: {",
+        "      findUnique(criteria: unknown) {",
+        "        return criteria;",
+        "      },",
+        "    },",
+        "  },",
+        "};",
+        "",
+        "export async function findUser(criteria: unknown) {",
+        "  return prisma.client.user.findUnique(criteria);",
+        "}",
+        "",
+      ].join("\n"),
+    });
+
+    const result = await analyzeRepository(rootDir, DEFAULT_CONFIG, createDefaultRegistry());
+
+    expect(result.findings.some((finding) => finding.ruleId === "defensive.async-noise")).toBe(false);
+    expect(result.findings.some((finding) => finding.ruleId === "structure.pass-through-wrappers")).toBe(false);
+  });
+
   test("stays quiet on a small clean repo", async () => {
     const rootDir = await createTempRepo({
       "src/index.ts": [

@@ -1,13 +1,14 @@
 import type { RulePlugin } from "../../core/types";
+import { isTestFile } from "../../facts/ts-helpers";
 import type { DirectoryMetrics } from "../../facts/types";
-
-function averageFileCount(values: number[]): number {
-  if (values.length === 0) {
-    return 0;
-  }
-
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
+import {
+  average,
+  countMatching,
+  isAssetLikeDirectoryPath,
+  median,
+  parentDirectoryPath,
+  ratio,
+} from "../helpers";
 
 export const directoryFanoutHotspotRule: RulePlugin = {
   id: "structure.directory-fanout-hotspot",
@@ -22,15 +23,31 @@ export const directoryFanoutHotspotRule: RulePlugin = {
     const metrics =
       context.runtime.store.getDirectoryFact<DirectoryMetrics>(context.directory!.path, "directory.metrics") ?? null;
 
-    if (!metrics) {
+    if (!metrics || context.directory!.path === ".") {
       return [];
     }
 
+    const testFileRatio = ratio(
+      countMatching(context.directory!.filePaths, (filePath) => isTestFile(filePath)),
+      metrics.fileCount,
+    );
+    if (testFileRatio >= 0.8 || isAssetLikeDirectoryPath(context.directory!.path)) {
+      return [];
+    }
+
+    const parentPath = parentDirectoryPath(context.directory!.path);
     const siblingCounts = context.runtime.directories
+      .filter((directory) => parentDirectoryPath(directory.path) === parentPath)
       .map((directory) => context.runtime.store.getDirectoryFact<DirectoryMetrics>(directory.path, "directory.metrics")?.fileCount ?? 0)
       .filter((value) => value > 0);
-    const baseline = averageFileCount(siblingCounts);
-    const threshold = Math.max(6, Math.ceil(baseline * 1.75));
+    const globalCounts = context.runtime.directories
+      .map((directory) => context.runtime.store.getDirectoryFact<DirectoryMetrics>(directory.path, "directory.metrics")?.fileCount ?? 0)
+      .filter((value) => value > 0);
+
+    const localBaseline = siblingCounts.length >= 3 ? median(siblingCounts) : 0;
+    const globalBaseline = average(globalCounts);
+    const baseline = localBaseline > 0 ? localBaseline : globalBaseline;
+    const threshold = Math.max(6, Math.ceil(baseline * (localBaseline > 0 ? 2.25 : 2.5)));
 
     if (metrics.fileCount < threshold) {
       return [];
@@ -47,6 +64,7 @@ export const directoryFanoutHotspotRule: RulePlugin = {
         evidence: [
           `baseline=${baseline.toFixed(2)}`,
           `threshold=${threshold}`,
+          `testFileRatio=${testFileRatio.toFixed(2)}`,
           `fileCount=${metrics.fileCount}`,
         ],
         score: 2 + Math.min(4, metrics.fileCount / Math.max(1, threshold)),
