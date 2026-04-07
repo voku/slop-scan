@@ -87,6 +87,17 @@
       "notes": "Large Astro-based CMS that helps separate polished AI-generated product code from obvious slop-heavy toy repos."
     },
     {
+      "id": "gstack",
+      "repo": "garrytan/gstack",
+      "url": "https://github.com/garrytan/gstack.git",
+      "cohort": "explicit-ai",
+      "ref": "6cc094cd4190e3fac65b69fb29e0c3cae7e0f214",
+      "createdAt": "2026-03-11T21:22:45Z",
+      "stars": 65613,
+      "provenance": "User-provided provenance: repo is AI-generated.",
+      "notes": "Popular AI-coding workflow/tooling repo with a substantial TypeScript surface and very high try/catch density."
+    },
+    {
       "id": "ni",
       "repo": "antfu-collective/ni",
       "url": "https://github.com/antfu-collective/ni.git",

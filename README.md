@@ -91,12 +91,12 @@ The repo ships with a **pinned, recreatable benchmark set** comparing known AI-g
 
 | Metric | AI median | Mature OSS median | Ratio |
 |---|---:|---:|---:|
-| Score / file | **1.01** | **0.18** | **5.49x** |
-| Score / KLOC | **10.31** | **4.04** | **2.55x** |
-| Score / function | **0.26** | **0.08** | **3.22x** |
-| Findings / file | **0.30** | **0.06** | **5.10x** |
-| Findings / KLOC | **3.02** | **1.06** | **2.85x** |
-| Findings / function | **0.09** | **0.02** | **3.75x** |
+| Score / file | **1.11** | **0.18** | **6.00x** |
+| Score / KLOC | **10.54** | **4.04** | **2.61x** |
+| Score / function | **0.31** | **0.08** | **3.82x** |
+| Findings / file | **0.35** | **0.06** | **5.93x** |
+| Findings / KLOC | **3.59** | **1.06** | **3.39x** |
+| Findings / function | **0.09** | **0.02** | **3.96x** |
 
 ### Pinned benchmark snapshot
 
@@ -109,6 +109,7 @@ The repo ships with a **pinned, recreatable benchmark set** comparing known AI-g
 | [`FullAgent/fulling`](https://github.com/FullAgent/fulling) | ai | `d95060f` | 0.52 | 9.41 | 0.16 | 2.80 |
 | [`openclaw/openclaw`](https://github.com/openclaw/openclaw) | ai | `44cf747` | 1.01 | 10.31 | 0.30 | 3.02 |
 | [`emdash-cms/emdash`](https://github.com/emdash-cms/emdash) | ai | `dbaf8c6` | 0.59 | 5.22 | 0.18 | 1.56 |
+| [`garrytan/gstack`](https://github.com/garrytan/gstack) | ai | `6cc094c` | 2.12 | 19.67 | 0.45 | 4.17 |
 | [`antfu-collective/ni`](https://github.com/antfu-collective/ni) | mature-oss | `6d96905` | 0.11 | 4.68 | 0.02 | 0.94 |
 | [`mikaelbr/node-notifier`](https://github.com/mikaelbr/node-notifier) | mature-oss | `b36c237` | 0.08 | 0.90 | 0.04 | 0.47 |
 | [`egoist/tsup`](https://github.com/egoist/tsup) | mature-oss | `b906f86` | 0.21 | 3.61 | 0.08 | 1.42 |

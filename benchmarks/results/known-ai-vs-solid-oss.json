@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "benchmarkSetId": "known-ai-vs-solid-oss",
   "benchmarkSetName": "Known AI repos vs older solid OSS repos",
-  "generatedAt": "2026-04-07T03:06:44.232Z",
+  "generatedAt": "2026-04-07T03:28:13.769Z",
   "analyzerVersion": "0.1.0",
   "configMode": "default",
   "repos": [
@@ -480,6 +480,69 @@
         {
           "path": "packages/core/src/cli/commands",
           "score": 4.222222222222222,
+          "findingCount": 1
+        }
+      ]
+    },
+    {
+      "id": "gstack",
+      "repo": "garrytan/gstack",
+      "cohort": "explicit-ai",
+      "ref": "6cc094cd4190e3fac65b69fb29e0c3cae7e0f214",
+      "summary": {
+        "fileCount": 176,
+        "directoryCount": 19,
+        "findingCount": 79,
+        "repoScore": 372.8999999999999,
+        "physicalLineCount": 62616,
+        "logicalLineCount": 18958,
+        "functionCount": 832,
+        "normalized": {
+          "scorePerFile": 2.1187499999999995,
+          "scorePerKloc": 19.669796392024473,
+          "scorePerFunction": 0.44819711538461526,
+          "findingsPerFile": 0.44886363636363635,
+          "findingsPerKloc": 4.167106234834899,
+          "findingsPerFunction": 0.09495192307692307
+        }
+      },
+      "ruleCounts": {
+        "defensive.needless-try-catch": 69,
+        "structure.pass-through-wrappers": 7,
+        "defensive.async-noise": 2,
+        "structure.directory-fanout-hotspot": 1
+      },
+      "topFiles": [
+        {
+          "path": "browse/src/cli.ts",
+          "score": 10,
+          "findingCount": 2
+        },
+        {
+          "path": "bin/gstack-global-discover.ts",
+          "score": 8,
+          "findingCount": 1
+        },
+        {
+          "path": "browse/src/browser-manager.ts",
+          "score": 8,
+          "findingCount": 1
+        },
+        {
+          "path": "browse/src/cdp-inspector.ts",
+          "score": 8,
+          "findingCount": 1
+        },
+        {
+          "path": "browse/src/cookie-import-browser.ts",
+          "score": 8,
+          "findingCount": 1
+        }
+      ],
+      "topDirectories": [
+        {
+          "path": "scripts",
+          "score": 3,
           "findingCount": 1
         }
       ]
@@ -1015,14 +1078,14 @@
   ],
   "cohorts": {
     "explicit-ai": {
-      "repoCount": 7,
+      "repoCount": 8,
       "medians": {
-        "scorePerFile": 1.0115508020684767,
-        "scorePerKloc": 10.310759501413326,
-        "scorePerFunction": 0.2628630811486094,
-        "findingsPerFile": 0.302158273381295,
-        "findingsPerKloc": 3.021296479168373,
-        "findingsPerFunction": 0.0855397148676171
+        "scorePerFile": 1.1057754010342382,
+        "scorePerKloc": 10.5360450777886,
+        "scorePerFunction": 0.3117381710336846,
+        "findingsPerFile": 0.3510791366906475,
+        "findingsPerKloc": 3.594201357001636,
+        "findingsPerFunction": 0.09024581897227009
       }
     },
     "mature-oss": {

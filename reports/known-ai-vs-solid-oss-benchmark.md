@@ -33,6 +33,7 @@ The pinned refs below are the exact commits used for the saved snapshot.
 | `fulling` | `d95060f` | 0.5y | 2413 | 219 | 12154 | 574 | 0.52 | 9.41 | 0.20 | 0.16 | 2.80 | 0.06 |
 | `openclaw` | `44cf747` | 0.4y | 350232 | 10580 | 1037965 | 40714 | 1.01 | 10.31 | 0.26 | 0.30 | 3.02 | 0.08 |
 | `emdash` | `dbaf8c6` | 0.0y | 7842 | 1072 | 120432 | 3513 | 0.59 | 5.22 | 0.18 | 0.18 | 1.56 | 0.05 |
+| `gstack` | `6cc094c` | 0.1y | 65613 | 176 | 18958 | 832 | 2.12 | 19.67 | 0.45 | 0.45 | 4.17 | 0.09 |
 
 ## Mature OSS cohort
 
@@ -51,12 +52,12 @@ The pinned refs below are the exact commits used for the saved snapshot.
 
 | Metric | AI median | Solid median | Ratio |
 |---|---:|---:|---:|
-| Score / file | **1.01** | **0.18** | **5.49x** |
-| Score / KLOC | **10.31** | **4.04** | **2.55x** |
-| Score / function | **0.26** | **0.08** | **3.22x** |
-| Findings / file | **0.30** | **0.06** | **5.10x** |
-| Findings / KLOC | **3.02** | **1.06** | **2.85x** |
-| Findings / function | **0.09** | **0.02** | **3.75x** |
+| Score / file | **1.11** | **0.18** | **6.00x** |
+| Score / KLOC | **10.54** | **4.04** | **2.61x** |
+| Score / function | **0.31** | **0.08** | **3.82x** |
+| Findings / file | **0.35** | **0.06** | **5.93x** |
+| Findings / KLOC | **3.59** | **1.06** | **3.39x** |
+| Findings / function | **0.09** | **0.02** | **3.96x** |
 
 ## Spot-check pairings
 
@@ -70,12 +71,12 @@ The pinned refs below are the exact commits used for the saved snapshot.
 ## Top rule families by cohort
 
 ### AI cohort
-- `tests.duplicate-mock-setup` — 1057 (30.8%)
-- `defensive.needless-try-catch` — 813 (23.7%)
-- `structure.pass-through-wrappers` — 664 (19.4%)
-- `structure.barrel-density` — 454 (13.2%)
-- `defensive.async-noise` — 323 (9.4%)
-- `structure.directory-fanout-hotspot` — 94 (2.7%)
+- `tests.duplicate-mock-setup` — 1057 (30.1%)
+- `defensive.needless-try-catch` — 882 (25.1%)
+- `structure.pass-through-wrappers` — 671 (19.1%)
+- `structure.barrel-density` — 454 (12.9%)
+- `defensive.async-noise` — 325 (9.3%)
+- `structure.directory-fanout-hotspot` — 95 (2.7%)
 
 ### Mature OSS cohort
 - `defensive.needless-try-catch` — 148 (36.5%)
