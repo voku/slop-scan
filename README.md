@@ -28,9 +28,10 @@ Install globally with npm:
 npm install -g slop-analyzer
 ```
 
-Or run it once with npx:
+Install it in a project and run it with npm tools:
 
 ```bash
+npm install --save-dev slop-analyzer
 npx slop-analyzer scan .
 ```
 
@@ -48,6 +49,12 @@ Scan the current repo:
 slop-analyzer scan .
 ```
 
+Scan the current repo in lint mode:
+
+```bash
+slop-analyzer scan . --lint
+```
+
 Scan another repo and get JSON:
 
 ```bash
@@ -59,6 +66,39 @@ Recreate the pinned benchmark set from a source checkout:
 ```bash
 bun run benchmark:update
 ```
+
+## Use it like a linter
+
+Use `--lint` when you want human-readable findings in local runs, CI logs, or PR checks.
+
+```bash
+slop-analyzer scan . --lint
+```
+
+Example output:
+
+```text
+medium  Found 3 duplicated function signatures  structure.duplicate-function-signatures
+  at src/users/normalize.ts:1:1
+  at src/teams/normalize.ts:1:1
+  at src/accounts/normalize.ts:1:1
+```
+
+## JSON output
+
+Use `--json` when you want full-fidelity output for scripts, CI, or post-processing.
+
+```bash
+slop-analyzer scan . --json
+```
+
+Example CI check:
+
+```bash
+slop-analyzer scan . --json | jq -e '.summary.findingCount == 0'
+```
+
+The CLI currently exits non-zero for CLI/runtime errors, not for findings.
 
 ## What it catches
 
@@ -86,7 +126,8 @@ Current checks focus on patterns that often show up in unreviewed generated code
   - findings / function
 - top file hotspots
 - top directory hotspots
-- detailed findings with evidence in JSON mode
+- grouped lint-style findings with `--lint`
+- full-fidelity findings with evidence in `--json`
 
 ## Supported files
 
