@@ -6,12 +6,14 @@ export interface CommentSummary {
 export interface FunctionSummary {
   name: string;
   line: number;
+  parameterCount: number;
   isAsync: boolean;
   hasAwait: boolean;
   statementCount: number;
   isPassThroughWrapper: boolean;
   passThroughTarget: string | null;
   hasReturnAwaitCall: boolean;
+  duplicationFingerprint: string | null;
 }
 
 export interface ExportSummary {
@@ -58,4 +60,16 @@ export interface DuplicateTestSetupCluster {
 export interface DuplicateTestSetupIndex {
   byFile: Record<string, DuplicateTestSetupCluster[]>;
   clusters: DuplicateTestSetupCluster[];
+}
+
+export interface DuplicateFunctionCluster {
+  fingerprint: string;
+  label: string;
+  fileCount: number;
+  occurrences: Array<{ path: string; line: number; name: string }>;
+}
+
+export interface DuplicateFunctionIndex {
+  byFile: Record<string, DuplicateFunctionCluster[]>;
+  clusters: DuplicateFunctionCluster[];
 }

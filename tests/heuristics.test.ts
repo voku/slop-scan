@@ -310,6 +310,64 @@ describe("heuristic rule pack", () => {
     expect(result.findings.some((finding) => finding.ruleId === "structure.pass-through-wrappers")).toBe(false);
   });
 
+  test("flags duplicated helper signatures across source files", async () => {
+    const rootDir = await createTempRepo({
+      "src/users/normalize.ts": [
+        "export function normalizeUserId(input: string) {",
+        "  const trimmed = input.trim().toLowerCase();",
+        "  if (!trimmed.startsWith('usr_')) {",
+        "    return `usr_${trimmed}`;",
+        "  }",
+        "",
+        "  return trimmed;",
+        "}",
+        "",
+      ].join("\n"),
+      "src/teams/normalize.ts": [
+        "export function normalizeTeamId(value: string) {",
+        "  const cleaned = value.trim().toLowerCase();",
+        "  if (!cleaned.startsWith('team_')) {",
+        "    return `team_${cleaned}`;",
+        "  }",
+        "",
+        "  return cleaned;",
+        "}",
+        "",
+      ].join("\n"),
+      "src/accounts/normalize.ts": [
+        "export function normalizeAccountId(raw: string) {",
+        "  const normalized = raw.trim().toLowerCase();",
+        "  if (!normalized.startsWith('acct_')) {",
+        "    return `acct_${normalized}`;",
+        "  }",
+        "",
+        "  return normalized;",
+        "}",
+        "",
+      ].join("\n"),
+      "tests/helpers.test.ts": [
+        "function normalizeTestId(input: string) {",
+        "  const trimmed = input.trim().toLowerCase();",
+        "  if (!trimmed.startsWith('test_')) {",
+        "    return `test_${trimmed}`;",
+        "  }",
+        "",
+        "  return trimmed;",
+        "}",
+        "",
+        "export { normalizeTestId };",
+        "",
+      ].join("\n"),
+    });
+
+    const result = await analyzeRepository(rootDir, DEFAULT_CONFIG, createDefaultRegistry());
+    const duplicateFindings = result.findings.filter((finding) => finding.ruleId === "structure.duplicate-function-signatures");
+
+    expect(duplicateFindings).toHaveLength(3);
+    expect(duplicateFindings.every((finding) => finding.path?.startsWith("src/"))).toBe(true);
+    expect(duplicateFindings[0]?.evidence.some((entry) => entry.includes("repeated in 3 files"))).toBe(true);
+  });
+
   test("stays quiet on a small clean repo", async () => {
     const rootDir = await createTempRepo({
       "src/index.ts": [

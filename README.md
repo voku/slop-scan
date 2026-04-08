@@ -68,6 +68,7 @@ Current checks focus on patterns that often show up in unreviewed generated code
 - async wrapper / `return await` noise
 - pass-through wrappers
 - barrel density
+- duplicate helper/function signatures across source files
 - over-fragmentation
 - directory fan-out hotspots
 - placeholder comments

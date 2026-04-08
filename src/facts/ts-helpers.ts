@@ -49,6 +49,14 @@ export function walk(node: ts.Node, visit: (node: ts.Node) => void): void {
   node.forEachChild((child) => walk(child, visit));
 }
 
+export function countNodes(node: ts.Node): number {
+  let count = 0;
+  walk(node, () => {
+    count += 1;
+  });
+  return count;
+}
+
 export function isTestFile(filePath: string): boolean {
   return (
     filePath.includes("/__tests__/")
