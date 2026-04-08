@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "benchmarkSetId": "known-ai-vs-solid-oss",
   "benchmarkSetName": "Known AI repos vs older solid OSS repos",
-  "generatedAt": "2026-04-07T17:45:32.881Z",
-  "analyzerVersion": "0.1.0",
+  "generatedAt": "2026-04-08T01:47:08.639Z",
+  "analyzerVersion": "0.1.2",
   "configMode": "default",
   "repos": [
     {
@@ -14,24 +14,25 @@
       "summary": {
         "fileCount": 139,
         "directoryCount": 29,
-        "findingCount": 42,
-        "repoScore": 177.0611111111111,
+        "findingCount": 47,
+        "repoScore": 188.3111111111111,
         "physicalLineCount": 33794,
         "logicalLineCount": 22270,
         "functionCount": 491,
         "normalized": {
-          "scorePerFile": 1.2738209432454035,
-          "scorePerKloc": 7.950656089407773,
-          "scorePerFunction": 0.3606132609187599,
-          "findingsPerFile": 0.302158273381295,
-          "findingsPerKloc": 1.8859452177817693,
-          "findingsPerFunction": 0.0855397148676171
+          "scorePerFile": 1.3547561950439648,
+          "scorePerKloc": 8.45581998702789,
+          "scorePerFunction": 0.3835256845440145,
+          "findingsPerFile": 0.3381294964028777,
+          "findingsPerKloc": 2.110462505612932,
+          "findingsPerFunction": 0.09572301425661914
         }
       },
-      "blendedScore": 4.1038426510392165,
+      "blendedScore": 3.5092070910796167,
       "ruleCounts": {
         "tests.duplicate-mock-setup": 26,
         "defensive.needless-try-catch": 9,
+        "structure.duplicate-function-signatures": 5,
         "structure.pass-through-wrappers": 5,
         "structure.directory-fanout-hotspot": 2
       },
@@ -52,14 +53,14 @@
           "findingCount": 1
         },
         {
-          "path": "plugins/factory/plugin.js",
-          "score": 5.5,
+          "path": "plugins/codex/plugin.js",
+          "score": 5.75,
           "findingCount": 2
         },
         {
-          "path": "plugins/amp/plugin.test.js",
-          "score": 5,
-          "findingCount": 1
+          "path": "plugins/factory/plugin.js",
+          "score": 5.5,
+          "findingCount": 2
         }
       ],
       "topDirectories": [
@@ -97,7 +98,7 @@
           "findingsPerFunction": 0.09523809523809523
         }
       },
-      "blendedScore": 4.809864420110902,
+      "blendedScore": 3.770079150999443,
       "ruleCounts": {
         "defensive.needless-try-catch": 11,
         "structure.barrel-density": 1,
@@ -161,7 +162,7 @@
           "findingsPerFunction": 0.059233449477351915
         }
       },
-      "blendedScore": 2.962703601002208,
+      "blendedScore": 2.3222332484107437,
       "ruleCounts": {
         "defensive.needless-try-catch": 17,
         "structure.barrel-density": 4,
@@ -223,31 +224,42 @@
       "summary": {
         "fileCount": 10580,
         "directoryCount": 444,
-        "findingCount": 3136,
-        "repoScore": 10702.207485884483,
+        "findingCount": 3388,
+        "repoScore": 11456.957485884475,
         "physicalLineCount": 1955399,
         "logicalLineCount": 1037965,
         "functionCount": 40714,
         "normalized": {
-          "scorePerFile": 1.0115508020684767,
-          "scorePerKloc": 10.310759501413326,
-          "scorePerFunction": 0.2628630811486094,
-          "findingsPerFile": 0.29640831758034025,
-          "findingsPerKloc": 3.021296479168373,
-          "findingsPerFunction": 0.07702510193053987
+          "scorePerFile": 1.0828882311800072,
+          "scorePerKloc": 11.037903480256537,
+          "scorePerFunction": 0.281400930537026,
+          "findingsPerFile": 0.32022684310018906,
+          "findingsPerKloc": 3.2640792319586884,
+          "findingsPerFunction": 0.08321461904995825
         }
       },
-      "blendedScore": 4.145376297529845,
+      "blendedScore": 3.4943245111907,
       "ruleCounts": {
         "tests.duplicate-mock-setup": 1003,
         "defensive.needless-try-catch": 683,
         "structure.pass-through-wrappers": 624,
         "structure.barrel-density": 415,
         "defensive.async-noise": 315,
+        "structure.duplicate-function-signatures": 252,
         "structure.directory-fanout-hotspot": 70,
         "structure.over-fragmentation": 26
       },
       "topFiles": [
+        {
+          "path": "extensions/msteams/src/attachments/shared.ts",
+          "score": 18.25,
+          "findingCount": 4
+        },
+        {
+          "path": "src/agents/subagent-spawn.ts",
+          "score": 17,
+          "findingCount": 4
+        },
         {
           "path": "src/config/io.ts",
           "score": 17,
@@ -259,19 +271,9 @@
           "findingCount": 3
         },
         {
-          "path": "extensions/msteams/src/attachments/shared.ts",
+          "path": "src/agents/tools/sessions-resolution.ts",
           "score": 14.5,
           "findingCount": 3
-        },
-        {
-          "path": "src/agents/subagent-spawn.ts",
-          "score": 13.5,
-          "findingCount": 3
-        },
-        {
-          "path": "extensions/diffs/assets/viewer-runtime.js",
-          "score": 13,
-          "findingCount": 2
         }
       ],
       "topDirectories": [
@@ -310,23 +312,24 @@
       "summary": {
         "fileCount": 1072,
         "directoryCount": 306,
-        "findingCount": 188,
-        "repoScore": 628.9025793650787,
+        "findingCount": 243,
+        "repoScore": 814.652579365079,
         "physicalLineCount": 257938,
         "logicalLineCount": 120432,
         "functionCount": 3513,
         "normalized": {
-          "scorePerFile": 0.5866628538853347,
-          "scorePerKloc": 5.222055428499724,
-          "scorePerFunction": 0.17902151419444315,
-          "findingsPerFile": 0.17537313432835822,
-          "findingsPerKloc": 1.5610468978344625,
-          "findingsPerFunction": 0.05351551380586393
+          "scorePerFile": 0.7599371076166781,
+          "scorePerKloc": 6.76441958420585,
+          "scorePerFunction": 0.23189654977656673,
+          "findingsPerFile": 0.22667910447761194,
+          "findingsPerKloc": 2.017736149860502,
+          "findingsPerFunction": 0.06917164816396243
         }
       },
-      "blendedScore": 2.4487378871859575,
+      "blendedScore": 2.48358299054269,
       "ruleCounts": {
         "defensive.needless-try-catch": 80,
+        "structure.duplicate-function-signatures": 55,
         "structure.barrel-density": 34,
         "structure.pass-through-wrappers": 27,
         "tests.duplicate-mock-setup": 25,
@@ -410,7 +413,7 @@
           "findingsPerFunction": 0.09495192307692307
         }
       },
-      "blendedScore": 6.682057355268006,
+      "blendedScore": 5.237545785188169,
       "ruleCounts": {
         "defensive.needless-try-catch": 69,
         "structure.pass-through-wrappers": 7,
@@ -474,7 +477,7 @@
           "findingsPerFunction": 0.02526595744680851
         }
       },
-      "blendedScore": 1.5992236125011856,
+      "blendedScore": 1.2535071828776654,
       "ruleCounts": {
         "defensive.needless-try-catch": 9,
         "structure.pass-through-wrappers": 6,
@@ -534,22 +537,23 @@
       "summary": {
         "fileCount": 1129,
         "directoryCount": 486,
-        "findingCount": 112,
-        "repoScore": 418.3027247262541,
+        "findingCount": 162,
+        "repoScore": 561.5527247262539,
         "physicalLineCount": 150365,
         "logicalLineCount": 59523,
         "functionCount": 2917,
         "normalized": {
-          "scorePerFile": 0.3705072849656812,
-          "scorePerKloc": 7.027581350507435,
-          "scorePerFunction": 0.14340168828462602,
-          "findingsPerFile": 0.09920283436669619,
-          "findingsPerKloc": 1.8816255901080254,
-          "findingsPerFunction": 0.03839561193006513
+          "scorePerFile": 0.4973894815998706,
+          "scorePerKloc": 9.434214080712563,
+          "scorePerFunction": 0.1925103615791066,
+          "findingsPerFile": 0.14348981399468555,
+          "findingsPerKloc": 2.721637014263394,
+          "findingsPerFunction": 0.055536510113129926
         }
       },
-      "blendedScore": 2.038727885587404,
+      "blendedScore": 2.2267697618516693,
       "ruleCounts": {
+        "structure.duplicate-function-signatures": 50,
         "defensive.needless-try-catch": 40,
         "structure.pass-through-wrappers": 29,
         "tests.duplicate-mock-setup": 18,
@@ -622,20 +626,20 @@
         "fileCount": 94,
         "directoryCount": 24,
         "findingCount": 26,
-        "repoScore": 98.62500000000004,
+        "repoScore": 98.62500000000001,
         "physicalLineCount": 17222,
         "logicalLineCount": 8474,
         "functionCount": 220,
         "normalized": {
-          "scorePerFile": 1.0492021276595749,
-          "scorePerKloc": 11.63854142081662,
-          "scorePerFunction": 0.4482954545454547,
+          "scorePerFile": 1.0492021276595747,
+          "scorePerKloc": 11.638541420816617,
+          "scorePerFunction": 0.4482954545454546,
           "findingsPerFile": 0.2765957446808511,
           "findingsPerKloc": 3.0682086381873965,
           "findingsPerFunction": 0.11818181818181818
         }
       },
-      "blendedScore": 4.95120015740743,
+      "blendedScore": 3.88086125833803,
       "ruleCounts": {
         "defensive.needless-try-catch": 21,
         "tests.duplicate-mock-setup": 3,
@@ -699,7 +703,7 @@
           "findingsPerFunction": 0.020202020202020204
         }
       },
-      "blendedScore": 0.9266255009041235,
+      "blendedScore": 0.7263097619002123,
       "ruleCounts": {
         "structure.barrel-density": 1,
         "structure.over-fragmentation": 1
@@ -741,7 +745,7 @@
           "findingsPerFunction": 0.023809523809523808
         }
       },
-      "blendedScore": 0.5860908323791766,
+      "blendedScore": 0.4593910835627455,
       "ruleCounts": {
         "defensive.needless-try-catch": 1
       },
@@ -776,7 +780,7 @@
           "findingsPerFunction": 0.02857142857142857
         }
       },
-      "blendedScore": 1.3082993160992882,
+      "blendedScore": 1.0254742221567712,
       "ruleCounts": {
         "structure.pass-through-wrappers": 2,
         "defensive.needless-try-catch": 1,
@@ -810,24 +814,25 @@
       "summary": {
         "fileCount": 581,
         "directoryCount": 46,
-        "findingCount": 22,
-        "repoScore": 91.51486212489861,
+        "findingCount": 28,
+        "repoScore": 99.01486212489861,
         "physicalLineCount": 36103,
         "logicalLineCount": 20432,
         "functionCount": 1008,
         "normalized": {
-          "scorePerFile": 0.1575126714714262,
-          "scorePerKloc": 4.478996775885798,
-          "scorePerFunction": 0.09078855369533592,
-          "findingsPerFile": 0.0378657487091222,
-          "findingsPerKloc": 1.076742364917776,
-          "findingsPerFunction": 0.021825396825396824
+          "scorePerFile": 0.17042144944044513,
+          "scorePerKloc": 4.846068036653222,
+          "scorePerFunction": 0.09822902988581211,
+          "findingsPerFile": 0.04819277108433735,
+          "findingsPerKloc": 1.370399373531715,
+          "findingsPerFunction": 0.027777777777777776
         }
       },
-      "blendedScore": 1.0733744990958765,
+      "blendedScore": 0.987281412292342,
       "ruleCounts": {
         "defensive.needless-try-catch": 12,
         "structure.directory-fanout-hotspot": 7,
+        "structure.duplicate-function-signatures": 6,
         "structure.over-fragmentation": 2,
         "structure.barrel-density": 1
       },
@@ -908,7 +913,7 @@
           "findingsPerFunction": 0.0031740104555638537
         }
       },
-      "blendedScore": 0.5450819229116693,
+      "blendedScore": 0.4272473844717202,
       "ruleCounts": {
         "defensive.needless-try-catch": 9,
         "structure.pass-through-wrappers": 5,
@@ -963,22 +968,23 @@
       "summary": {
         "fileCount": 674,
         "directoryCount": 155,
-        "findingCount": 26,
-        "repoScore": 81.0878787878788,
+        "findingCount": 40,
+        "repoScore": 103.5878787878788,
         "physicalLineCount": 37986,
         "logicalLineCount": 24859,
         "functionCount": 1209,
         "normalized": {
-          "scorePerFile": 0.12030842550130384,
-          "scorePerKloc": 3.261912337096375,
-          "scorePerFunction": 0.06707020577988321,
-          "findingsPerFile": 0.03857566765578635,
-          "findingsPerKloc": 1.0458988696246831,
-          "findingsPerFunction": 0.021505376344086023
+          "scorePerFile": 0.15369121481881126,
+          "scorePerKloc": 4.1670171281177355,
+          "scorePerFunction": 0.08568062761611149,
+          "findingsPerFile": 0.05934718100890208,
+          "findingsPerKloc": 1.609075184037974,
+          "findingsPerFunction": 0.033085194375516956
         }
       },
-      "blendedScore": 0.9216188015008189,
+      "blendedScore": 1.012718587707658,
       "ruleCounts": {
+        "structure.duplicate-function-signatures": 14,
         "defensive.needless-try-catch": 10,
         "structure.directory-fanout-hotspot": 6,
         "structure.barrel-density": 5,
@@ -1048,21 +1054,21 @@
       "summary": {
         "fileCount": 1433,
         "directoryCount": 619,
-        "findingCount": 110,
-        "repoScore": 371.7909370467554,
+        "findingCount": 113,
+        "repoScore": 375.5409370467554,
         "physicalLineCount": 95801,
         "logicalLineCount": 46593,
         "functionCount": 2300,
         "normalized": {
-          "scorePerFile": 0.25944936290771486,
-          "scorePerKloc": 7.979544932645577,
-          "scorePerFunction": 0.1616482334985893,
-          "findingsPerFile": 0.07676203768318214,
-          "findingsPerKloc": 2.3608696585323976,
-          "findingsPerFunction": 0.04782608695652174
+          "scorePerFile": 0.2620662505560052,
+          "scorePerKloc": 8.060029125550091,
+          "scorePerFunction": 0.163278668281198,
+          "findingsPerFile": 0.07885554780181438,
+          "findingsPerKloc": 2.425257012856008,
+          "findingsPerFunction": 0.049130434782608694
         }
       },
-      "blendedScore": 2.0662877828554427,
+      "blendedScore": 1.6497972059132502,
       "ruleCounts": {
         "defensive.needless-try-catch": 29,
         "structure.pass-through-wrappers": 27,
@@ -1070,7 +1076,8 @@
         "structure.barrel-density": 11,
         "defensive.async-noise": 9,
         "structure.over-fragmentation": 8,
-        "tests.duplicate-mock-setup": 6
+        "tests.duplicate-mock-setup": 6,
+        "structure.duplicate-function-signatures": 3
       },
       "topFiles": [
         {
@@ -1135,24 +1142,25 @@
       "summary": {
         "fileCount": 2812,
         "directoryCount": 1155,
-        "findingCount": 224,
-        "repoScore": 661.9540043290039,
+        "findingCount": 261,
+        "repoScore": 752.9540043290039,
         "physicalLineCount": 226574,
         "logicalLineCount": 131236,
         "functionCount": 4359,
         "normalized": {
-          "scorePerFile": 0.23540327323222043,
-          "scorePerKloc": 5.04399710696001,
-          "scorePerFunction": 0.1518591429981656,
-          "findingsPerFile": 0.07965860597439545,
-          "findingsPerKloc": 1.7068487305312567,
-          "findingsPerFunction": 0.05138793301215875
+          "scorePerFile": 0.26776458190931857,
+          "scorePerKloc": 5.737404403738333,
+          "scorePerFunction": 0.1727354907843551,
+          "findingsPerFile": 0.09281650071123755,
+          "findingsPerKloc": 1.9887835654850805,
+          "findingsPerFunction": 0.05987611837577426
         }
       },
-      "blendedScore": 1.7981648005965822,
+      "blendedScore": 1.6226082759681881,
       "ruleCounts": {
         "defensive.needless-try-catch": 86,
         "structure.pass-through-wrappers": 55,
+        "structure.duplicate-function-signatures": 37,
         "structure.directory-fanout-hotspot": 32,
         "structure.barrel-density": 29,
         "defensive.async-noise": 21,
@@ -1219,23 +1227,23 @@
       "repoCount": 9,
       "medians": {
         "scorePerFile": 1.0041666666666667,
-        "scorePerKloc": 9.411853436454392,
-        "scorePerFunction": 0.21859410430839002,
+        "scorePerKloc": 9.434214080712563,
+        "scorePerFunction": 0.23189654977656673,
         "findingsPerFile": 0.2765957446808511,
         "findingsPerKloc": 2.797432943886786,
-        "findingsPerFunction": 0.07702510193053987
+        "findingsPerFunction": 0.08321461904995825
       },
-      "blendedScoreMedian": 4.1038426510392165
+      "blendedScoreMedian": 3.4943245111907
     },
     "mature-oss": {
       "repoCount": 8,
       "medians": {
-        "scorePerFile": 0.184411097640475,
-        "scorePerKloc": 4.042352483722697,
-        "scorePerFunction": 0.08161876664358633,
-        "findingsPerFile": 0.059214352174924406,
-        "findingsPerKloc": 1.0613206172712295,
-        "findingsPerFunction": 0.022817460317460316
+        "scorePerFile": 0.19086548662498448,
+        "scorePerKloc": 4.422142801664107,
+        "scorePerFunction": 0.09195482875096181,
+        "findingsPerFile": 0.06910136440535823,
+        "findingsPerKloc": 1.3961844005945103,
+        "findingsPerFunction": 0.02817460317460317
       },
       "blendedScoreMedian": 1
     }
@@ -1259,12 +1267,12 @@
       "solidRepoId": "umami",
       "notes": "Full-stack analytics-adjacent SaaS-style app comparison and negative control.",
       "ratios": {
-        "scorePerFile": 10.587961216661409,
-        "scorePerKloc": 2.4374217537940126,
-        "scorePerFunction": 5.376653563614396,
-        "findingsPerFile": 7.832872163807416,
-        "findingsPerKloc": 1.8031812372629616,
-        "findingsPerFunction": 3.977596741344195
+        "scorePerFile": 8.814792677910093,
+        "scorePerKloc": 2.0292261171595976,
+        "scorePerFunction": 4.476224033539827,
+        "findingsPerFile": 5.6974820143884894,
+        "findingsPerKloc": 1.311599685675797,
+        "findingsPerFunction": 2.8932281059063136
       }
     },
     {
@@ -1272,12 +1280,12 @@
       "solidRepoId": "vite",
       "notes": "AI-built Vite-based framework layer vs the mature Vite baseline.",
       "ratios": {
-        "scorePerFile": 1.4280523984075815,
-        "scorePerKloc": 0.8806995148002101,
-        "scorePerFunction": 0.8871219015571703,
-        "findingsPerFile": 1.2923423786134147,
-        "findingsPerKloc": 0.7970052829082112,
-        "findingsPerFunction": 0.8028173403559072
+        "scorePerFile": 1.8979532104748276,
+        "scorePerKloc": 1.1704937952154961,
+        "scorePerFunction": 1.1790294691010454,
+        "findingsPerFile": 1.8196540128706584,
+        "findingsPerKloc": 1.1222056053590648,
+        "findingsPerFunction": 1.1303891438955649
       }
     }
   ]

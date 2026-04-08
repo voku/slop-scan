@@ -108,13 +108,13 @@ The repo ships with a **pinned, recreatable benchmark set** comparing known AI-g
 
 | Metric | AI median | Mature OSS median | Ratio |
 |---|---:|---:|---:|
-| Blended score | **4.10** | **1.00** | **4.10x** |
-| Score / file | **1.00** | **0.18** | **5.45x** |
-| Score / KLOC | **9.41** | **4.04** | **2.33x** |
-| Score / function | **0.22** | **0.08** | **2.68x** |
-| Findings / file | **0.28** | **0.06** | **4.67x** |
-| Findings / KLOC | **2.80** | **1.06** | **2.64x** |
-| Findings / function | **0.08** | **0.02** | **3.38x** |
+| Blended score | **3.49** | **1.00** | **3.49x** |
+| Score / file | **1.00** | **0.19** | **5.26x** |
+| Score / KLOC | **9.43** | **4.42** | **2.13x** |
+| Score / function | **0.23** | **0.09** | **2.52x** |
+| Findings / file | **0.28** | **0.07** | **4.00x** |
+| Findings / KLOC | **2.80** | **1.40** | **2.00x** |
+| Findings / function | **0.08** | **0.03** | **2.95x** |
 
 ### Pinned benchmark snapshot
 
@@ -122,23 +122,23 @@ Ordered by blended score.
 
 | Repository | Cohort | Ref | Blended | Score/file | Score/KLOC | Findings/file | Findings/KLOC |
 |---|---|---|---:|---:|---:|---:|---:|
-| [`garrytan/gstack`](https://github.com/garrytan/gstack) | ai | `6cc094c` | **6.68** | 2.12 | 19.67 | 0.45 | 4.17 |
-| [`redwoodjs/agent-ci`](https://github.com/redwoodjs/agent-ci) | ai | `4de00d6` | **4.95** | 1.05 | 11.64 | 0.28 | 3.07 |
-| [`jiayun/DevWorkbench`](https://github.com/jiayun/DevWorkbench) | ai | `ea50862` | **4.81** | 1.00 | 10.76 | 0.44 | 4.69 |
-| [`openclaw/openclaw`](https://github.com/openclaw/openclaw) | ai | `44cf747` | **4.15** | 1.01 | 10.31 | 0.30 | 3.02 |
-| [`robinebers/openusage`](https://github.com/robinebers/openusage) | ai | `857f537` | **4.10** | 1.27 | 7.95 | 0.30 | 1.89 |
-| [`FullAgent/fulling`](https://github.com/FullAgent/fulling) | ai | `d95060f` | **2.96** | 0.52 | 9.41 | 0.16 | 2.80 |
-| [`emdash-cms/emdash`](https://github.com/emdash-cms/emdash) | ai | `dbaf8c6` | **2.45** | 0.59 | 5.22 | 0.18 | 1.56 |
-| [`vitejs/vite`](https://github.com/vitejs/vite) | mature-oss | `bdc53ab` | **2.07** | 0.26 | 7.98 | 0.08 | 2.36 |
-| [`cloudflare/vinext`](https://github.com/cloudflare/vinext) | ai | `28980b0` | **2.04** | 0.37 | 7.03 | 0.10 | 1.88 |
-| [`withastro/astro`](https://github.com/withastro/astro) | mature-oss | `2c9bf5e` | **1.80** | 0.24 | 5.04 | 0.08 | 1.71 |
-| [`modem-dev/hunk`](https://github.com/modem-dev/hunk) | ai | `b37663f` | **1.60** | 0.38 | 4.71 | 0.11 | 1.40 |
-| [`egoist/tsup`](https://github.com/egoist/tsup) | mature-oss | `b906f86` | **1.31** | 0.21 | 3.61 | 0.08 | 1.42 |
-| [`sindresorhus/execa`](https://github.com/sindresorhus/execa) | mature-oss | `f3a2e84` | **1.07** | 0.16 | 4.48 | 0.04 | 1.08 |
-| [`antfu-collective/ni`](https://github.com/antfu-collective/ni) | mature-oss | `6d96905` | **0.93** | 0.11 | 4.68 | 0.02 | 0.94 |
-| [`umami-software/umami`](https://github.com/umami-software/umami) | mature-oss | `0a83864` | **0.92** | 0.12 | 3.26 | 0.04 | 1.05 |
-| [`mikaelbr/node-notifier`](https://github.com/mikaelbr/node-notifier) | mature-oss | `b36c237` | **0.59** | 0.08 | 0.90 | 0.04 | 0.47 |
-| [`vercel/hyper`](https://github.com/vercel/hyper) | mature-oss | `2a7bb18` | **0.55** | 0.60 | 1.05 | 0.15 | 0.26 |
+| [`garrytan/gstack`](https://github.com/garrytan/gstack) | ai | `6cc094c` | **5.24** | 2.12 | 19.67 | 0.45 | 4.17 |
+| [`redwoodjs/agent-ci`](https://github.com/redwoodjs/agent-ci) | ai | `4de00d6` | **3.88** | 1.05 | 11.64 | 0.28 | 3.07 |
+| [`jiayun/DevWorkbench`](https://github.com/jiayun/DevWorkbench) | ai | `ea50862` | **3.77** | 1.00 | 10.76 | 0.44 | 4.69 |
+| [`robinebers/openusage`](https://github.com/robinebers/openusage) | ai | `857f537` | **3.51** | 1.35 | 8.46 | 0.34 | 2.11 |
+| [`openclaw/openclaw`](https://github.com/openclaw/openclaw) | ai | `44cf747` | **3.49** | 1.08 | 11.04 | 0.32 | 3.26 |
+| [`emdash-cms/emdash`](https://github.com/emdash-cms/emdash) | ai | `dbaf8c6` | **2.48** | 0.76 | 6.76 | 0.23 | 2.02 |
+| [`FullAgent/fulling`](https://github.com/FullAgent/fulling) | ai | `d95060f` | **2.32** | 0.52 | 9.41 | 0.16 | 2.80 |
+| [`cloudflare/vinext`](https://github.com/cloudflare/vinext) | ai | `28980b0` | **2.23** | 0.50 | 9.43 | 0.14 | 2.72 |
+| [`vitejs/vite`](https://github.com/vitejs/vite) | mature-oss | `bdc53ab` | **1.65** | 0.26 | 8.06 | 0.08 | 2.43 |
+| [`withastro/astro`](https://github.com/withastro/astro) | mature-oss | `2c9bf5e` | **1.62** | 0.27 | 5.74 | 0.09 | 1.99 |
+| [`modem-dev/hunk`](https://github.com/modem-dev/hunk) | ai | `b37663f` | **1.25** | 0.38 | 4.71 | 0.11 | 1.40 |
+| [`egoist/tsup`](https://github.com/egoist/tsup) | mature-oss | `b906f86` | **1.03** | 0.21 | 3.61 | 0.08 | 1.42 |
+| [`umami-software/umami`](https://github.com/umami-software/umami) | mature-oss | `0a83864` | **1.01** | 0.15 | 4.17 | 0.06 | 1.61 |
+| [`sindresorhus/execa`](https://github.com/sindresorhus/execa) | mature-oss | `f3a2e84` | **0.99** | 0.17 | 4.85 | 0.05 | 1.37 |
+| [`antfu-collective/ni`](https://github.com/antfu-collective/ni) | mature-oss | `6d96905` | **0.73** | 0.11 | 4.68 | 0.02 | 0.94 |
+| [`mikaelbr/node-notifier`](https://github.com/mikaelbr/node-notifier) | mature-oss | `b36c237` | **0.46** | 0.08 | 0.90 | 0.04 | 0.47 |
+| [`vercel/hyper`](https://github.com/vercel/hyper) | mature-oss | `2a7bb18` | **0.43** | 0.60 | 1.05 | 0.15 | 0.26 |
 
 Full benchmark assets:
 - manifest: [`benchmarks/sets/known-ai-vs-solid-oss.json`](benchmarks/sets/known-ai-vs-solid-oss.json)
