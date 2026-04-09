@@ -2,7 +2,7 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { analyzeRepository } from "./core/engine";
 import { createDefaultRegistry } from "./default-registry";
-import { loadConfig } from "./config";
+import { loadConfigFile } from "./config";
 
 export function formatHelp(): string {
   return [
@@ -28,6 +28,8 @@ export function formatHelp(): string {
     "  - dependency-aware fact provider scheduler",
     "  - repository discovery",
     "  - text, lint, and JSON reporters",
+    "  - module and JSON config loading",
+    "  - phase-1 external rule plugins and plugin presets",
   ].join("\n");
 }
 
@@ -85,13 +87,18 @@ export async function run(argv: string[]): Promise<number> {
   }
 
   const rootDir = path.resolve(args.target);
-  const config = await loadConfig(rootDir);
+  const loadedConfig = await loadConfigFile(rootDir);
+  const config = loadedConfig.config;
 
   if (args.ignore.length > 0) {
     config.ignores = [...config.ignores, ...args.ignore];
   }
 
   const registry = createDefaultRegistry();
+  for (const plugin of loadedConfig.plugins) {
+    registry.registerPlugin(plugin.namespace, plugin.plugin);
+  }
+
   const result = await analyzeRepository(rootDir, config, registry);
   const reporter = registry.getReporter(args.json ? "json" : args.lint ? "lint" : "text");
   const output = await reporter.render(result);

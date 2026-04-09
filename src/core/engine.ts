@@ -1,6 +1,7 @@
 import { globby } from "globby";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { resolveRuleConfigDefaults } from "../config";
 import type { AnalyzerConfig, RuleConfig } from "../config";
 import { discoverSourceFiles } from "../discovery/walk";
 import { countLogicalLines, countPhysicalLines } from "../facts/ts-helpers";
@@ -35,6 +36,17 @@ interface ResolvedRuleOverride {
   directoryPaths: Set<string>;
 }
 
+interface CachedFilePayload {
+  size: bigint;
+  mtimeNs: bigint;
+  text: string;
+  lineCount: number;
+  logicalLineCount: number;
+}
+
+const MAX_FILE_PAYLOAD_CACHE_ENTRIES = 1000;
+const filePayloadCache = new Map<string, CachedFilePayload>();
+
 function normalizePath(value: string): string {
   return value.split(path.sep).join("/").replace(/^\.\//, "");
 }
@@ -64,6 +76,10 @@ async function resolveRuleOverrides(
   files: FileRecord[],
   directories: DirectoryRecord[],
 ): Promise<ResolvedRuleOverride[]> {
+  if (config.overrides.length === 0) {
+    return [];
+  }
+
   const scannedFilePaths = new Set(files.map((file) => file.path));
   const scannedDirectoryPaths = new Set(directories.map((directory) => directory.path));
 
@@ -120,13 +136,13 @@ function resolveRuleConfig(
   ruleId: string,
   overrides: ResolvedRuleOverride[],
 ): RuleConfig | undefined {
-  let resolved = context.runtime.config.rules[ruleId]
-    ? { ...context.runtime.config.rules[ruleId] }
-    : undefined;
+  const baseRuleConfig = context.runtime.config.rules[ruleId];
 
-  if (context.scope === "repo") {
-    return resolved;
+  if (overrides.length === 0 || context.scope === "repo") {
+    return baseRuleConfig;
   }
+
+  let resolved = baseRuleConfig;
 
   const targetPath = context.file?.path ?? context.directory?.path;
   if (!targetPath) {
@@ -170,6 +186,41 @@ function isPromiseLike<T>(value: T | Promise<T>): value is Promise<T> {
   return typeof value === "object" && value !== null && "then" in value;
 }
 
+function cacheFilePayload(absolutePath: string, payload: CachedFilePayload): void {
+  if (
+    !filePayloadCache.has(absolutePath) &&
+    filePayloadCache.size >= MAX_FILE_PAYLOAD_CACHE_ENTRIES
+  ) {
+    const oldestKey = filePayloadCache.keys().next().value;
+    if (oldestKey) {
+      filePayloadCache.delete(oldestKey);
+    }
+  }
+
+  filePayloadCache.set(absolutePath, payload);
+}
+
+function loadFilePayload(file: FileRecord): CachedFilePayload {
+  const stats = statSync(file.absolutePath, { bigint: true });
+  const cached = filePayloadCache.get(file.absolutePath);
+
+  if (cached && cached.size === stats.size && cached.mtimeNs === stats.mtimeNs) {
+    return cached;
+  }
+
+  const text = readFileSync(file.absolutePath, "utf8");
+  const payload: CachedFilePayload = {
+    size: stats.size,
+    mtimeNs: stats.mtimeNs,
+    text,
+    lineCount: countPhysicalLines(text),
+    logicalLineCount: countLogicalLines(text, file.path),
+  };
+
+  cacheFilePayload(file.absolutePath, payload);
+  return payload;
+}
+
 async function runProviders(
   providers: FactProvider[],
   contexts: ProviderContext[],
@@ -208,20 +259,26 @@ async function runRules(
 
   for (const context of contexts) {
     for (const rule of rules) {
-      const ruleConfig = resolveRuleConfig(context, rule.id, overrides);
-      if (ruleConfig?.enabled === false || !rule.supports(context)) {
+      const resolvedRuleConfig = resolveRuleConfigDefaults(
+        resolveRuleConfig(context, rule.id, overrides),
+      );
+      const ruleContext = {
+        ...context,
+        ruleConfig: resolvedRuleConfig,
+      } satisfies ProviderContext;
+
+      if (!resolvedRuleConfig.enabled || !rule.supports(ruleContext)) {
         continue;
       }
 
-      const weight = ruleConfig?.weight ?? 1;
-      const nextFindingsResult = rule.evaluate(context);
+      const nextFindingsResult = rule.evaluate(ruleContext);
       const nextFindings = isPromiseLike(nextFindingsResult)
         ? await nextFindingsResult
         : nextFindingsResult;
       for (const finding of nextFindings) {
         findings.push({
           ...finding,
-          score: finding.score * weight,
+          score: finding.score * resolvedRuleConfig.weight,
         });
       }
     }
@@ -424,13 +481,13 @@ export async function analyzeRepository(
   const findings: Finding[] = [];
 
   for (const file of discovery.files) {
-    const text = readFileSync(file.absolutePath, "utf8");
-    file.lineCount = countPhysicalLines(text);
-    file.logicalLineCount = countLogicalLines(text, file.path);
+    const payload = loadFilePayload(file);
+    file.lineCount = payload.lineCount;
+    file.logicalLineCount = payload.logicalLineCount;
 
     store.setFileFacts(file.path, {
       "file.record": file,
-      "file.text": text,
+      "file.text": payload.text,
       "file.lineCount": file.lineCount,
       "file.logicalLineCount": file.logicalLineCount,
     });

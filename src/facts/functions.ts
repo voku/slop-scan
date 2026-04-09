@@ -15,6 +15,26 @@ import {
 
 const MIN_DUPLICATE_STATEMENT_COUNT = 2;
 const MIN_DUPLICATE_NODE_COUNT = 16;
+const MAX_FUNCTION_SUMMARY_CACHE_ENTRIES = 500;
+const functionSummaryCache = new Map<string, { text: string; functions: FunctionSummary[] }>();
+
+function cacheFunctionSummaries(
+  filePath: string,
+  text: string,
+  functions: FunctionSummary[],
+): void {
+  if (
+    !functionSummaryCache.has(filePath) &&
+    functionSummaryCache.size >= MAX_FUNCTION_SUMMARY_CACHE_ENTRIES
+  ) {
+    const oldestKey = functionSummaryCache.keys().next().value;
+    if (oldestKey) {
+      functionSummaryCache.delete(oldestKey);
+    }
+  }
+
+  functionSummaryCache.set(filePath, { text, functions });
+}
 
 function expressionIsPassthrough(
   expression: ts.Expression,
@@ -211,12 +231,18 @@ export const functionsFactProvider: FactProvider = {
     return context.scope === "file" && Boolean(context.file);
   },
   run(context) {
+    const file = context.file;
     const sourceFile = context.runtime.store.getFileFact<ts.SourceFile>(
       context.file!.path,
       "file.ast",
     );
-    if (!sourceFile) {
+    if (!file || !sourceFile) {
       return { "file.functionSummaries": [] satisfies FunctionSummary[] };
+    }
+
+    const cached = functionSummaryCache.get(file.absolutePath);
+    if (cached && cached.text === sourceFile.text) {
+      return { "file.functionSummaries": cached.functions };
     }
 
     const functions: FunctionSummary[] = [];
@@ -246,6 +272,7 @@ export const functionsFactProvider: FactProvider = {
       }
     });
 
+    cacheFunctionSummaries(file.absolutePath, sourceFile.text, functions);
     return { "file.functionSummaries": functions };
   },
 };

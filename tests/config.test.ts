@@ -85,6 +85,21 @@ describe("rule config support", () => {
     expect(config.ignores).toEqual(["src/comments.ts"]);
   });
 
+  test("loadConfig invalidates cached module configs when the file changes", async () => {
+    const rootDir = await createTempRepo();
+    const configPath = path.join(rootDir, "slop-scan.config.ts");
+    await writeFile(configPath, 'export default { ignores: ["src/comments.ts"] };\n');
+
+    const first = await loadConfig(rootDir);
+    expect(first.ignores).toEqual(["src/comments.ts"]);
+
+    await Bun.sleep(5);
+    await writeFile(configPath, 'export default { ignores: ["src/nested.ts"] };\n');
+
+    const second = await loadConfig(rootDir);
+    expect(second.ignores).toEqual(["src/nested.ts"]);
+  });
+
   test("can apply a path-scoped file override", async () => {
     const rootDir = await createTempRepo();
     await writeFile(

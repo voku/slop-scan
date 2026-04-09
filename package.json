@@ -23,9 +23,19 @@
   "files": [
     "bin",
     "dist",
+    "examples",
+    "src",
     "README.md"
   ],
   "type": "module",
+  "main": "./dist/node-entry.js",
+  "types": "./src/node-entry.ts",
+  "exports": {
+    ".": {
+      "types": "./src/node-entry.ts",
+      "import": "./dist/node-entry.js"
+    }
+  },
   "scripts": {
     "build": "bun run scripts/build-cli.ts",
     "scan": "bun run src/cli.ts scan .",

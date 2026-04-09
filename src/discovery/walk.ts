@@ -1,10 +1,99 @@
+import { statSync } from "node:fs";
 import { globby } from "globby";
+import { access, stat } from "node:fs/promises";
 import path from "node:path";
 import type { AnalyzerConfig } from "../config";
 import type { DirectoryRecord, FileRecord, LanguagePlugin } from "../core/types";
 
+interface CachedDiscoveryFile {
+  path: string;
+  absolutePath: string;
+  extension: string;
+  languageId: string;
+}
+
+interface CachedDiscoveryDirectory {
+  path: string;
+  filePaths: string[];
+}
+
+interface CachedDiscoveryResult {
+  directories: CachedDiscoveryDirectory[];
+  directoryMtimesNs: Array<{ path: string; mtimeNs: bigint }>;
+  files: CachedDiscoveryFile[];
+  gitignoreMtimeNs: bigint | null;
+}
+
+const discoveryCache = new Map<string, CachedDiscoveryResult>();
+
 function normalizePath(filePath: string): string {
   return filePath.split(path.sep).join("/");
+}
+
+function discoveryCacheKey(
+  rootDir: string,
+  config: AnalyzerConfig,
+  languages: LanguagePlugin[],
+): string {
+  return [
+    rootDir,
+    config.ignores.join("\0"),
+    languages.map((language) => language.id).join("\0"),
+  ].join("\u0001");
+}
+
+async function statMtimeNs(targetPath: string): Promise<bigint | null> {
+  return stat(targetPath, { bigint: true }).then(
+    (stats) => stats.mtimeNs,
+    () => null,
+  );
+}
+
+function statMtimeNsSync(targetPath: string): bigint | null {
+  return statSync(targetPath, { bigint: true, throwIfNoEntry: false })?.mtimeNs ?? null;
+}
+
+async function hasRootGitignore(rootDir: string): Promise<boolean> {
+  return access(path.join(rootDir, ".gitignore")).then(
+    () => true,
+    () => false,
+  );
+}
+
+async function canReuseDiscoveryCache(
+  rootDir: string,
+  cached: CachedDiscoveryResult,
+): Promise<boolean> {
+  if (cached.gitignoreMtimeNs !== null) {
+    const currentGitignoreMtimeNs = await statMtimeNs(path.join(rootDir, ".gitignore"));
+    if (currentGitignoreMtimeNs !== cached.gitignoreMtimeNs) {
+      return false;
+    }
+  }
+
+  return cached.directoryMtimesNs.every(
+    (directory) => statMtimeNsSync(path.join(rootDir, directory.path)) === directory.mtimeNs,
+  );
+}
+
+function cloneDiscovery(cached: CachedDiscoveryResult): {
+  files: FileRecord[];
+  directories: DirectoryRecord[];
+} {
+  return {
+    files: cached.files.map((file) => ({
+      path: file.path,
+      absolutePath: file.absolutePath,
+      extension: file.extension,
+      lineCount: 0,
+      logicalLineCount: 0,
+      languageId: file.languageId,
+    })),
+    directories: cached.directories.map((directory) => ({
+      path: directory.path,
+      filePaths: [...directory.filePaths],
+    })),
+  };
 }
 
 export async function discoverSourceFiles(
@@ -12,13 +101,20 @@ export async function discoverSourceFiles(
   config: AnalyzerConfig,
   languages: LanguagePlugin[],
 ): Promise<{ files: FileRecord[]; directories: DirectoryRecord[] }> {
+  const cacheKey = discoveryCacheKey(rootDir, config, languages);
+  const cached = discoveryCache.get(cacheKey);
+  if (cached && (await canReuseDiscoveryCache(rootDir, cached))) {
+    return cloneDiscovery(cached);
+  }
+
+  const ignoreFiles = (await hasRootGitignore(rootDir)) ? ".gitignore" : undefined;
   const matchedPaths = await globby(["**/*"], {
     cwd: rootDir,
     onlyFiles: true,
     dot: true,
     followSymbolicLinks: false,
     ignore: config.ignores,
-    ignoreFiles: ".gitignore",
+    ignoreFiles,
   });
 
   const files: FileRecord[] = [];
@@ -50,6 +146,32 @@ export async function discoverSourceFiles(
   const directories = [...directoryMap.entries()]
     .map(([directoryPath, filePaths]) => ({ path: directoryPath, filePaths: filePaths.sort() }))
     .sort((left, right) => left.path.localeCompare(right.path));
+
+  const trackedDirectoryPaths = new Set<string>([
+    ".",
+    ...directories.map((directory) => directory.path),
+  ]);
+  const directoryMtimesNs = [...trackedDirectoryPaths]
+    .sort((left, right) => left.localeCompare(right))
+    .map((directoryPath) => ({
+      path: directoryPath,
+      mtimeNs: statSync(path.join(rootDir, directoryPath), { bigint: true }).mtimeNs,
+    }));
+
+  discoveryCache.set(cacheKey, {
+    files: files.map((file) => ({
+      path: file.path,
+      absolutePath: file.absolutePath,
+      extension: file.extension,
+      languageId: file.languageId ?? "unknown",
+    })),
+    directories: directories.map((directory) => ({
+      path: directory.path,
+      filePaths: [...directory.filePaths],
+    })),
+    directoryMtimesNs,
+    gitignoreMtimeNs: await statMtimeNs(path.join(rootDir, ".gitignore")),
+  });
 
   return {
     files,

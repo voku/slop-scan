@@ -1,4 +1,4 @@
-import type { AnalyzerConfig } from "../config";
+import type { AnalyzerConfig, ResolvedRuleConfig } from "../config";
 
 export type Scope = "file" | "directory" | "repo";
 
@@ -119,6 +119,7 @@ export interface ProviderContext {
   runtime: AnalyzerRuntime;
   file?: FileRecord;
   directory?: DirectoryRecord;
+  ruleConfig?: ResolvedRuleConfig;
 }
 
 export interface FactStoreReader {

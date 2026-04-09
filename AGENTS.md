@@ -4,11 +4,12 @@
 
 ## Start here
 
-- `README.md` for product behavior, CLI expectations, config shape, and benchmark context.
+- `README.md` for product behavior, CLI expectations, config/plugin shape, and benchmark context.
 - `src/default-registry.ts` for the active languages, facts, rules, and reporters.
 - `src/core/engine.ts` for execution flow.
-- `src/core/types.ts` for plugin contracts and result shapes.
-- `tests/heuristics.test.ts` and `tests/fixtures-regression.test.ts` for behavioral expectations.
+- `src/core/types.ts` for provider/rule contracts and result shapes.
+- `src/plugin.ts` and `src/config.ts` for the phase-1 external plugin surface.
+- `tests/heuristics.test.ts`, `tests/fixtures-regression.test.ts`, and `tests/plugin-api.test.ts` for behavioral expectations.
 
 ## Mental model
 
@@ -16,7 +17,7 @@
 - Fact providers compute reusable signals at `file`, `directory`, or `repo` scope.
 - Rules consume facts and emit findings with evidence, severity, and score.
 - Reporters render the final analysis as text, lint output, or JSON.
-- Config tunes built-ins via `ignores`, `rules`, and path-scoped `overrides`; it does not define new rules.
+- Config tunes built-ins via `ignores`, `rules`, and path-scoped `overrides`, and phase 1 can also load third-party **rule** plugins plus `plugin:<namespace>/<config>` presets.
 
 ## Navigation
 
@@ -26,6 +27,8 @@
 - Analysis flow and override resolution: `src/core/engine.ts`
 - Fact dependency ordering: `src/core/scheduler.ts`
 - Shared fact storage: `src/core/fact-store.ts`
+- Config discovery / plugin loading / preset resolution: `src/config.ts`
+- Public phase-1 plugin helpers and plugin object shape: `src/plugin.ts`
 - Discovery / ignore handling: `src/discovery/walk.ts`
 - Reusable signals: `src/facts/*`
 - Findings logic: `src/rules/*` (flat files; grouping is by rule `id` / `family`, not folders)
@@ -39,7 +42,7 @@
 - New analyzer behavior usually means: extend `src/facts/types.ts` if needed, add/adjust a fact provider, add/adjust a rule, register it in `src/default-registry.ts`, then add tests.
 - Rules are manually registered in `src/default-registry.ts`; there is no auto-discovery from `src/rules/`.
 - Keep file/directory/repo scopes in mind. This is a repo-scoped analysis engine, not just a bag of single-file lint checks.
-- The codebase is internally pluggable, but the shipped CLI currently uses a fixed default registry. Config can tune built-ins, not load third-party rule modules.
+- The codebase is internally pluggable and now has a phase-1 external rule-plugin path. The shipped CLI can load third-party rule plugins and plugin preset configs, but not external fact providers, language plugins, or reporters yet.
 - Edit `src/`; `dist/` and benchmark result/report artifacts are generated outputs.
 - Do not tune heuristics to a single fixture or benchmark repo.
 

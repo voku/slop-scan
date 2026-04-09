@@ -192,14 +192,19 @@ Full benchmark assets:
 
 ## Configuration
 
-The analyzer reads `slop-scan.config.json` from the scan root and also respects root `.gitignore` entries.
+The analyzer reads `slop-scan.config.ts`, `slop-scan.config.js`, `slop-scan.config.mjs`, `slop-scan.config.cjs`, or `slop-scan.config.json` from the scan root. The legacy `repo-slop.config.*` names still work as a fallback. Root `.gitignore` entries are also respected.
 
 ```json
 {
   "ignores": ["dist/**", "coverage/**", "**/*.generated.ts"],
+  "plugins": {
+    "acme": "slop-scan-plugin-acme"
+  },
+  "extends": ["plugin:acme/recommended"],
   "rules": {
     "structure.over-fragmentation": { "enabled": true, "weight": 1.2 },
-    "comments.placeholder-comments": { "enabled": false }
+    "comments.placeholder-comments": { "enabled": false },
+    "acme/no-generated-wrapper": { "enabled": true, "options": { "threshold": 3 } }
   },
   "overrides": [
     {
@@ -216,11 +221,49 @@ The analyzer reads `slop-scan.config.json` from the scan root and also respects 
 Supported today:
 
 - `ignores`
+- `plugins.<namespace>` as either a package/path string or a plugin object in module configs
+- `extends: ["plugin:<namespace>/<config>"]`
 - `rules.<id>.enabled`
 - `rules.<id>.weight`
+- `rules.<id>.options`
 - `overrides[].files`
 - `overrides[].rules.<id>.enabled`
 - `overrides[].rules.<id>.weight`
+- `overrides[].rules.<id>.options`
+
+### Plugin API (phase 1)
+
+Phase 1 supports external **rule plugins** plus plugin-shipped preset configs. Third-party fact providers, language plugins, and reporters are not loaded yet.
+
+Plugin modules export an object with:
+
+- `meta.name`
+- `meta.apiVersion` (`1` today)
+- optional `meta.version`
+- optional `meta.namespace`
+- `rules`
+- optional `configs`
+
+Rule IDs are namespaced as `namespace/rule-name`.
+
+Module configs can also load local plugins directly:
+
+```ts
+import { defineConfig } from "slop-scan";
+import localPlugin from "./examples/local-plugin/contains-word-plugin.mjs";
+
+export default defineConfig({
+  plugins: { local: localPlugin },
+  rules: {
+    "local/contains-word": {
+      enabled: true,
+      options: { word: "danger" },
+    },
+  },
+});
+```
+
+See [`examples/local-plugin/contains-word-plugin.mjs`](examples/local-plugin/contains-word-plugin.mjs) and [`examples/local-plugin/slop-scan.config.ts`](examples/local-plugin/slop-scan.config.ts).
 
 This repo also commits a root [`slop-scan.config.json`](slop-scan.config.json) for self-scans and local development. It keeps the scan focused on the tool itself by excluding heavyweight benchmark checkouts and intentionally disables directory-structure rules under `src/rules/**`.
 

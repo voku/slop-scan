@@ -70,6 +70,37 @@ describe("analysis engine", () => {
     expect(result.files.map((file) => file.path)).toEqual(["ignored/keep.ts", "src/index.ts"]);
   });
 
+  test("discovery cache invalidates when supported files are added", async () => {
+    const rootDir = await createTempRepo({
+      "src/index.ts": "export const value = 1;\n",
+    });
+    const languages = createDefaultRegistry().getLanguages();
+
+    const first = await discoverSourceFiles(rootDir, DEFAULT_CONFIG, languages);
+    expect(first.files.map((file) => file.path)).toEqual(["src/index.ts"]);
+
+    await writeFile(path.join(rootDir, "src", "new-file.ts"), "export const next = 2;\n");
+
+    const second = await discoverSourceFiles(rootDir, DEFAULT_CONFIG, languages);
+    expect(second.files.map((file) => file.path)).toEqual(["src/index.ts", "src/new-file.ts"]);
+  });
+
+  test("discovery cache invalidates when root .gitignore changes", async () => {
+    const rootDir = await createTempRepo({
+      "src/index.ts": "export const value = 1;\n",
+      "src/ignored.ts": "export const ignored = true;\n",
+    });
+    const languages = createDefaultRegistry().getLanguages();
+
+    const first = await discoverSourceFiles(rootDir, DEFAULT_CONFIG, languages);
+    expect(first.files.map((file) => file.path)).toEqual(["src/ignored.ts", "src/index.ts"]);
+
+    await writeFile(path.join(rootDir, ".gitignore"), "src/ignored.ts\n");
+
+    const second = await discoverSourceFiles(rootDir, DEFAULT_CONFIG, languages);
+    expect(second.files.map((file) => file.path)).toEqual(["src/index.ts"]);
+  });
+
   test("renders text and json reports via the registry", async () => {
     const rootDir = await createTempRepo();
     const registry = createDefaultRegistry();
