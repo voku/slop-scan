@@ -6,6 +6,7 @@ import {
   getLineNumber,
   isDefaultLiteral,
   isLoggingCall,
+  unwrapExpression,
   walk,
 } from "./ts-helpers";
 
@@ -156,6 +157,111 @@ function collectBoundarySignals(node: ts.TryStatement): {
   };
 }
 
+function extractBlockComments(block: ts.Block, sourceFile: ts.SourceFile): string[] {
+  const contentStart = block.getStart(sourceFile) + 1;
+  const contentEnd = block.end - 1;
+  if (contentEnd <= contentStart) {
+    return [];
+  }
+
+  const content = sourceFile.text.slice(contentStart, contentEnd);
+  const rawComments = content.match(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g) ?? [];
+
+  return rawComments
+    .map((raw) => {
+      if (raw.startsWith("//")) {
+        return raw.slice(2).trim();
+      }
+
+      return raw
+        .slice(2, -2)
+        .replace(/^\s*\*\s?/gm, "")
+        .trim();
+    })
+    .filter(Boolean);
+}
+
+function isAssignmentOperator(kind: ts.SyntaxKind): boolean {
+  return (
+    kind === ts.SyntaxKind.EqualsToken ||
+    kind === ts.SyntaxKind.BarBarEqualsToken ||
+    kind === ts.SyntaxKind.AmpersandAmpersandEqualsToken ||
+    kind === ts.SyntaxKind.QuestionQuestionEqualsToken ||
+    kind === ts.SyntaxKind.PlusEqualsToken ||
+    kind === ts.SyntaxKind.MinusEqualsToken ||
+    kind === ts.SyntaxKind.AsteriskEqualsToken ||
+    kind === ts.SyntaxKind.AsteriskAsteriskEqualsToken ||
+    kind === ts.SyntaxKind.SlashEqualsToken ||
+    kind === ts.SyntaxKind.PercentEqualsToken ||
+    kind === ts.SyntaxKind.LessThanLessThanEqualsToken ||
+    kind === ts.SyntaxKind.GreaterThanGreaterThanEqualsToken ||
+    kind === ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken ||
+    kind === ts.SyntaxKind.AmpersandEqualsToken ||
+    kind === ts.SyntaxKind.BarEqualsToken ||
+    kind === ts.SyntaxKind.CaretEqualsToken
+  );
+}
+
+function isLocalBindingName(name: ts.BindingName): boolean {
+  if (ts.isIdentifier(name)) {
+    return true;
+  }
+
+  if (ts.isObjectBindingPattern(name)) {
+    return name.elements.every((element) => isLocalBindingName(element.name));
+  }
+
+  return name.elements.every((element) => {
+    if (ts.isOmittedExpression(element)) {
+      return true;
+    }
+
+    return isLocalBindingName(element.name);
+  });
+}
+
+function isLocalAssignmentTarget(expression: ts.Expression): boolean {
+  return ts.isIdentifier(unwrapExpression(expression));
+}
+
+function resolvesLocalValuesInStatement(statement: ts.Statement): boolean {
+  if (ts.isBlock(statement)) {
+    return statement.statements.every(resolvesLocalValuesInStatement);
+  }
+
+  if (ts.isIfStatement(statement)) {
+    return (
+      resolvesLocalValuesInStatement(statement.thenStatement) &&
+      (!statement.elseStatement || resolvesLocalValuesInStatement(statement.elseStatement))
+    );
+  }
+
+  if (ts.isVariableStatement(statement)) {
+    return statement.declarationList.declarations.every(
+      (declaration) => Boolean(declaration.initializer) && isLocalBindingName(declaration.name),
+    );
+  }
+
+  if (ts.isExpressionStatement(statement)) {
+    const expression = unwrapExpression(statement.expression);
+    return (
+      ts.isBinaryExpression(expression) &&
+      isAssignmentOperator(expression.operatorToken.kind) &&
+      isLocalAssignmentTarget(expression.left)
+    );
+  }
+
+  return false;
+}
+
+function resolvesLocalValuesInTryBlock(tryBlock: ts.Block): boolean {
+  return (
+    tryBlock.statements.length > 0 &&
+    tryBlock.statements.length <= 4 &&
+    tryBlock.statements.every(resolvesLocalValuesInStatement)
+  );
+}
+
 function isFilesystemExistenceProbe(
   tryStatementCount: number,
   catchReturnsDefault: boolean,
@@ -175,6 +281,7 @@ function isFilesystemExistenceProbe(
 function summarizeTryStatement(node: ts.TryStatement, sourceFile: ts.SourceFile): TryCatchSummary {
   const catchBlock = node.catchClause?.block;
   const catchStatements = catchBlock?.statements ?? [];
+  const catchComments = catchBlock ? extractBlockComments(catchBlock, sourceFile) : [];
 
   const catchHasLogging = catchStatements.some(
     (statement) => ts.isExpressionStatement(statement) && isLoggingCall(statement.expression),
@@ -203,6 +310,7 @@ function summarizeTryStatement(node: ts.TryStatement, sourceFile: ts.SourceFile)
       ts.isStringLiteral(catchStatements[0].expression!));
   const boundary = collectBoundarySignals(node);
   const tryStatementCount = node.tryBlock.statements.length;
+  const tryResolvesLocalValues = resolvesLocalValuesInTryBlock(node.tryBlock);
 
   return {
     line: getLineNumber(sourceFile, node.getStart(sourceFile)),
@@ -214,6 +322,7 @@ function summarizeTryStatement(node: ts.TryStatement, sourceFile: ts.SourceFile)
     catchHasLogging,
     catchHasDefaultReturn,
     catchIsEmpty: catchStatements.length === 0,
+    catchHasComment: catchComments.length > 0,
     catchThrowsGeneric,
     boundaryCategories: boundary.categories,
     boundaryOperationPaths: boundary.operationPaths,
@@ -223,6 +332,9 @@ function summarizeTryStatement(node: ts.TryStatement, sourceFile: ts.SourceFile)
       catchThrowsGeneric,
       boundary.operationPaths,
     ),
+    tryResolvesLocalValues,
+    isDocumentedLocalFallback:
+      catchComments.length > 0 && tryResolvesLocalValues && boundary.operationPaths.length > 0,
   };
 }
 

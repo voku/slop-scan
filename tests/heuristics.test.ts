@@ -209,6 +209,63 @@ describe("heuristic rule pack", () => {
     );
   });
 
+  test("does not flag documented local fallback catches", async () => {
+    const rootDir = await createTempRepo({
+      "src/credentials.ts": [
+        "type ClientInfo = { client_id?: string; client_secret?: string };",
+        "",
+        "export function resolveCredentials(blob: string | null, fallbackClientId: string | null) {",
+        "  let parsed: ClientInfo | null = null;",
+        "",
+        "  if (blob) {",
+        "    try {",
+        "      parsed = JSON.parse(blob) as ClientInfo;",
+        "    } catch {",
+        "      // Invalid stored credential blob; fall through to manual credentials.",
+        "    }",
+        "  }",
+        "",
+        "  if (!parsed?.client_id && fallbackClientId) {",
+        "    parsed = { client_id: fallbackClientId };",
+        "  }",
+        "",
+        "  return parsed?.client_id ?? null;",
+        "}",
+        "",
+      ].join("\n"),
+    });
+
+    const result = await analyzeRepository(rootDir, DEFAULT_CONFIG, createDefaultRegistry());
+
+    expect(
+      result.findings.filter((finding) => finding.ruleId === "defensive.empty-catch"),
+    ).toHaveLength(0);
+  });
+
+  test("still flags documented empty catches around primary operations", async () => {
+    const rootDir = await createTempRepo({
+      "src/fs.ts": [
+        'import * as fs from "node:fs";',
+        "",
+        "export function ensureDir(dir: string) {",
+        "  try {",
+        "    fs.mkdirSync(dir, { recursive: true });",
+        "  } catch {",
+        "    // Keep going even if directory creation fails.",
+        "  }",
+        "  return dir;",
+        "}",
+        "",
+      ].join("\n"),
+    });
+
+    const result = await analyzeRepository(rootDir, DEFAULT_CONFIG, createDefaultRegistry());
+
+    expect(result.findings.some((finding) => finding.ruleId === "defensive.empty-catch")).toBe(
+      true,
+    );
+  });
+
   test("does not flag routine phrasing or alias compatibility wrappers", async () => {
     const rootDir = await createTempRepo({
       "src/comments.ts": [

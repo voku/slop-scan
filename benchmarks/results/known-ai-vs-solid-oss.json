@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "benchmarkSetId": "known-ai-vs-solid-oss",
   "benchmarkSetName": "Known AI repos vs older solid OSS repos",
-  "generatedAt": "2026-04-08T21:47:10.431Z",
+  "generatedAt": "2026-04-09T00:24:29.081Z",
   "analyzerVersion": "0.2.0",
   "configMode": "default",
   "repos": [
@@ -14,26 +14,26 @@
       "summary": {
         "fileCount": 139,
         "directoryCount": 29,
-        "findingCount": 48,
-        "repoScore": 188.3111111111111,
+        "findingCount": 47,
+        "repoScore": 184.8111111111111,
         "physicalLineCount": 33794,
         "logicalLineCount": 22270,
         "functionCount": 491,
         "normalized": {
-          "scorePerFile": 1.3547561950439648,
-          "scorePerKloc": 8.45581998702789,
-          "scorePerFunction": 0.3835256845440145,
-          "findingsPerFile": 0.34532374100719426,
-          "findingsPerKloc": 2.1553659631791646,
-          "findingsPerFunction": 0.09775967413441955
+          "scorePerFile": 1.3295763389288568,
+          "scorePerKloc": 8.298657885546076,
+          "scorePerFunction": 0.37639737497171305,
+          "findingsPerFile": 0.3381294964028777,
+          "findingsPerKloc": 2.110462505612932,
+          "findingsPerFunction": 0.09572301425661914
         }
       },
-      "blendedScore": 3.546342591807541,
+      "blendedScore": 3.476442610225084,
       "ruleCounts": {
         "tests.duplicate-mock-setup": 26,
-        "defensive.empty-catch": 5,
         "structure.duplicate-function-signatures": 5,
         "structure.pass-through-wrappers": 5,
+        "defensive.empty-catch": 4,
         "defensive.error-swallowing": 3,
         "defensive.error-obscuring": 2,
         "structure.directory-fanout-hotspot": 2
@@ -50,11 +50,6 @@
           "findingCount": 1
         },
         {
-          "path": "src/hooks/app/use-panel.ts",
-          "score": 6.5,
-          "findingCount": 2
-        },
-        {
           "path": "plugins/codex/plugin.js",
           "score": 5.75,
           "findingCount": 2
@@ -62,6 +57,11 @@
         {
           "path": "plugins/factory/plugin.js",
           "score": 5.5,
+          "findingCount": 2
+        },
+        {
+          "path": "plugins/gemini/plugin.js",
+          "score": 5.25,
           "findingCount": 2
         }
       ],
@@ -100,7 +100,7 @@
           "findingsPerFunction": 0.09523809523809523
         }
       },
-      "blendedScore": 3.7700791509994422,
+      "blendedScore": 3.7700791509994427,
       "ruleCounts": {
         "defensive.error-swallowing": 10,
         "defensive.empty-catch": 1,
@@ -165,7 +165,7 @@
           "findingsPerFunction": 0.0627177700348432
         }
       },
-      "blendedScore": 2.402059161413838,
+      "blendedScore": 2.4020591614138374,
       "ruleCounts": {
         "defensive.error-swallowing": 11,
         "defensive.error-obscuring": 5,
@@ -229,27 +229,27 @@
       "summary": {
         "fileCount": 10465,
         "directoryCount": 423,
-        "findingCount": 3417,
-        "repoScore": 11394.13866868018,
+        "findingCount": 3398,
+        "repoScore": 11272.93866868018,
         "physicalLineCount": 1939647,
         "logicalLineCount": 1031409,
         "functionCount": 40348,
         "normalized": {
-          "scorePerFile": 1.0887853481777525,
-          "scorePerKloc": 11.047158468347842,
-          "scorePerFunction": 0.28239661615644346,
-          "findingsPerFile": 0.32651696129957,
-          "findingsPerKloc": 3.3129437497636727,
-          "findingsPerFunction": 0.08468821255080797
+          "scorePerFile": 1.0772038861615079,
+          "scorePerKloc": 10.929649313395734,
+          "scorePerFunction": 0.27939274979379847,
+          "findingsPerFile": 0.3247013855709508,
+          "findingsPerKloc": 3.2945223475847114,
+          "findingsPerFunction": 0.0842173094081491
         }
       },
-      "blendedScore": 3.530423337788157,
+      "blendedScore": 3.5018198889368195,
       "ruleCounts": {
         "tests.duplicate-mock-setup": 1003,
         "structure.pass-through-wrappers": 618,
         "structure.barrel-density": 412,
         "defensive.error-obscuring": 370,
-        "defensive.empty-catch": 341,
+        "defensive.empty-catch": 322,
         "defensive.async-noise": 315,
         "structure.duplicate-function-signatures": 249,
         "structure.directory-fanout-hotspot": 68,
@@ -319,24 +319,24 @@
       "summary": {
         "fileCount": 1072,
         "directoryCount": 306,
-        "findingCount": 249,
-        "repoScore": 831.3525793650789,
+        "findingCount": 243,
+        "repoScore": 803.2525793650789,
         "physicalLineCount": 257938,
         "logicalLineCount": 120432,
         "functionCount": 3513,
         "normalized": {
-          "scorePerFile": 0.7755154658256332,
-          "scorePerKloc": 6.903087048002847,
-          "scorePerFunction": 0.2366503214816621,
-          "findingsPerFile": 0.23227611940298507,
-          "findingsPerKloc": 2.06755679553607,
-          "findingsPerFunction": 0.07087959009393681
+          "scorePerFile": 0.7493027792584691,
+          "scorePerKloc": 6.669760357422271,
+          "scorePerFunction": 0.2286514601096154,
+          "findingsPerFile": 0.22667910447761194,
+          "findingsPerKloc": 2.017736149860502,
+          "findingsPerFunction": 0.06917164816396243
         }
       },
-      "blendedScore": 2.539695324126198,
+      "blendedScore": 2.466144516579107,
       "ruleCounts": {
         "structure.duplicate-function-signatures": 55,
-        "defensive.empty-catch": 46,
+        "defensive.empty-catch": 40,
         "structure.barrel-density": 34,
         "defensive.error-obscuring": 27,
         "structure.pass-through-wrappers": 27,
@@ -348,7 +348,7 @@
       "topFiles": [
         {
           "path": "packages/core/src/emdash-runtime.ts",
-          "score": 24.7,
+          "score": 23.7,
           "findingCount": 4
         },
         {
@@ -408,23 +408,23 @@
       "summary": {
         "fileCount": 176,
         "directoryCount": 19,
-        "findingCount": 93,
-        "repoScore": 413.49999999999983,
+        "findingCount": 92,
+        "repoScore": 411.59999999999985,
         "physicalLineCount": 62616,
         "logicalLineCount": 18958,
         "functionCount": 832,
         "normalized": {
-          "scorePerFile": 2.349431818181817,
-          "scorePerKloc": 21.81137250764848,
-          "scorePerFunction": 0.4969951923076921,
-          "findingsPerFile": 0.5284090909090909,
-          "findingsPerKloc": 4.905580757463868,
-          "findingsPerFunction": 0.11177884615384616
+          "scorePerFile": 2.338636363636363,
+          "scorePerKloc": 21.71115096529169,
+          "scorePerFunction": 0.49471153846153826,
+          "findingsPerFile": 0.5227272727272727,
+          "findingsPerKloc": 4.852832577276084,
+          "findingsPerFunction": 0.11057692307692307
         }
       },
-      "blendedScore": 5.984079110932836,
+      "blendedScore": 5.938129873491111,
       "ruleCounts": {
-        "defensive.empty-catch": 56,
+        "defensive.empty-catch": 55,
         "defensive.error-obscuring": 19,
         "defensive.error-swallowing": 8,
         "structure.pass-through-wrappers": 7,
@@ -488,7 +488,7 @@
           "findingsPerFunction": 0.027925531914893616
         }
       },
-      "blendedScore": 1.3178308614426713,
+      "blendedScore": 1.317830861442671,
       "ruleCounts": {
         "defensive.error-obscuring": 6,
         "structure.pass-through-wrappers": 6,
@@ -550,27 +550,27 @@
       "summary": {
         "fileCount": 1129,
         "directoryCount": 486,
-        "findingCount": 169,
-        "repoScore": 570.352724726254,
+        "findingCount": 164,
+        "repoScore": 547.452724726254,
         "physicalLineCount": 150365,
         "logicalLineCount": 59523,
         "functionCount": 2917,
         "normalized": {
-          "scorePerFile": 0.5051839900143968,
-          "scorePerKloc": 9.58205609136391,
-          "scorePerFunction": 0.19552715965932602,
-          "findingsPerFile": 0.14968999114260406,
-          "findingsPerKloc": 2.8392386136451453,
-          "findingsPerFunction": 0.057936235858759
+          "scorePerFile": 0.4849005533447777,
+          "scorePerKloc": 9.19733085910075,
+          "scorePerFunction": 0.18767662829148235,
+          "findingsPerFile": 0.14526129317980513,
+          "findingsPerKloc": 2.7552374712296084,
+          "findingsPerFunction": 0.05622214604045252
         }
       },
-      "blendedScore": 2.2921215861114397,
+      "blendedScore": 2.2121663068836055,
       "ruleCounts": {
         "structure.duplicate-function-signatures": 50,
         "structure.pass-through-wrappers": 29,
         "defensive.error-obscuring": 24,
-        "defensive.empty-catch": 21,
         "tests.duplicate-mock-setup": 18,
+        "defensive.empty-catch": 16,
         "structure.directory-fanout-hotspot": 15,
         "defensive.async-noise": 4,
         "structure.barrel-density": 3,
@@ -594,14 +594,14 @@
           "findingCount": 2
         },
         {
-          "path": "packages/vinext/src/server/dev-server.ts",
-          "score": 11.5,
+          "path": "tests/pages-page-data.test.ts",
+          "score": 10.75,
           "findingCount": 3
         },
         {
-          "path": "packages/vinext/src/server/prod-server.ts",
-          "score": 11.1,
-          "findingCount": 3
+          "path": "packages/vinext/src/shims/cache.ts",
+          "score": 10,
+          "findingCount": 2
         }
       ],
       "topDirectories": [
@@ -641,20 +641,20 @@
         "fileCount": 94,
         "directoryCount": 24,
         "findingCount": 29,
-        "repoScore": 98.62500000000001,
+        "repoScore": 92.82500000000002,
         "physicalLineCount": 17222,
         "logicalLineCount": 8474,
         "functionCount": 220,
         "normalized": {
-          "scorePerFile": 1.0492021276595747,
-          "scorePerKloc": 11.638541420816617,
-          "scorePerFunction": 0.4482954545454546,
+          "scorePerFile": 0.9875000000000002,
+          "scorePerKloc": 10.954094878451736,
+          "scorePerFunction": 0.42193181818181824,
           "findingsPerFile": 0.30851063829787234,
           "findingsPerKloc": 3.422232711824404,
           "findingsPerFunction": 0.1318181818181818
         }
       },
-      "blendedScore": 4.098646301325513,
+      "blendedScore": 3.97630246756507,
       "ruleCounts": {
         "defensive.empty-catch": 18,
         "defensive.error-obscuring": 3,
@@ -680,14 +680,14 @@
           "findingCount": 1
         },
         {
-          "path": "packages/dtu-github-actions/src/server/routes/actions/index.ts",
-          "score": 8,
-          "findingCount": 1
-        },
-        {
           "path": "packages/cli/src/docker/service-containers.ts",
           "score": 7,
           "findingCount": 1
+        },
+        {
+          "path": "packages/cli/src/workflow/workflow-parser.ts",
+          "score": 5.9,
+          "findingCount": 2
         }
       ],
       "topDirectories": [
@@ -797,7 +797,7 @@
           "findingsPerFunction": 0.02857142857142857
         }
       },
-      "blendedScore": 1.0254742221567712,
+      "blendedScore": 1.025474222156771,
       "ruleCounts": {
         "structure.pass-through-wrappers": 2,
         "defensive.error-obscuring": 1,
@@ -845,7 +845,7 @@
           "findingsPerFunction": 0.027777777777777776
         }
       },
-      "blendedScore": 0.987281412292342,
+      "blendedScore": 0.9872814122923419,
       "ruleCounts": {
         "defensive.empty-catch": 11,
         "structure.directory-fanout-hotspot": 7,
@@ -931,7 +931,7 @@
           "findingsPerFunction": 0.0033619723571161747
         }
       },
-      "blendedScore": 0.4572975537118579,
+      "blendedScore": 0.45729755371185776,
       "ruleCounts": {
         "defensive.error-swallowing": 8,
         "structure.pass-through-wrappers": 5,
@@ -990,7 +990,7 @@
           "findingsPerFunction": 0.033085194375516956
         }
       },
-      "blendedScore": 1.012718587707658,
+      "blendedScore": 1.0127185877076579,
       "ruleCounts": {
         "structure.duplicate-function-signatures": 14,
         "defensive.error-obscuring": 7,
@@ -1064,25 +1064,25 @@
       "summary": {
         "fileCount": 1432,
         "directoryCount": 618,
-        "findingCount": 116,
-        "repoScore": 377.4409370467554,
+        "findingCount": 114,
+        "repoScore": 370.44093704675544,
         "physicalLineCount": 95795,
         "logicalLineCount": 46589,
         "functionCount": 2299,
         "normalized": {
-          "scorePerFile": 0.26357607335667277,
-          "scorePerKloc": 8.101503295772723,
-          "scorePerFunction": 0.16417613616648777,
-          "findingsPerFile": 0.08100558659217877,
-          "findingsPerKloc": 2.4898581210156903,
-          "findingsPerFunction": 0.050456720313179645
+          "scorePerFile": 0.2586878052002482,
+          "scorePerKloc": 7.951253236745916,
+          "scorePerFunction": 0.1611313340786235,
+          "findingsPerFile": 0.07960893854748603,
+          "findingsPerKloc": 2.4469295327223164,
+          "findingsPerFunction": 0.049586776859504134
         }
       },
-      "blendedScore": 1.6764578380797177,
+      "blendedScore": 1.6464595022309005,
       "ruleCounts": {
         "structure.pass-through-wrappers": 27,
         "structure.directory-fanout-hotspot": 20,
-        "defensive.empty-catch": 16,
+        "defensive.empty-catch": 14,
         "structure.barrel-density": 11,
         "defensive.error-obscuring": 10,
         "defensive.async-noise": 9,
@@ -1154,24 +1154,24 @@
       "summary": {
         "fileCount": 2798,
         "directoryCount": 1144,
-        "findingCount": 269,
-        "repoScore": 756.6540043290039,
+        "findingCount": 265,
+        "repoScore": 745.8540043290039,
         "physicalLineCount": 226544,
         "logicalLineCount": 131228,
         "functionCount": 4359,
         "normalized": {
-          "scorePerFile": 0.2704267349281644,
-          "scorePerKloc": 5.765949373068277,
-          "scorePerFunction": 0.17358430932071667,
-          "findingsPerFile": 0.09614010007147963,
-          "findingsPerKloc": 2.0498674063462063,
-          "findingsPerFunction": 0.06171140169763707
+          "scorePerFile": 0.266566834999644,
+          "scorePerKloc": 5.683649863817203,
+          "scorePerFunction": 0.17110667683620187,
+          "findingsPerFile": 0.09471050750536097,
+          "findingsPerKloc": 2.0193861066235863,
+          "findingsPerFunction": 0.06079376003670567
         }
       },
-      "blendedScore": 1.654113770531161,
+      "blendedScore": 1.6300105660915536,
       "ruleCounts": {
         "structure.pass-through-wrappers": 55,
-        "defensive.empty-catch": 50,
+        "defensive.empty-catch": 46,
         "structure.duplicate-function-signatures": 37,
         "defensive.error-obscuring": 34,
         "structure.directory-fanout-hotspot": 32,
@@ -1240,14 +1240,14 @@
     "explicit-ai": {
       "repoCount": 9,
       "medians": {
-        "scorePerFile": 1.0041666666666667,
-        "scorePerKloc": 9.58205609136391,
-        "scorePerFunction": 0.2366503214816621,
+        "scorePerFile": 0.9875000000000002,
+        "scorePerKloc": 9.510586363885691,
+        "scorePerFunction": 0.2286514601096154,
         "findingsPerFile": 0.30851063829787234,
         "findingsPerKloc": 2.96198782293895,
-        "findingsPerFunction": 0.08468821255080797
+        "findingsPerFunction": 0.0842173094081491
       },
-      "blendedScoreMedian": 3.530423337788157
+      "blendedScoreMedian": 3.476442610225084
     },
     "mature-oss": {
       "repoCount": 8,
@@ -1255,11 +1255,11 @@
         "scorePerFile": 0.19086548662498448,
         "scorePerKloc": 4.422142801664107,
         "scorePerFunction": 0.09195482875096181,
-        "findingsPerFile": 0.07017638380054042,
+        "findingsPerFile": 0.06947805977819406,
         "findingsPerKloc": 1.3961844005945103,
         "findingsPerFunction": 0.02817460317460317
       },
-      "blendedScoreMedian": 1
+      "blendedScoreMedian": 0.9999999999999999
     }
   },
   "pairings": [
@@ -1281,12 +1281,12 @@
       "solidRepoId": "umami",
       "notes": "Full-stack analytics-adjacent SaaS-style app comparison and negative control.",
       "ratios": {
-        "scorePerFile": 8.814792677910093,
-        "scorePerKloc": 2.0292261171595976,
-        "scorePerFunction": 4.476224033539827,
-        "findingsPerFile": 5.818705035971223,
-        "findingsPerKloc": 1.3395060619667716,
-        "findingsPerFunction": 2.954786150712831
+        "scorePerFile": 8.650958615274876,
+        "scorePerKloc": 1.9915103851024067,
+        "scorePerFunction": 4.393027752529381,
+        "findingsPerFile": 5.6974820143884894,
+        "findingsPerKloc": 1.311599685675797,
+        "findingsPerFunction": 2.8932281059063136
       }
     },
     {
@@ -1294,12 +1294,12 @@
       "solidRepoId": "vite",
       "notes": "AI-built Vite-based framework layer vs the mature Vite baseline.",
       "ratios": {
-        "scorePerFile": 1.9166534487778744,
-        "scorePerKloc": 1.1827503787307874,
-        "scorePerFunction": 1.1909596864981997,
-        "findingsPerFile": 1.8478971320362847,
-        "findingsPerKloc": 1.140321446302704,
-        "findingsPerFunction": 1.148236260683508
+        "scorePerFile": 1.8744623580899764,
+        "scorePerKloc": 1.1567146190988122,
+        "scorePerFunction": 1.164743216238166,
+        "findingsPerFile": 1.8246857178375522,
+        "findingsPerKloc": 1.1259978819922476,
+        "findingsPerFunction": 1.133813278482459
       }
     }
   ]

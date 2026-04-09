@@ -8,8 +8,9 @@ import {
 
 /**
  * Flags empty catch clauses, which suppress failures without even leaving a log
- * trail. These are common in generated code that wraps APIs defensively but
- * forgets to decide what should actually happen on failure.
+ * trail. A narrow exception is allowed for documented local fallback code,
+ * where the try block only resolves candidate values and the catch explicitly
+ * explains that the code is falling through to another source.
  */
 export const emptyCatchRule: RulePlugin = {
   id: "defensive.empty-catch",
@@ -29,7 +30,10 @@ export const emptyCatchRule: RulePlugin = {
 
     const flagged = summaries.filter(
       (summary) =>
-        isValidTryCatchTarget(summary) && summary.tryStatementCount <= 2 && summary.catchIsEmpty,
+        isValidTryCatchTarget(summary) &&
+        summary.tryStatementCount <= 2 &&
+        summary.catchIsEmpty &&
+        !summary.isDocumentedLocalFallback,
     );
 
     if (flagged.length === 0) {

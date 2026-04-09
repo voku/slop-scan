@@ -32,10 +32,13 @@ export interface TryCatchSummary {
   catchHasLogging: boolean;
   catchHasDefaultReturn: boolean;
   catchIsEmpty: boolean;
+  catchHasComment: boolean;
   catchThrowsGeneric: boolean;
   boundaryCategories: string[];
   boundaryOperationPaths: string[];
   isFilesystemExistenceProbe: boolean;
+  tryResolvesLocalValues: boolean;
+  isDocumentedLocalFallback: boolean;
 }
 
 export interface DirectoryMetrics {

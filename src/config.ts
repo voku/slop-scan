@@ -25,6 +25,14 @@ export const DEFAULT_CONFIG: AnalyzerConfig = {
   thresholds: {},
 };
 
+function cloneConfig(config: AnalyzerConfig): AnalyzerConfig {
+  return {
+    ignores: [...config.ignores],
+    rules: { ...config.rules },
+    thresholds: { ...config.thresholds },
+  };
+}
+
 async function findConfigPath(rootDir: string): Promise<string | null> {
   for (const filename of ["slop-scan.config.json", "repo-slop.config.json"]) {
     const configPath = path.join(rootDir, filename);
@@ -43,15 +51,15 @@ export async function loadConfig(rootDir: string): Promise<AnalyzerConfig> {
   const configPath = await findConfigPath(rootDir);
 
   if (!configPath) {
-    return DEFAULT_CONFIG;
+    return cloneConfig(DEFAULT_CONFIG);
   }
 
   const raw = await readFile(configPath, "utf8");
   const parsed = JSON.parse(raw) as Partial<AnalyzerConfig>;
 
   return {
-    ignores: parsed.ignores ?? DEFAULT_CONFIG.ignores,
-    rules: parsed.rules ?? DEFAULT_CONFIG.rules,
-    thresholds: parsed.thresholds ?? DEFAULT_CONFIG.thresholds,
+    ignores: [...(parsed.ignores ?? DEFAULT_CONFIG.ignores)],
+    rules: { ...(parsed.rules ?? DEFAULT_CONFIG.rules) },
+    thresholds: { ...(parsed.thresholds ?? DEFAULT_CONFIG.thresholds) },
   };
 }
