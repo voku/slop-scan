@@ -30,7 +30,7 @@
         "bin/slop-scan.php"
     ],
     "scripts": {
-        "test:php": "phpunit",
+        "test:php": "phpunit --bootstrap src-php/bootstrap.php tests-php",
         "scan:php:self": "php bin/slop-scan.php scan src-php --json"
     }
 }
