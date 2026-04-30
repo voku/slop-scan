@@ -1,0 +1,36 @@
+{
+    "name": "voku/slop-scan",
+    "description": "Deterministic PHP CLI for explainable slop heuristics.",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "voku/simple-php-code-parser": "^0.21.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "voku",
+            "email": "opensource@voku.dev"
+        }
+    ],
+    "autoload": {
+        "files": [
+            "src-php/bootstrap.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SlopScan\\Tests\\": "tests-php/"
+        }
+    },
+    "bin": [
+        "bin/slop-scan.php"
+    ],
+    "scripts": {
+        "test:php": "phpunit",
+        "scan:php:self": "php bin/slop-scan.php scan src-php --json"
+    }
+}

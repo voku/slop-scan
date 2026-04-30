@@ -1,5 +1,6 @@
 .pi/
 node_modules/
+vendor/
 dist/
 benchmarks/.cache/
 autoresearch.md
