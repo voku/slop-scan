@@ -1,4 +1,5 @@
 .pi/
+.phpunit.result.cache
 node_modules/
 vendor/
 dist/

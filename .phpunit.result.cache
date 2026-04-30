@@ -1,1 +1,0 @@
-{"version":1,"defects":[],"times":{"SlopScan\\Tests\\PhpCliTest::testScanProducesPhpFindings":0.001,"SlopScan\\Tests\\PhpCliTest::testJsonReporterKeepsReportShape":0.001}}
