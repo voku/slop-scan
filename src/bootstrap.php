@@ -1101,7 +1101,7 @@ final class GithubReporter implements ReporterPlugin
     {
         $lines = [];
         foreach ($findings as $finding) {
-            foreach ($finding->locations ?: [['path' => $finding->path ?? '', 'line' => self::DEFAULT_LINE, 'column' => self::DEFAULT_COLUMN]] as $location) {
+            foreach (self::locationsFor($finding) as $location) {
                 $properties = [];
                 $path = (string) ($location['path'] ?? '');
                 if ($path !== '') {
@@ -1113,6 +1113,15 @@ final class GithubReporter implements ReporterPlugin
             }
         }
         return implode("\n", $lines);
+    }
+
+    /** @return list<array{path:string,line:int,column:int}> */
+    private static function locationsFor(Finding $finding): array
+    {
+        if ($finding->locations !== []) {
+            return $finding->locations;
+        }
+        return [['path' => $finding->path ?? '', 'line' => self::DEFAULT_LINE, 'column' => self::DEFAULT_COLUMN]];
     }
 
     private static function escape(string $value): string
@@ -1164,14 +1173,22 @@ final class Baseline
         }
         $newFindings = [];
         foreach ($findings as $finding) {
-            foreach (($finding->deltaIdentity['occurrences'] ?? []) as $occurrence) {
-                if (isset($added[(string) ($occurrence['fingerprint'] ?? '')])) {
-                    $newFindings[] = $finding;
-                    continue 2;
-                }
+            if (self::matchesAnyFingerprint($finding, $added)) {
+                $newFindings[] = $finding;
             }
         }
         return $newFindings;
+    }
+
+    /** @param array<string,bool> $fingerprints */
+    private static function matchesAnyFingerprint(Finding $finding, array $fingerprints): bool
+    {
+        foreach (($finding->deltaIdentity['occurrences'] ?? []) as $occurrence) {
+            if (isset($fingerprints[(string) ($occurrence['fingerprint'] ?? '')])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1273,11 +1290,12 @@ final class Cli
                     return 0;
                 }
                 if ($args['baselineFile'] !== null && $args['baselineFile'] !== '') {
+                    $currentReport = $result->toReport();
                     $baselineReport = Baseline::readReport($args['baselineFile']);
-                    $delta = Delta::diff($baselineReport, $result->toReport());
+                    $delta = Delta::diff($baselineReport, $currentReport);
                     $newFindings = Baseline::addedFindings($result->findings, $delta);
                     if ($args['json']) {
-                        fwrite(STDOUT, Json::encode(Baseline::reportWithDelta($result->toReport(), $delta), true) . "\n");
+                        fwrite(STDOUT, Json::encode(Baseline::reportWithDelta($currentReport, $delta), true) . "\n");
                     } elseif ($args['github']) {
                         fwrite(STDOUT, GithubReporter::renderFindings($newFindings) . "\n");
                     } elseif ($args['lint']) {
@@ -1314,7 +1332,22 @@ final class Cli
     /** @param list<string> $argv @return array<string,mixed> */
     private static function parse(array $argv): array
     {
-        $args = ['help' => false, 'json' => false, 'lint' => false, 'github' => false, 'generateBaseline' => false, 'baselineFile' => null, 'ignore' => [], 'command' => null, 'target' => '.', 'base' => null, 'head' => null, 'baseReport' => null, 'headReport' => null, 'failOn' => null];
+        $args = [
+            'help' => false,
+            'json' => false,
+            'lint' => false,
+            'github' => false,
+            'generateBaseline' => false,
+            'baselineFile' => null,
+            'ignore' => [],
+            'command' => null,
+            'target' => '.',
+            'base' => null,
+            'head' => null,
+            'baseReport' => null,
+            'headReport' => null,
+            'failOn' => null,
+        ];
         $optionValueKeys = [
             '--ignore' => 'ignore',
             '--base' => 'base',
