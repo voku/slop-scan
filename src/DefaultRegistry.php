@@ -20,6 +20,7 @@ use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
 use SlopScan\Rule\OverFragmentationRule;
 use SlopScan\Rule\PassThroughWrappersRule;
 use SlopScan\Rule\PlaceholderCommentsRule;
+use SlopScan\Rule\StackedStaticAnalysisSuppressionsRule;
 
 final class DefaultRegistry
 {
@@ -35,6 +36,7 @@ final class DefaultRegistry
             new ErrorSwallowingRule(),
             new BlanketStaticAnalysisSuppressionsRule(),
             new ExcessiveStaticAnalysisSuppressionsRule(),
+            new StackedStaticAnalysisSuppressionsRule(),
             new PlaceholderCommentsRule(),
             new PassThroughWrappersRule(),
             new DirectoryFanoutHotspotRule(),

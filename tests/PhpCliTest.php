@@ -262,6 +262,31 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testStackedStaticAnalysisSuppressionsRuleDetectsClusteredSuppressions(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Stacked.php', <<<'PHP'
+<?php
+
+// @psalm-suppress MixedAssignment
+// @psalm-suppress MixedArgument
+$value = risky($input);
+
+// @psalm-suppress MixedAssignment
+$safe = already_documented($input);
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertContains('php.stacked-static-analysis-suppressions', $this->ruleIds($result->findings));
+        self::assertSame(1, $this->countForRule($result->findings, 'php.stacked-static-analysis-suppressions'));
+        self::assertStringContainsString('suppressions=2', $this->firstEvidenceForRule($result->findings, 'php.stacked-static-analysis-suppressions')[0]);
+        self::assertNotContains('php.excessive-static-analysis-suppressions', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
     public function testReportersRenderEmptyTextLintAndJson(): void
     {
         $fixture = $this->makeFixture();
