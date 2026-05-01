@@ -6,6 +6,7 @@ namespace SlopScan\Rule;
 
 use SlopScan\Model\Finding;
 use SlopScan\Runtime\ProviderContext;
+use SlopScan\Support\StaticAnalysisSuppressions;
 
 final class BlanketStaticAnalysisSuppressionsRule extends BaseRule
 {
@@ -20,11 +21,12 @@ final class BlanketStaticAnalysisSuppressionsRule extends BaseRule
         $findings = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.comments') ?? [] as $comment) {
             $text = self::commentBody($comment['text']);
-            if (!preg_match('/@(phpstan-ignore(?:-(?:next-)?line)?)\b(?<tail>[^\r\n]*)/i', $text, $match)) {
+            $match = StaticAnalysisSuppressions::phpstanIgnoreDirective($text);
+            if ($match === null) {
                 continue;
             }
-            $tail = trim((string) $match['tail']);
-            $directive = strtolower($match[1]);
+            $tail = $match['tail'];
+            $directive = $match['directive'];
             if ($directive === 'phpstan-ignore' && $tail !== '') {
                 continue;
             }

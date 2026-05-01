@@ -6,6 +6,7 @@ namespace SlopScan\Rule;
 
 use SlopScan\Model\Finding;
 use SlopScan\Runtime\ProviderContext;
+use SlopScan\Support\StaticAnalysisSuppressions;
 
 final class ExcessiveStaticAnalysisSuppressionsRule extends BaseRule
 {
@@ -21,7 +22,7 @@ final class ExcessiveStaticAnalysisSuppressionsRule extends BaseRule
         $threshold = max(1, (int) ($context->ruleConfig['options']['commentCount'] ?? self::DEFAULT_THRESHOLD));
         $suppressions = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.comments') ?? [] as $comment) {
-            if (preg_match('/@(phpstan-ignore(?:-(?:next-)?line)?|psalm-suppress|psalm-ignore-var|phpcsSuppress)\b/i', $comment['text'])) {
+            if (StaticAnalysisSuppressions::hasAnySuppression($comment['text'])) {
                 $suppressions[] = $comment;
             }
         }

@@ -6,6 +6,7 @@ namespace SlopScan\Rule;
 
 use SlopScan\Model\Finding;
 use SlopScan\Runtime\ProviderContext;
+use SlopScan\Support\StaticAnalysisSuppressions;
 
 final class StackedStaticAnalysisSuppressionsRule extends BaseRule
 {
@@ -22,7 +23,7 @@ final class StackedStaticAnalysisSuppressionsRule extends BaseRule
         $clusters = [];
         $current = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.comments') ?? [] as $comment) {
-            if (!preg_match('/@(phpstan-ignore(?:-(?:next-)?line)?|psalm-suppress|psalm-ignore-var|phpcsSuppress)\b/i', $comment['text'])) {
+            if (!StaticAnalysisSuppressions::hasAnySuppression($comment['text'])) {
                 if (count($current) >= $threshold) {
                     $clusters[] = $current;
                 }
