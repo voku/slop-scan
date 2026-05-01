@@ -400,7 +400,7 @@ PHP);
         self::assertSame(1, $decoded['baseline']['summary']['added']);
         self::assertSame('php.empty-catch', $decoded['newFindings'][0]['ruleId']);
         self::assertSame(1, $githubExit);
-        self::assertStringContainsString('::error file=src/A.php,line=6,col=1::Found empty PHP catch block (php.empty-catch)', $githubOutput);
+        self::assertStringContainsString('::error file=src/A.php,line=8,col=1::Found empty PHP catch block (php.empty-catch)', $githubOutput);
         self::assertStringNotContainsString('php.placeholder-comments', $githubOutput);
         self::assertSame(1, $lintExit);
         self::assertStringContainsString('php.empty-catch', $lintOutput);
@@ -414,6 +414,7 @@ PHP);
         $registry = new Registry();
         $registry->registerLanguage(new PhpLanguage());
         $registry->registerReporter(new JsonReporter());
+        $registry->registerReporter(new GithubReporter());
 
         self::assertTrue(PatternMatcher::matches('src/Foo.php', 'src/*.php'));
         self::assertTrue(PatternMatcher::ignored('vendor/pkg/Foo.php', ['**/vendor/**']));
