@@ -789,7 +789,9 @@ final class PhpFacts
         return $catches;
     }
 
-    /** @param null|callable():object $parserFactory */
+    /**
+     * @param null|callable():object $parserFactory Factory returning an object with parse(), getClasses(), and getFunctions().
+     */
     public static function useParserFactoryForTesting(?callable $parserFactory): void
     {
         self::$parserFactory = $parserFactory;
