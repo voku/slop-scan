@@ -23,6 +23,13 @@ Run the CLI from the repository checkout:
 php bin/slop-scan.php scan .
 ```
 
+Build a PHAR:
+
+```bash
+composer run phar:build
+php dist/slop-scan.phar scan .
+```
+
 ## Quick start
 
 Scan the current repository:
@@ -158,6 +165,7 @@ composer validate --strict
 composer run lint
 composer run test
 composer run scan:self
+composer run phar:build
 ```
 
 The implementation lives in PSR-4 class files under `src/`, organized by responsibility (for example `Contract/`, `Fact/`, `Model/`, `Reporter/`, `Rule/`, `Runtime/`, and `Support/`); tests live in `tests/`.

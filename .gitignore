@@ -1,5 +1,6 @@
 .pi/
 .phpunit.result.cache
+dist/
 vendor/
 autoresearch.md
 autoresearch.sh

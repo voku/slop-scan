@@ -11,4 +11,4 @@ if (!is_file($autoload)) {
 
 require $autoload;
 
-exit(\SlopScan\Cli::main(array_slice($argv, 1)));
+exit((new \SlopScan\Console\SlopScanApplication())->run());
