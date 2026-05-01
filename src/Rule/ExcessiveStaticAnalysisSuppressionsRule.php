@@ -11,6 +11,8 @@ use SlopScan\Support\StaticAnalysisSuppressions;
 final class ExcessiveStaticAnalysisSuppressionsRule extends BaseRule
 {
     private const DEFAULT_THRESHOLD = 3;
+    private const MAX_EXCESSIVE_SCORE = 3.0;
+    private const SCORE_MULTIPLIER = 0.5;
 
     public function id(): string { return 'php.excessive-static-analysis-suppressions'; }
     public function family(): string { return 'static-analysis'; }
@@ -37,6 +39,6 @@ final class ExcessiveStaticAnalysisSuppressionsRule extends BaseRule
             'threshold=' . $threshold,
             'lines=' . $lineEvidence,
         ];
-        return [new Finding($this->id(), $this->family(), $this->severity(), 'file', 'Found excessive static-analysis suppression comments in one PHP file', $evidence, min(3.0, 0.5 * count($suppressions)), [['path' => $context->file->path, 'line' => $first['line'], 'column' => 1]], $context->file->path)];
+        return [new Finding($this->id(), $this->family(), $this->severity(), 'file', 'Found excessive static-analysis suppression comments in one PHP file', $evidence, min(self::MAX_EXCESSIVE_SCORE, self::SCORE_MULTIPLIER * count($suppressions)), [['path' => $context->file->path, 'line' => $first['line'], 'column' => 1]], $context->file->path)];
     }
 }

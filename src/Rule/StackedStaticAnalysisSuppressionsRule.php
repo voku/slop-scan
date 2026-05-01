@@ -11,6 +11,8 @@ use SlopScan\Support\StaticAnalysisSuppressions;
 final class StackedStaticAnalysisSuppressionsRule extends BaseRule
 {
     private const DEFAULT_THRESHOLD = 2;
+    private const MAX_CLUSTER_SCORE = 2.5;
+    private const SCORE_MULTIPLIER = 0.75;
 
     public function id(): string { return 'php.stacked-static-analysis-suppressions'; }
     public function family(): string { return 'static-analysis'; }
@@ -56,7 +58,7 @@ final class StackedStaticAnalysisSuppressionsRule extends BaseRule
                 'file',
                 'Found stacked static-analysis suppression comments above one PHP code site',
                 ['suppressions=' . count($cluster), 'lines=' . $lines],
-                min(2.5, 0.75 * count($cluster)),
+                min(self::MAX_CLUSTER_SCORE, self::SCORE_MULTIPLIER * count($cluster)),
                 [['path' => $context->file->path, 'line' => $cluster[0]['line'], 'column' => 1]],
                 $context->file->path
             );
