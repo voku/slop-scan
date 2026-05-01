@@ -11,10 +11,12 @@ use SlopScan\Reporter\GithubReporter;
 use SlopScan\Reporter\JsonReporter;
 use SlopScan\Reporter\LintReporter;
 use SlopScan\Reporter\TextReporter;
+use SlopScan\Rule\BlanketStaticAnalysisSuppressionsRule;
 use SlopScan\Rule\DirectoryFanoutHotspotRule;
 use SlopScan\Rule\DuplicateFunctionSignaturesRule;
 use SlopScan\Rule\EmptyCatchRule;
 use SlopScan\Rule\ErrorSwallowingRule;
+use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
 use SlopScan\Rule\OverFragmentationRule;
 use SlopScan\Rule\PassThroughWrappersRule;
 use SlopScan\Rule\PlaceholderCommentsRule;
@@ -31,6 +33,8 @@ final class DefaultRegistry
         foreach ([
             new EmptyCatchRule(),
             new ErrorSwallowingRule(),
+            new BlanketStaticAnalysisSuppressionsRule(),
+            new ExcessiveStaticAnalysisSuppressionsRule(),
             new PlaceholderCommentsRule(),
             new PassThroughWrappersRule(),
             new DirectoryFanoutHotspotRule(),

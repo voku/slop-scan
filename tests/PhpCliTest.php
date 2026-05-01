@@ -232,6 +232,36 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testStaticAnalysisSuppressionRulesDetectBlanketAndExcessiveIgnores(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Ignored.php', <<<'PHP'
+<?php
+
+// @phpstan-ignore-next-line
+risky($input);
+// @phpstan-ignore-line
+risky($input);
+// @phpstan-ignore
+risky($input);
+// @phpstan-ignore argument.type expected during dependency upgrade
+risky($input);
+// @psalm-suppress MixedAssignment
+$value = risky($input);
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertContains('php.blanket-static-analysis-suppressions', $this->ruleIds($result->findings));
+        self::assertContains('php.excessive-static-analysis-suppressions', $this->ruleIds($result->findings));
+        self::assertSame(3, $this->countForRule($result->findings, 'php.blanket-static-analysis-suppressions'));
+        self::assertSame(1, $this->countForRule($result->findings, 'php.excessive-static-analysis-suppressions'));
+        self::assertStringContainsString('suppressions=5', $this->evidenceForRule($result->findings, 'php.excessive-static-analysis-suppressions')[0]);
+
+        $this->remove($fixture);
+    }
+
     public function testReportersRenderEmptyTextLintAndJson(): void
     {
         $fixture = $this->makeFixture();
@@ -594,6 +624,28 @@ PHP;
         foreach ($findings as $finding) {
             if ($finding->ruleId === $ruleId) {
                 return $finding->score;
+            }
+        }
+        self::fail("Missing finding for {$ruleId}");
+    }
+
+    /**
+     * @param list<Finding> $findings findings to inspect
+     */
+    private function countForRule(array $findings, string $ruleId): int
+    {
+        return count(array_filter($findings, static fn(Finding $finding): bool => $finding->ruleId === $ruleId));
+    }
+
+    /**
+     * @param list<Finding> $findings findings to inspect
+     * @return list<string> evidence for the requested rule ID
+     */
+    private function evidenceForRule(array $findings, string $ruleId): array
+    {
+        foreach ($findings as $finding) {
+            if ($finding->ruleId === $ruleId) {
+                return $finding->evidence;
             }
         }
         self::fail("Missing finding for {$ruleId}");
