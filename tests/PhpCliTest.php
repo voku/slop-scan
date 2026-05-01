@@ -379,6 +379,36 @@ PHP);
         self::assertSame(1, $missingExit);
     }
 
+    public function testCliScanBaselineReportsOnlyNewFindingsAndGithubAnnotations(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', "<?php\n// TODO baseline\nfunction proxy(\$value) {\n    return transform(\$value);\n}\n");
+        $baselineFile = $fixture . '/slop-baseline.json';
+
+        [$generateExit, $generateOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--generate-baseline']);
+        file_put_contents($fixture . '/src/A.php', "<?php\n// TODO baseline\nfunction proxy(\$value) {\n    return transform(\$value);\n}\ntry {\n    risky();\n} catch (Throwable \$e) {\n}\n");
+        [$jsonExit, $jsonOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--json']);
+        [$githubExit, $githubOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--github']);
+        [$lintExit, $lintOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--lint']);
+
+        self::assertSame(0, $generateExit);
+        self::assertStringContainsString('baseline written', $generateOutput);
+        self::assertFileExists($baselineFile);
+        self::assertSame(1, $jsonExit);
+        $decoded = json_decode($jsonOutput, true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(1, $decoded['baseline']['summary']['added']);
+        self::assertSame('php.empty-catch', $decoded['newFindings'][0]['ruleId']);
+        self::assertSame(1, $githubExit);
+        self::assertStringContainsString('::error file=src/A.php,line=6,col=1::Found empty PHP catch block (php.empty-catch)', $githubOutput);
+        self::assertStringNotContainsString('php.placeholder-comments', $githubOutput);
+        self::assertSame(1, $lintExit);
+        self::assertStringContainsString('php.empty-catch', $lintOutput);
+        self::assertStringNotContainsString('php.placeholder-comments', $lintOutput);
+
+        $this->remove($fixture);
+    }
+
     public function testPatternMatchingLanguageRegistryAndSchedulerEdges(): void
     {
         $registry = new Registry();
@@ -392,6 +422,7 @@ PHP);
         self::assertSame('php', $registry->detectLanguage('template.phtml')?->id());
         self::assertNull($registry->detectLanguage('README.md'));
         self::assertSame('json', $registry->reporter('json')->id());
+        self::assertSame('github', $registry->reporter('github')->id());
         self::assertSame('php', $registry->languages()[0]->id());
         self::assertSame(0, count($registry->factProviders()));
         self::assertSame(0, count($registry->rules()));
