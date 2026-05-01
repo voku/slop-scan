@@ -293,7 +293,10 @@ PHP;
         self::assertArrayHasKey('available', $summary);
     }
 
-    /** @return list<string> */
+    /**
+     * @param list<Finding> $findings findings to inspect
+     * @return list<string> unique sorted rule IDs
+     */
     private function ruleIds(array $findings): array
     {
         $ids = array_values(array_unique(array_map(static fn(Finding $finding): string => $finding->ruleId, $findings)));
@@ -308,6 +311,10 @@ PHP;
         return $path;
     }
 
+    /**
+     * @param list<Finding> $findings findings to inspect
+     * @return float score for the requested rule ID
+     */
     private function scoreForRule(array $findings, string $ruleId): float
     {
         foreach ($findings as $finding) {
@@ -318,7 +325,10 @@ PHP;
         self::fail("Missing finding for {$ruleId}");
     }
 
-    /** @param list<string> $arguments @return array{0:int,1:string} */
+    /**
+     * @param list<string> $arguments CLI arguments
+     * @return array{0:int,1:string} exit code and captured stdout
+     */
     private function runCommand(array $arguments): array
     {
         $command = array_merge([PHP_BINARY, dirname(__DIR__) . '/bin/slop-scan.php'], $arguments);
