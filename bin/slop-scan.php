@@ -7,7 +7,7 @@ $autoload = __DIR__ . '/../vendor/autoload.php';
 if (is_file($autoload)) {
     require $autoload;
 } else {
-    require __DIR__ . '/../src-php/bootstrap.php';
+    require __DIR__ . '/../src/bootstrap.php';
 }
 
 exit(\SlopScan\Cli::main(array_slice($argv, 1)));

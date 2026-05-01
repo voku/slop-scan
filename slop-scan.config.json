@@ -1,21 +1,10 @@
 {
   "ignores": [
-    "**/node_modules/**",
+    "**/vendor/**",
     "**/.git/**",
-    "**/dist/**",
-    "**/.next/**",
     "**/coverage/**",
-    "**/*.generated.*",
-    "benchmarks/.cache/**",
-    "tests/fixtures/repos/**"
+    "**/*.generated.*"
   ],
-  "overrides": [
-    {
-      "files": ["src/rules/**"],
-      "rules": {
-        "structure.directory-fanout-hotspot": { "enabled": false },
-        "structure.over-fragmentation": { "enabled": false }
-      }
-    }
-  ]
+  "rules": {},
+  "overrides": []
 }
