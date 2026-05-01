@@ -58,7 +58,7 @@ final class DebugOutputRule extends BaseRule
             if (is_array($previous) && $previous[0] === T_FUNCTION) {
                 continue;
             }
-            if ((is_array($previous) && in_array($previous[0], [T_OBJECT_OPERATOR, T_DOUBLE_COLON], true)) || $previous === '->' || $previous === '::') {
+            if (is_array($previous) && in_array($previous[0], [T_OBJECT_OPERATOR, T_DOUBLE_COLON], true)) {
                 continue;
             }
             if (self::nextMeaningfulToken($tokens, $index) !== '(') {

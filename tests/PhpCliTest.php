@@ -238,7 +238,7 @@ PHP);
         $this->remove($fixture);
     }
 
-    public function testStaticAnalysisSuppressionRulesDetectBlanketSuppressionsAndCountAllSuppressionsForExcessiveRule(): void
+    public function testStaticAnalysisSuppressionDetection(): void
     {
         $fixture = $this->makeFixture();
         mkdir($fixture . '/src', 0777, true);

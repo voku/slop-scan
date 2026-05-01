@@ -39,7 +39,7 @@ final class CommentedOutCodeRule extends BaseRule
         $findings = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.comments') ?? [] as $comment) {
             $body = self::commentBody($comment['text']);
-            if ($body === '' || !preg_match(self::codePattern(), $body) || !preg_match('/[;{}]/', $body)) {
+            if ($body === '' || !preg_match(self::codePattern(), $body) || !self::hasStatementShape($body)) {
                 continue;
             }
             $findings[] = new Finding(
@@ -69,5 +69,11 @@ final class CommentedOutCodeRule extends BaseRule
     private static function codePattern(): string
     {
         return '/^(?:' . implode('|', self::CODE_PATTERNS) . ')/i';
+    }
+
+    private static function hasStatementShape(string $body): bool
+    {
+        // Require a statement-style terminator so prose like "if the cache is warm" stays quiet.
+        return preg_match('/[;{}]/', $body) === 1;
     }
 }

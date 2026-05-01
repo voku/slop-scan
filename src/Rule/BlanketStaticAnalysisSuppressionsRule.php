@@ -32,7 +32,7 @@ final class BlanketStaticAnalysisSuppressionsRule extends BaseRule
             if ($directive === 'phpstan-ignore' && StaticAnalysisSuppressions::hasScopedPhpstanIgnoreTail($tail)) {
                 continue;
             }
-            if ($directive !== 'phpstan-ignore' && $tail !== '' && preg_match('/[A-Za-z0-9_\\\\.-]/', $tail)) {
+            if ($directive !== 'phpstan-ignore' && StaticAnalysisSuppressions::hasInlineContextTail($tail)) {
                 continue;
             }
             $findings[] = new Finding(
