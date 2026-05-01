@@ -11,13 +11,19 @@ use SlopScan\Reporter\GithubReporter;
 use SlopScan\Reporter\JsonReporter;
 use SlopScan\Reporter\LintReporter;
 use SlopScan\Reporter\TextReporter;
+use SlopScan\Rule\BlanketStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\CommentedOutCodeRule;
+use SlopScan\Rule\DebugOutputRule;
 use SlopScan\Rule\DirectoryFanoutHotspotRule;
 use SlopScan\Rule\DuplicateFunctionSignaturesRule;
 use SlopScan\Rule\EmptyCatchRule;
 use SlopScan\Rule\ErrorSwallowingRule;
+use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\MockHeavyTestsWithoutAssertionsRule;
 use SlopScan\Rule\OverFragmentationRule;
 use SlopScan\Rule\PassThroughWrappersRule;
 use SlopScan\Rule\PlaceholderCommentsRule;
+use SlopScan\Rule\StackedStaticAnalysisSuppressionsRule;
 
 final class DefaultRegistry
 {
@@ -31,6 +37,12 @@ final class DefaultRegistry
         foreach ([
             new EmptyCatchRule(),
             new ErrorSwallowingRule(),
+            new BlanketStaticAnalysisSuppressionsRule(),
+            new ExcessiveStaticAnalysisSuppressionsRule(),
+            new StackedStaticAnalysisSuppressionsRule(),
+            new CommentedOutCodeRule(),
+            new DebugOutputRule(),
+            new MockHeavyTestsWithoutAssertionsRule(),
             new PlaceholderCommentsRule(),
             new PassThroughWrappersRule(),
             new DirectoryFanoutHotspotRule(),

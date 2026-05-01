@@ -45,6 +45,8 @@ function proxy($value) {
     return transform($value);
 }
 
+var_dump($value);
+
 try {
     risky();
 } catch (Throwable $e) {
@@ -65,6 +67,7 @@ PHP);
         self::assertGreaterThanOrEqual(2, $result->summary['findingCount']);
         self::assertStringContainsString('php.empty-catch', (new LintReporter())->render($result));
         $ruleIds = $this->ruleIds($result->findings);
+        self::assertContains('php.debug-output', $ruleIds);
         self::assertContains('php.empty-catch', $ruleIds);
         self::assertContains('php.pass-through-wrappers', $ruleIds);
         self::assertContains('php.placeholder-comments', $ruleIds);
@@ -148,10 +151,13 @@ PHP);
         file_put_contents($fixture . '/dupes/A.php', "<?php\nfunction copied(\$value) {\n    return \$value;\n}\n");
         file_put_contents($fixture . '/dupes/B.php', "<?php\nfunction copied(\$other) {\n    return \$other;\n}\n");
         file_put_contents($fixture . '/dupes/Wrapper.php', "<?php\nfunction wrapper(\$value) {\n    return transform(\$value);\n}\ntry {\n    risky();\n} catch (Throwable \$e) {\n    error_log(\$e->getMessage());\n}\n");
+        file_put_contents($fixture . '/dupes/AgentLeftovers.php', "<?php\n// return transform(\$value);\nvar_dump(\$value);\n");
 
         $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
 
         self::assertSame([
+            'php.commented-out-code',
+            'php.debug-output',
             'php.directory-fanout-hotspot',
             'php.duplicate-function-signatures',
             'php.error-swallowing',
@@ -159,7 +165,7 @@ PHP);
             'php.pass-through-wrappers',
         ], $this->ruleIds($result->findings));
         self::assertSame('many', $result->directoryScores[0]['path']);
-        self::assertSame(16, $result->summary['fileCount']);
+        self::assertSame(17, $result->summary['fileCount']);
         self::assertSame(16, $result->summary['functionCount']);
         self::assertNotNull($result->summary['normalized']['scorePerKloc']);
     }
@@ -228,6 +234,137 @@ PHP);
         self::assertSame([], $result->findings);
         self::assertSame('0 findings', (new LintReporter())->render($result));
         self::assertStringContainsString('"findingCount": 0', (new JsonReporter())->render($result));
+
+        $this->remove($fixture);
+    }
+
+    public function testStaticAnalysisSuppressionDetection(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Ignored.php', <<<'PHP'
+<?php
+
+// @phpstan-ignore-next-line
+risky($input);
+// @phpstan-ignore-line
+risky($input);
+// @phpstan-ignore
+risky($input);
+        // @phpstan-ignore argument.type (expected during dependency upgrade)
+        risky($input);
+        // @psalm-suppress MixedAssignment
+        $value = risky($input);
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertContains('php.blanket-static-analysis-suppressions', $this->ruleIds($result->findings));
+        self::assertContains('php.excessive-static-analysis-suppressions', $this->ruleIds($result->findings));
+        self::assertSame(3, $this->countForRule($result->findings, 'php.blanket-static-analysis-suppressions'));
+        self::assertSame(1, $this->countForRule($result->findings, 'php.excessive-static-analysis-suppressions'));
+        self::assertSame(
+            ['suppressions=5', 'threshold=3', 'lines=3,5,7,9,11'],
+            $this->firstEvidenceForRule($result->findings, 'php.excessive-static-analysis-suppressions')
+        );
+
+        $this->remove($fixture);
+    }
+
+    public function testCommentedOutCodeAndDebugOutputRulesDetectAgentLeftovers(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Leftovers.php', <<<'PHP'
+<?php
+
+function dump($value) {
+    return $value;
+}
+
+// return transform($value);
+print_r($value);
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertContains('php.commented-out-code', $this->ruleIds($result->findings));
+        self::assertContains('php.debug-output', $this->ruleIds($result->findings));
+        self::assertSame(1, $this->countForRule($result->findings, 'php.commented-out-code'));
+        self::assertSame(1, $this->countForRule($result->findings, 'php.debug-output'));
+
+        $this->remove($fixture);
+    }
+
+    public function testMockHeavyTestsWithoutAssertionsRuleDetectsMockOnlyTests(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/tests', 0777, true);
+        file_put_contents($fixture . '/tests/OnlyMocksTest.php', <<<'PHP'
+<?php
+
+use PHPUnit\Framework\TestCase;
+
+final class OnlyMocksTest extends TestCase
+{
+    public function testBuildsMocksButAssertsNothing(): void
+    {
+        $first = $this->createMock(\stdClass::class);
+        $second = $this->createMock(\ArrayObject::class);
+
+        takes_dependencies($first, $second);
+    }
+}
+PHP);
+        file_put_contents($fixture . '/tests/ExpectationTest.php', <<<'PHP'
+<?php
+
+use PHPUnit\Framework\TestCase;
+
+final class ExpectationTest extends TestCase
+{
+    public function testUsesMockExpectations(): void
+    {
+        $dependency = $this->createMock(\stdClass::class);
+        $dependency->expects($this->once())->method('__toString');
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertContains('php.mock-heavy-tests-without-assertions', $this->ruleIds($result->findings));
+        self::assertSame(1, $this->countForRule($result->findings, 'php.mock-heavy-tests-without-assertions'));
+        self::assertSame(
+            ['tests=1', 'mocks=2', 'assertions=0', 'expectations=0'],
+            $this->firstEvidenceForRule($result->findings, 'php.mock-heavy-tests-without-assertions')
+        );
+
+        $this->remove($fixture);
+    }
+
+    public function testStackedStaticAnalysisSuppressionsRuleDetectsClusteredSuppressions(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Stacked.php', <<<'PHP'
+<?php
+
+// @psalm-suppress MixedAssignment
+// @psalm-suppress MixedArgument
+$value = risky($input);
+
+// @psalm-suppress MixedAssignment
+$safe = already_documented($input);
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertContains('php.stacked-static-analysis-suppressions', $this->ruleIds($result->findings));
+        self::assertSame(1, $this->countForRule($result->findings, 'php.stacked-static-analysis-suppressions'));
+        $evidence = $this->firstEvidenceForRule($result->findings, 'php.stacked-static-analysis-suppressions');
+        self::assertStringContainsString('suppressions=2', $evidence[0]);
+        self::assertNotContains('php.excessive-static-analysis-suppressions', $this->ruleIds($result->findings));
 
         $this->remove($fixture);
     }
@@ -594,6 +731,28 @@ PHP;
         foreach ($findings as $finding) {
             if ($finding->ruleId === $ruleId) {
                 return $finding->score;
+            }
+        }
+        self::fail("Missing finding for {$ruleId}");
+    }
+
+    /**
+     * @param list<Finding> $findings findings to inspect
+     */
+    private function countForRule(array $findings, string $ruleId): int
+    {
+        return count(array_filter($findings, static fn(Finding $finding): bool => $finding->ruleId === $ruleId));
+    }
+
+    /**
+     * @param list<Finding> $findings findings to inspect
+     * @return list<string> evidence for the requested rule ID
+     */
+    private function firstEvidenceForRule(array $findings, string $ruleId): array
+    {
+        foreach ($findings as $finding) {
+            if ($finding->ruleId === $ruleId) {
+                return $finding->evidence;
             }
         }
         self::fail("Missing finding for {$ruleId}");

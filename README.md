@@ -119,6 +119,12 @@ The PHP implementation scans:
 
 - `php.empty-catch`
 - `php.error-swallowing`
+- `php.blanket-static-analysis-suppressions`
+- `php.excessive-static-analysis-suppressions`
+- `php.stacked-static-analysis-suppressions`
+- `php.commented-out-code`
+- `php.debug-output`
+- `php.mock-heavy-tests-without-assertions`
 - `php.placeholder-comments`
 - `php.pass-through-wrappers`
 - `php.directory-fanout-hotspot`
