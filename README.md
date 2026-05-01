@@ -32,34 +32,37 @@ php dist/slop-scan.phar scan .
 
 ## Quick start
 
-Scan the current repository:
+1. Install dependencies:
+
+```bash
+composer install
+```
+
+2. Scan the current repository:
 
 ```bash
 php bin/slop-scan.php scan .
 ```
 
-Scan in lint mode:
+3. Pick an output format that matches your workflow:
 
 ```bash
 php bin/slop-scan.php scan . --lint
-```
-
-Emit JSON:
-
-```bash
 php bin/slop-scan.php scan . --json
-```
-
-Emit GitHub Actions annotations:
-
-```bash
 php bin/slop-scan.php scan . --github
 ```
 
-Ignore paths:
+4. Ignore generated or irrelevant paths when needed:
 
 ```bash
 php bin/slop-scan.php scan . --ignore 'vendor/**' --ignore 'tests/fixtures/**'
+```
+
+5. Create a baseline when you want CI to fail only on newly introduced findings:
+
+```bash
+php bin/slop-scan.php scan . --baseline-file slop-baseline.json --generate-baseline
+php bin/slop-scan.php scan . --baseline-file slop-baseline.json --github
 ```
 
 ## Delta comparisons
@@ -115,21 +118,27 @@ The PHP implementation scans:
 - `.phtml`
 - `.inc`
 
-## Current built-in rules
+## What the built-in rules check and why
 
-- `php.empty-catch`
-- `php.error-swallowing`
-- `php.blanket-static-analysis-suppressions`
-- `php.excessive-static-analysis-suppressions`
-- `php.stacked-static-analysis-suppressions`
-- `php.commented-out-code`
-- `php.debug-output`
-- `php.mock-heavy-tests-without-assertions`
-- `php.placeholder-comments`
-- `php.pass-through-wrappers`
-- `php.directory-fanout-hotspot`
-- `php.over-fragmentation`
-- `php.duplicate-function-signatures`
+`slop-scan` focuses on explainable, reviewable heuristics. These rules try to catch patterns that often show up in rushed, weakly reviewed, or partially cleaned-up code:
+
+| Rule | What it checks | Why it matters |
+| --- | --- | --- |
+| `php.empty-catch` | `catch` blocks with no statements | Exceptions disappear silently and make failures harder to debug. |
+| `php.error-swallowing` | `catch` blocks that log/print and continue without `throw` or `return` | Errors are acknowledged but not handled, so broken execution keeps going. |
+| `php.blanket-static-analysis-suppressions` | Broad `@phpstan-ignore`, `@psalm-suppress`, and similar comments | Blanket suppressions hide real problems and reduce trust in static analysis. |
+| `php.excessive-static-analysis-suppressions` | Files with more suppression comments than the configured threshold | A file full of suppressions often signals design debt or papered-over typing issues. |
+| `php.stacked-static-analysis-suppressions` | Back-to-back suppression comments above one code site | Stacked ignores are a strong smell that one line is resisting cleanup. |
+| `php.commented-out-code` | Comments that look like disabled code | Dead code in comments adds noise and creates doubt about what is still relevant. |
+| `php.debug-output` | Calls like `var_dump()`, `print_r()`, `dd()`, or `ray()` left in source | Debug leftovers usually should not ship in production code. |
+| `php.mock-heavy-tests-without-assertions` | Tests that mostly build mocks but do not assert behavior | These tests look busy but often do not protect behavior. |
+| `php.placeholder-comments` | Comments such as TODO, FIXME, HACK, placeholder, temporary | These markers often reveal unfinished or intentionally deferred work. |
+| `php.pass-through-wrappers` | Functions that mostly forward input to another function | Thin wrappers can indicate unnecessary indirection and generated-looking structure. |
+| `php.directory-fanout-hotspot` | Directories with unusually high PHP file counts | Large clusters of files can indicate sprawl and review-unfriendly structure. |
+| `php.over-fragmentation` | Directories with many tiny PHP files | Excessively tiny files can make simple behavior harder to follow. |
+| `php.duplicate-function-signatures` | Repeated function signatures across the repository | Repetition can point to copy-paste design and missed abstraction opportunities. |
+
+The tool is intentionally heuristic: a finding is a prompt for review, not a verdict.
 
 ## Configuration
 
@@ -172,8 +181,8 @@ composer run lint
 composer run test
 composer run scan:self
 composer run phar:build
+```
 
 The repository dogfoods `slop-scan` in CI by scanning the whole checkout with the committed `slop-scan.baseline.json`, so pull requests fail only when they introduce new findings.
-```
 
 The implementation lives in PSR-4 class files under `src/`, organized by responsibility (for example `Contract/`, `Fact/`, `Model/`, `Reporter/`, `Rule/`, `Runtime/`, and `Support/`); tests live in `tests/`.

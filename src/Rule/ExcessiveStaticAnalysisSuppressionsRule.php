@@ -28,7 +28,7 @@ final class ExcessiveStaticAnalysisSuppressionsRule extends BaseRule
                 $suppressions[] = $comment;
             }
         }
-        if (count($suppressions) < $threshold) {
+        if (count($suppressions) <= $threshold) {
             return [];
         }
         $first = $suppressions[0];

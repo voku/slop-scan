@@ -110,7 +110,8 @@ PHP);
         self::assertSame(['src/Ignore.php'], $config['ignores']);
         self::assertSame(1, $config['thresholds']['unused']);
         self::assertSame([['path' => 'src/Example.php']], $config['overrides']);
-        self::assertSame(['php.pass-through-wrappers', 'php.placeholder-comments'], $this->ruleIds($result->findings));
+        self::assertSame(['php.debug-output', 'php.pass-through-wrappers', 'php.placeholder-comments'], $this->ruleIds($result->findings));
+        self::assertSame(1.25, $this->scoreForRule($result->findings, 'php.debug-output'));
         self::assertSame(1.0, $this->scoreForRule($result->findings, 'php.pass-through-wrappers'));
         self::assertSame(1.0, $this->scoreForRule($result->findings, 'php.placeholder-comments'));
     }
