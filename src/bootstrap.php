@@ -1079,6 +1079,9 @@ final class LintReporter implements ReporterPlugin
 
 final class GithubReporter implements ReporterPlugin
 {
+    private const DEFAULT_LINE = 1;
+    private const DEFAULT_COLUMN = 1;
+
     public function id(): string { return 'github'; }
 
     public function render(AnalysisResult $result): string
@@ -1091,13 +1094,14 @@ final class GithubReporter implements ReporterPlugin
     {
         $lines = [];
         foreach ($findings as $finding) {
-            foreach ($finding->locations ?: [['path' => $finding->path ?? '', 'line' => 1, 'column' => 1]] as $location) {
+            foreach ($finding->locations ?: [['path' => $finding->path ?? '', 'line' => self::DEFAULT_LINE, 'column' => self::DEFAULT_COLUMN]] as $location) {
                 $properties = [];
-                if (($location['path'] ?? '') !== '') {
-                    $properties[] = 'file=' . self::escape((string) $location['path']);
+                $path = (string) ($location['path'] ?? '');
+                if ($path !== '') {
+                    $properties[] = 'file=' . self::escape($path);
                 }
-                $properties[] = 'line=' . self::escape((string) ($location['line'] ?? 1));
-                $properties[] = 'col=' . self::escape((string) ($location['column'] ?? 1));
+                $properties[] = 'line=' . self::escape((string) ($location['line'] ?? self::DEFAULT_LINE));
+                $properties[] = 'col=' . self::escape((string) ($location['column'] ?? self::DEFAULT_COLUMN));
                 $lines[] = '::error ' . implode(',', $properties) . '::' . self::escape($finding->message . ' (' . $finding->ruleId . ')');
             }
         }
@@ -1135,7 +1139,11 @@ final class Baseline
         }
     }
 
-    /** @param list<Finding> $findings @param array<string,mixed> $delta @return list<Finding> */
+    /**
+     * @param list<Finding>       $findings
+     * @param array<string,mixed> $delta
+     * @return list<Finding>
+     */
     public static function addedFindings(array $findings, array $delta): array
     {
         $added = [];
@@ -1157,7 +1165,11 @@ final class Baseline
         }));
     }
 
-    /** @param array<string,mixed> $report @param array<string,mixed> $delta @return array<string,mixed> */
+    /**
+     * @param array<string,mixed> $report
+     * @param array<string,mixed> $delta
+     * @return array<string,mixed>
+     */
     public static function reportWithDelta(array $report, array $delta): array
     {
         $report['baseline'] = [

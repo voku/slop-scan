@@ -384,11 +384,27 @@ PHP);
     {
         $fixture = $this->makeFixture();
         mkdir($fixture . '/src', 0777, true);
-        file_put_contents($fixture . '/src/A.php', "<?php\n// TODO baseline\nfunction proxy(\$value) {\n    return transform(\$value);\n}\n");
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO baseline
+function proxy($value) {
+    return transform($value);
+}
+PHP);
         $baselineFile = $fixture . '/slop-baseline.json';
 
         [$generateExit, $generateOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--generate-baseline']);
-        file_put_contents($fixture . '/src/A.php', "<?php\n// TODO baseline\nfunction proxy(\$value) {\n    return transform(\$value);\n}\ntry {\n    risky();\n} catch (Throwable \$e) {\n}\n");
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO baseline
+function proxy($value) {
+    return transform($value);
+}
+try {
+    risky();
+} catch (Throwable $e) {
+}
+PHP);
         [$jsonExit, $jsonOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--json']);
         [$githubExit, $githubOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--github']);
         [$lintExit, $lintOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--lint']);
