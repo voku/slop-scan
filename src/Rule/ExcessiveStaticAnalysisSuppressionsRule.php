@@ -27,10 +27,12 @@ final class ExcessiveStaticAnalysisSuppressionsRule extends BaseRule
             return [];
         }
         $first = $suppressions[0];
+        $lines = array_map(static fn(array $comment): string => (string) $comment['line'], $suppressions);
+        $lineEvidence = implode(',', array_slice($lines, 0, 8));
         $evidence = [
             'suppressions=' . count($suppressions),
             'threshold=' . $threshold,
-            'lines=' . implode(',', array_slice(array_map(static fn(array $comment): string => (string) $comment['line'], $suppressions), 0, 8)),
+            'lines=' . $lineEvidence,
         ];
         return [new Finding($this->id(), $this->family(), $this->severity(), 'file', 'Found excessive static-analysis suppression comments in one PHP file', $evidence, min(3.0, 0.5 * count($suppressions)), [['path' => $context->file->path, 'line' => $first['line'], 'column' => 1]], $context->file->path)];
     }
