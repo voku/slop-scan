@@ -232,7 +232,7 @@ PHP);
         $this->remove($fixture);
     }
 
-    public function testStaticAnalysisSuppressionRulesDetectBlanketAndExcessiveSuppressions(): void
+    public function testStaticAnalysisSuppressionRulesDetectBlanketSuppressionsAndCountAllSuppressionsForExcessiveRule(): void
     {
         $fixture = $this->makeFixture();
         mkdir($fixture . '/src', 0777, true);
@@ -257,7 +257,10 @@ PHP);
         self::assertContains('php.excessive-static-analysis-suppressions', $this->ruleIds($result->findings));
         self::assertSame(3, $this->countForRule($result->findings, 'php.blanket-static-analysis-suppressions'));
         self::assertSame(1, $this->countForRule($result->findings, 'php.excessive-static-analysis-suppressions'));
-        self::assertStringContainsString('suppressions=5', $this->firstEvidenceForRule($result->findings, 'php.excessive-static-analysis-suppressions')[0]);
+        self::assertSame(
+            ['suppressions=5', 'threshold=3', 'lines=3,5,7,9,11'],
+            $this->firstEvidenceForRule($result->findings, 'php.excessive-static-analysis-suppressions')
+        );
 
         $this->remove($fixture);
     }

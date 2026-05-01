@@ -39,6 +39,16 @@ final class ExcessiveStaticAnalysisSuppressionsRule extends BaseRule
             'threshold=' . $threshold,
             'lines=' . $lineEvidence,
         ];
-        return [new Finding($this->id(), $this->family(), $this->severity(), 'file', 'Found excessive static-analysis suppression comments in one PHP file', $evidence, min(self::MAX_EXCESSIVE_SCORE, self::SCORE_MULTIPLIER * count($suppressions)), [['path' => $context->file->path, 'line' => $first['line'], 'column' => 1]], $context->file->path)];
+        return [new Finding(
+            $this->id(),
+            $this->family(),
+            $this->severity(),
+            'file',
+            'Found excessive static-analysis suppression comments in one PHP file',
+            $evidence,
+            min(self::MAX_EXCESSIVE_SCORE, self::SCORE_MULTIPLIER * count($suppressions)),
+            [['path' => $context->file->path, 'line' => $first['line'], 'column' => 1]],
+            $context->file->path
+        )];
     }
 }
