@@ -45,6 +45,8 @@ function proxy($value) {
     return transform($value);
 }
 
+var_dump($value);
+
 try {
     risky();
 } catch (Throwable $e) {
@@ -65,6 +67,7 @@ PHP);
         self::assertGreaterThanOrEqual(2, $result->summary['findingCount']);
         self::assertStringContainsString('php.empty-catch', (new LintReporter())->render($result));
         $ruleIds = $this->ruleIds($result->findings);
+        self::assertContains('php.debug-output', $ruleIds);
         self::assertContains('php.empty-catch', $ruleIds);
         self::assertContains('php.pass-through-wrappers', $ruleIds);
         self::assertContains('php.placeholder-comments', $ruleIds);
@@ -148,10 +151,13 @@ PHP);
         file_put_contents($fixture . '/dupes/A.php', "<?php\nfunction copied(\$value) {\n    return \$value;\n}\n");
         file_put_contents($fixture . '/dupes/B.php', "<?php\nfunction copied(\$other) {\n    return \$other;\n}\n");
         file_put_contents($fixture . '/dupes/Wrapper.php', "<?php\nfunction wrapper(\$value) {\n    return transform(\$value);\n}\ntry {\n    risky();\n} catch (Throwable \$e) {\n    error_log(\$e->getMessage());\n}\n");
+        file_put_contents($fixture . '/dupes/AgentLeftovers.php', "<?php\n// return transform(\$value);\nvar_dump(\$value);\n");
 
         $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
 
         self::assertSame([
+            'php.commented-out-code',
+            'php.debug-output',
             'php.directory-fanout-hotspot',
             'php.duplicate-function-signatures',
             'php.error-swallowing',
@@ -159,7 +165,7 @@ PHP);
             'php.pass-through-wrappers',
         ], $this->ruleIds($result->findings));
         self::assertSame('many', $result->directoryScores[0]['path']);
-        self::assertSame(16, $result->summary['fileCount']);
+        self::assertSame(17, $result->summary['fileCount']);
         self::assertSame(16, $result->summary['functionCount']);
         self::assertNotNull($result->summary['normalized']['scorePerKloc']);
     }
@@ -245,10 +251,10 @@ risky($input);
 risky($input);
 // @phpstan-ignore
 risky($input);
-// @phpstan-ignore argument.type expected during dependency upgrade
-risky($input);
-// @psalm-suppress MixedAssignment
-$value = risky($input);
+        // @phpstan-ignore argument.type (expected during dependency upgrade)
+        risky($input);
+        // @psalm-suppress MixedAssignment
+        $value = risky($input);
 PHP);
 
         $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
@@ -261,6 +267,34 @@ PHP);
             ['suppressions=5', 'threshold=3', 'lines=3,5,7,9,11'],
             $this->firstEvidenceForRule($result->findings, 'php.excessive-static-analysis-suppressions')
         );
+
+        $this->remove($fixture);
+    }
+
+    public function testCommentedOutCodeAndDebugOutputRulesDetectAgentLeftovers(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Leftovers.php', <<<'PHP'
+<?php
+
+class Debugger {
+    public function dump($value) {
+        return $value;
+    }
+}
+
+// return transform($value);
+$debugger->dump($value);
+print_r($value);
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertContains('php.commented-out-code', $this->ruleIds($result->findings));
+        self::assertContains('php.debug-output', $this->ruleIds($result->findings));
+        self::assertSame(1, $this->countForRule($result->findings, 'php.commented-out-code'));
+        self::assertSame(1, $this->countForRule($result->findings, 'php.debug-output'));
 
         $this->remove($fixture);
     }

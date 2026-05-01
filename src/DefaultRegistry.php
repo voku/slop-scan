@@ -12,6 +12,8 @@ use SlopScan\Reporter\JsonReporter;
 use SlopScan\Reporter\LintReporter;
 use SlopScan\Reporter\TextReporter;
 use SlopScan\Rule\BlanketStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\CommentedOutCodeRule;
+use SlopScan\Rule\DebugOutputRule;
 use SlopScan\Rule\DirectoryFanoutHotspotRule;
 use SlopScan\Rule\DuplicateFunctionSignaturesRule;
 use SlopScan\Rule\EmptyCatchRule;
@@ -37,6 +39,8 @@ final class DefaultRegistry
             new BlanketStaticAnalysisSuppressionsRule(),
             new ExcessiveStaticAnalysisSuppressionsRule(),
             new StackedStaticAnalysisSuppressionsRule(),
+            new CommentedOutCodeRule(),
+            new DebugOutputRule(),
             new PlaceholderCommentsRule(),
             new PassThroughWrappersRule(),
             new DirectoryFanoutHotspotRule(),

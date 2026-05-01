@@ -122,6 +122,8 @@ The PHP implementation scans:
 - `php.blanket-static-analysis-suppressions`
 - `php.excessive-static-analysis-suppressions`
 - `php.stacked-static-analysis-suppressions`
+- `php.commented-out-code`
+- `php.debug-output`
 - `php.placeholder-comments`
 - `php.pass-through-wrappers`
 - `php.directory-fanout-hotspot`

@@ -8,6 +8,7 @@ final class StaticAnalysisSuppressions
 {
     private const GENERAL_PATTERN = '/@(phpstan-ignore(?:-(?:next-)?line)?|psalm-suppress|psalm-ignore-var|phpcsSuppress)\b/i';
     private const PHPSTAN_IGNORE_PATTERN = '/@(phpstan-ignore(?:-(?:next-)?line)?)\b(?<tail>[^\r\n]*)/i';
+    private const PHPSTAN_IGNORE_IDENTIFIER_PATTERN = '/^[a-z0-9_.-]+(?:\s+\([^()\r\n]+\))?$/i';
 
     public static function hasAnySuppression(string $comment): bool
     {
@@ -25,5 +26,10 @@ final class StaticAnalysisSuppressions
             'directive' => strtolower($match[1]),
             'tail' => trim((string) $match['tail']),
         ];
+    }
+
+    public static function hasScopedPhpstanIgnoreTail(string $tail): bool
+    {
+        return preg_match(self::PHPSTAN_IGNORE_IDENTIFIER_PATTERN, trim($tail)) === 1;
     }
 }
