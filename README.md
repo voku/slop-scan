@@ -160,4 +160,4 @@ composer run test
 composer run scan:self
 ```
 
-The implementation lives in `src/bootstrap.php`; tests live in `tests/`.
+The implementation lives in PSR-4 class files under `src/`; `src/bootstrap.php` remains the lightweight fallback bootstrap/autoloader and tests live in `tests/`.
