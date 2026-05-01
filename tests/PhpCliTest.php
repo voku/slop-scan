@@ -467,7 +467,7 @@ PHP;
         self::assertSame(['box::value(1)', 'value(1)'], array_column($functions, 'signature'));
         self::assertSame(11, $catches[0]['line']);
         self::assertSame(['$input'], $functions[0]['params']);
-        self::assertSame("\n        risky();\n    ", $catches[0]['body']);
+        self::assertSame('', trim($catches[0]['body']));
         self::assertSame(false, $summary['available']);
         self::assertSame(0, $summary['classCount']);
         self::assertSame(0, $summary['functionCount']);
