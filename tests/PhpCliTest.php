@@ -296,6 +296,53 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testMockHeavyTestsWithoutAssertionsRuleDetectsMockOnlyTests(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/tests', 0777, true);
+        file_put_contents($fixture . '/tests/OnlyMocksTest.php', <<<'PHP'
+<?php
+
+use PHPUnit\Framework\TestCase;
+
+final class OnlyMocksTest extends TestCase
+{
+    public function testBuildsMocksButAssertsNothing(): void
+    {
+        $first = $this->createMock(\stdClass::class);
+        $second = $this->createMock(\ArrayObject::class);
+
+        takes_dependencies($first, $second);
+    }
+}
+PHP);
+        file_put_contents($fixture . '/tests/ExpectationTest.php', <<<'PHP'
+<?php
+
+use PHPUnit\Framework\TestCase;
+
+final class ExpectationTest extends TestCase
+{
+    public function testUsesMockExpectations(): void
+    {
+        $dependency = $this->createMock(\stdClass::class);
+        $dependency->expects($this->once())->method('__toString');
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertContains('php.mock-heavy-tests-without-assertions', $this->ruleIds($result->findings));
+        self::assertSame(1, $this->countForRule($result->findings, 'php.mock-heavy-tests-without-assertions'));
+        self::assertSame(
+            ['tests=1', 'mocks=2', 'assertions=0', 'expectations=0'],
+            $this->firstEvidenceForRule($result->findings, 'php.mock-heavy-tests-without-assertions')
+        );
+
+        $this->remove($fixture);
+    }
+
     public function testStackedStaticAnalysisSuppressionsRuleDetectsClusteredSuppressions(): void
     {
         $fixture = $this->makeFixture();

@@ -19,6 +19,7 @@ use SlopScan\Rule\DuplicateFunctionSignaturesRule;
 use SlopScan\Rule\EmptyCatchRule;
 use SlopScan\Rule\ErrorSwallowingRule;
 use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\MockHeavyTestsWithoutAssertionsRule;
 use SlopScan\Rule\OverFragmentationRule;
 use SlopScan\Rule\PassThroughWrappersRule;
 use SlopScan\Rule\PlaceholderCommentsRule;
@@ -41,6 +42,7 @@ final class DefaultRegistry
             new StackedStaticAnalysisSuppressionsRule(),
             new CommentedOutCodeRule(),
             new DebugOutputRule(),
+            new MockHeavyTestsWithoutAssertionsRule(),
             new PlaceholderCommentsRule(),
             new PassThroughWrappersRule(),
             new DirectoryFanoutHotspotRule(),

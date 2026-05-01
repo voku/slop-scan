@@ -124,6 +124,7 @@ The PHP implementation scans:
 - `php.stacked-static-analysis-suppressions`
 - `php.commented-out-code`
 - `php.debug-output`
+- `php.mock-heavy-tests-without-assertions`
 - `php.placeholder-comments`
 - `php.pass-through-wrappers`
 - `php.directory-fanout-hotspot`
