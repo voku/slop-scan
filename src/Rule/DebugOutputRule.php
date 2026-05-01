@@ -10,7 +10,7 @@ use SlopScan\Runtime\ProviderContext;
 final class DebugOutputRule extends BaseRule
 {
     private const DEBUG_OUTPUT_SCORE = 1.25;
-    private const DEBUG_FUNCTIONS = ['var_dump', 'print_r', 'dump', 'dd', 'ray'];
+    private const DEBUG_FUNCTIONS = ['var_dump', 'print_r', 'dd', 'ray'];
 
     public function id(): string { return 'php.debug-output'; }
     public function family(): string { return 'debugging'; }

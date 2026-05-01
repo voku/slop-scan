@@ -10,7 +10,9 @@ final class StaticAnalysisSuppressions
     private const PHPSTAN_IGNORE_PATTERN = '/@(phpstan-ignore(?:-(?:next-)?line)?)\b(?<tail>[^\r\n]*)/i';
     // Keep the reason single-level so simple regex parsing can distinguish one optional reason
     // from other trailing text without backtracking-heavy nested-parenthesis handling.
+    // Plain @phpstan-ignore accepts a single identifier such as "x", so this variant keeps the middle segment optional.
     private const PHPSTAN_IGNORE_IDENTIFIER_PATTERN = '/^[a-z0-9_](?:[a-z0-9_.-]*[a-z0-9_])?(?:\s+\([^()\r\n]+\))?$/i';
+    // Inline ignore-line/next-line context should be descriptive enough to avoid one-character tails looking intentional.
     private const INLINE_IDENTIFIER_PATTERN = '/^[a-z0-9_](?:[a-z0-9_.-]*[a-z0-9_])(?:\s+\([^()\r\n]+\))?$/i';
     private const INLINE_CONTEXT_PATTERN = '/^(?:[A-Za-z][A-Za-z0-9 _.,:-]{1,}|\([^()\r\n]+\))$/';
 
