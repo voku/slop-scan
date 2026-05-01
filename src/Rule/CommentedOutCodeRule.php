@@ -10,7 +10,23 @@ use SlopScan\Runtime\ProviderContext;
 final class CommentedOutCodeRule extends BaseRule
 {
     private const COMMENTED_OUT_CODE_SCORE = 0.75;
-    private const CODE_PATTERN = '/^(?:<\?php\b|return\b|throw\b|if\s*\(|elseif\s*\(|foreach\s*\(|for\s*\(|while\s*\(|switch\s*\(|case\b|try\b|catch\s*\(|\$[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]+\])?\s*=|[A-Za-z_\\\\][A-Za-z0-9_\\\\]*\s*\([^)]*\)\s*;|\}\s*else\b)/i';
+    private const CODE_PATTERNS = [
+        '<\?php\b',
+        'return\b',
+        'throw\b',
+        'if\s*\(',
+        'elseif\s*\(',
+        'foreach\s*\(',
+        'for\s*\(',
+        'while\s*\(',
+        'switch\s*\(',
+        'case\b',
+        'try\b',
+        'catch\s*\(',
+        '\$[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]+\])?\s*=',
+        '[A-Za-z_\\\\][A-Za-z0-9_\\\\]*\s*\([^)]*\)\s*;',
+        '\}\s*else\b',
+    ];
 
     public function id(): string { return 'php.commented-out-code'; }
     public function family(): string { return 'comments'; }
@@ -23,7 +39,7 @@ final class CommentedOutCodeRule extends BaseRule
         $findings = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.comments') ?? [] as $comment) {
             $body = self::commentBody($comment['text']);
-            if ($body === '' || !preg_match(self::CODE_PATTERN, $body) || !preg_match('/[;{}]/', $body)) {
+            if ($body === '' || !preg_match(self::codePattern(), $body) || !preg_match('/[;{}]/', $body)) {
                 continue;
             }
             $findings[] = new Finding(
@@ -48,5 +64,10 @@ final class CommentedOutCodeRule extends BaseRule
         $body = preg_replace('/^\s*(?:\/\/|#|\/\*\*?| \*)\s?/', '', $body) ?? $body;
 
         return trim(preg_replace('/\s*\*\/\s*$/', '', $body) ?? $body);
+    }
+
+    private static function codePattern(): string
+    {
+        return '/^(?:' . implode('|', self::CODE_PATTERNS) . ')/i';
     }
 }

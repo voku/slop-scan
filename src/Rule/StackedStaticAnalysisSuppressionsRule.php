@@ -11,6 +11,7 @@ use SlopScan\Support\StaticAnalysisSuppressions;
 final class StackedStaticAnalysisSuppressionsRule extends BaseRule
 {
     private const DEFAULT_THRESHOLD = 2;
+    private const MINIMUM_THRESHOLD = 2;
     private const MAX_CLUSTER_SCORE = 2.5;
     private const SCORE_MULTIPLIER = 0.75;
 
@@ -21,7 +22,7 @@ final class StackedStaticAnalysisSuppressionsRule extends BaseRule
 
     public function evaluate(ProviderContext $context): array
     {
-        $threshold = max(2, (int) ($context->ruleConfig['options']['commentCount'] ?? self::DEFAULT_THRESHOLD));
+        $threshold = max(self::MINIMUM_THRESHOLD, (int) ($context->ruleConfig['options']['commentCount'] ?? self::DEFAULT_THRESHOLD));
         $clusters = [];
         $current = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.comments') ?? [] as $comment) {

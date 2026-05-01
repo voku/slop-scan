@@ -35,7 +35,17 @@ final class BlanketStaticAnalysisSuppressionsRule extends BaseRule
             if ($directive !== 'phpstan-ignore' && $tail !== '' && preg_match('/[A-Za-z0-9_\\\\.-]/', $tail)) {
                 continue;
             }
-            $findings[] = new Finding($this->id(), $this->family(), $this->severity(), 'file', 'Found blanket PHPStan suppression without an identifier or reason', [trim($comment['text'])], self::BLANKET_SUPPRESSION_SCORE, [['path' => $context->file->path, 'line' => $comment['line'], 'column' => 1]], $context->file->path);
+            $findings[] = new Finding(
+                $this->id(),
+                $this->family(),
+                $this->severity(),
+                'file',
+                'Found blanket PHPStan suppression without an identifier or reason',
+                [trim($comment['text'])],
+                self::BLANKET_SUPPRESSION_SCORE,
+                [['path' => $context->file->path, 'line' => $comment['line'], 'column' => 1]],
+                $context->file->path
+            );
         }
         return $findings;
     }
