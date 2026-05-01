@@ -1,0 +1,5 @@
+{
+  "tool": "slop-scan-php",
+  "target": "src",
+  "purpose": "Baseline marker for the PHP implementation's self-discovery scan."
+}

@@ -1,11 +1,7 @@
 .pi/
-node_modules/
-dist/
-benchmarks/.cache/
+.phpunit.result.cache
+vendor/
 autoresearch.md
 autoresearch.sh
 autoresearch.checks.sh
 autoresearch.ideas.md
-benchmarks/results/autoresearch-candidate-rule.json
-reports/autoresearch-candidate-rule.md
-scripts/benchmark-experimental-rule.ts

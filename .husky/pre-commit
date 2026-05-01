@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-bun run format:check && bun run lint
+composer run lint && composer run test
