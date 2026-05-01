@@ -43,6 +43,12 @@ Emit JSON:
 php bin/slop-scan.php scan . --json
 ```
 
+Emit GitHub Actions annotations:
+
+```bash
+php bin/slop-scan.php scan . --github
+```
+
 Ignore paths:
 
 ```bash
@@ -65,6 +71,13 @@ php bin/slop-scan.php scan . --json > head.json
 php bin/slop-scan.php delta --base-report base.json --head-report head.json --json
 ```
 
+Generate a scan baseline, then fail only on findings introduced after that baseline:
+
+```bash
+php bin/slop-scan.php scan . --baseline-file slop-baseline.json --generate-baseline
+php bin/slop-scan.php scan . --baseline-file slop-baseline.json --github
+```
+
 Fail CI when selected delta statuses are present:
 
 ```bash
@@ -77,7 +90,10 @@ Supported command/options:
 - `delta`
 - `--json`
 - `--lint`
+- `--github`
 - `--ignore`
+- `--baseline-file`
+- `--generate-baseline`
 - `--base`
 - `--head`
 - `--base-report`

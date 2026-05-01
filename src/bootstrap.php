@@ -338,6 +338,7 @@ final class DefaultRegistry
         $registry->registerReporter(new TextReporter());
         $registry->registerReporter(new JsonReporter());
         $registry->registerReporter(new LintReporter());
+        $registry->registerReporter(new GithubReporter());
         return $registry;
     }
 }
@@ -1060,19 +1061,154 @@ final class LintReporter implements ReporterPlugin
 
     public function render(AnalysisResult $result): string
     {
-        if ($result->findings === []) {
+        return self::renderFindings($result->findings, 'findings');
+    }
+
+    /** @param list<Finding> $findings */
+    public static function renderFindings(array $findings, string $label = 'findings'): string
+    {
+        if ($findings === []) {
             return '0 findings';
         }
         $lines = [];
-        foreach ($result->findings as $finding) {
+        foreach ($findings as $finding) {
             $lines[] = "{$finding->severity}  {$finding->message}  {$finding->ruleId}";
             foreach (array_slice($finding->locations, 0, 3) as $location) {
                 $lines[] = '  at ' . $location['path'] . ':' . $location['line'] . ':' . ($location['column'] ?? 1);
             }
             $lines[] = '';
         }
-        $lines[] = count($result->findings) . ' finding' . (count($result->findings) === 1 ? '' : 's');
+        $count = count($findings);
+        $lines[] = $count . ' ' . ($count === 1 ? rtrim($label, 's') : $label);
         return rtrim(implode("\n", $lines));
+    }
+}
+
+final class GithubReporter implements ReporterPlugin
+{
+    private const DEFAULT_LINE = 1;
+    private const DEFAULT_COLUMN = 1;
+
+    public function id(): string { return 'github'; }
+
+    public function render(AnalysisResult $result): string
+    {
+        return self::renderFindings($result->findings);
+    }
+
+    /** @param list<Finding> $findings */
+    public static function renderFindings(array $findings): string
+    {
+        $lines = [];
+        foreach ($findings as $finding) {
+            foreach (self::locationsFor($finding) as $location) {
+                $properties = [];
+                $path = (string) ($location['path'] ?? '');
+                if ($path !== '') {
+                    $properties[] = 'file=' . self::escape($path);
+                }
+                $properties[] = 'line=' . self::escape((string) ($location['line'] ?? self::DEFAULT_LINE));
+                $properties[] = 'col=' . self::escape((string) ($location['column'] ?? self::DEFAULT_COLUMN));
+                $lines[] = '::error ' . implode(',', $properties) . '::' . self::escape($finding->message . ' (' . $finding->ruleId . ')');
+            }
+        }
+        return implode("\n", $lines);
+    }
+
+    /** @return list<array{path:string,line:int,column:int}> */
+    private static function locationsFor(Finding $finding): array
+    {
+        if ($finding->locations !== []) {
+            return $finding->locations;
+        }
+        return [['path' => $finding->path ?? '', 'line' => self::DEFAULT_LINE, 'column' => self::DEFAULT_COLUMN]];
+    }
+
+    private static function escape(string $value): string
+    {
+        return str_replace(['%', "\r", "\n", ':', ',', '{', '}'], ['%25', '%0D', '%0A', '%3A', '%2C', '%7B', '%7D'], $value);
+    }
+}
+
+final class Baseline
+{
+    public static function readReport(string $path): array
+    {
+        if (!is_file($path)) {
+            throw new \InvalidArgumentException("Baseline file does not exist: {$path}");
+        }
+        $decoded = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($decoded) || !isset($decoded['findings']) || !is_array($decoded['findings'])) {
+            throw new \InvalidArgumentException("Baseline file is not a slop-scan JSON report: {$path}");
+        }
+        return $decoded;
+    }
+
+    public static function writeReport(string $path, array $report): void
+    {
+        $directory = dirname($path);
+        if (!is_dir($directory)) {
+            throw new \InvalidArgumentException("Baseline directory does not exist: {$directory}");
+        }
+        if (file_put_contents($path, Json::encode($report, true) . "\n") === false) {
+            throw new \RuntimeException("Unable to write baseline file: {$path}");
+        }
+    }
+
+    /**
+     * @param list<Finding>       $findings
+     * @param array<string,mixed> $delta
+     * @return list<Finding>
+     */
+    public static function addedFindings(array $findings, array $delta): array
+    {
+        $added = [];
+        foreach ($delta['changes'] ?? [] as $change) {
+            if (($change['status'] ?? null) === 'added') {
+                $added[(string) ($change['fingerprint'] ?? '')] = true;
+            }
+        }
+        if ($added === []) {
+            return [];
+        }
+        $newFindings = [];
+        foreach ($findings as $finding) {
+            if (self::matchesAnyFingerprint($finding, $added)) {
+                $newFindings[] = $finding;
+            }
+        }
+        return $newFindings;
+    }
+
+    /** @param array<string,bool> $fingerprints */
+    private static function matchesAnyFingerprint(Finding $finding, array $fingerprints): bool
+    {
+        foreach (($finding->deltaIdentity['occurrences'] ?? []) as $occurrence) {
+            if (isset($fingerprints[(string) ($occurrence['fingerprint'] ?? '')])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param array<string,mixed> $report
+     * @param array<string,mixed> $delta
+     * @return array<string,mixed>
+     */
+    public static function reportWithDelta(array $report, array $delta): array
+    {
+        $report['baseline'] = [
+            'summary' => $delta['summary'] ?? ['added' => 0, 'resolved' => 0],
+            'changes' => $delta['changes'] ?? [],
+        ];
+        $report['newFindings'] = [];
+        foreach ($delta['changes'] ?? [] as $change) {
+            if (($change['status'] ?? null) === 'added') {
+                $report['newFindings'][] = $change['finding'];
+            }
+        }
+        return $report;
     }
 }
 
@@ -1145,7 +1281,31 @@ final class Cli
                 $config = Config::load($args['target']);
                 $config['ignores'] = array_values(array_merge($config['ignores'], $args['ignore']));
                 $result = (new Analyzer())->analyze($args['target'], $config, DefaultRegistry::create());
-                $reporter = DefaultRegistry::create()->reporter($args['json'] ? 'json' : ($args['lint'] ? 'lint' : 'text'));
+                if ($args['generateBaseline']) {
+                    if ($args['baselineFile'] === null || $args['baselineFile'] === '') {
+                        throw new \InvalidArgumentException('Missing --baseline-file for --generate-baseline.');
+                    }
+                    Baseline::writeReport($args['baselineFile'], $result->toReport());
+                    fwrite(STDOUT, "slop-scan baseline written to {$args['baselineFile']}\n");
+                    return 0;
+                }
+                if ($args['baselineFile'] !== null && $args['baselineFile'] !== '') {
+                    $currentReport = $result->toReport();
+                    $baselineReport = Baseline::readReport($args['baselineFile']);
+                    $delta = Delta::diff($baselineReport, $currentReport);
+                    $newFindings = Baseline::addedFindings($result->findings, $delta);
+                    if ($args['json']) {
+                        fwrite(STDOUT, Json::encode(Baseline::reportWithDelta($currentReport, $delta), true) . "\n");
+                    } elseif ($args['github']) {
+                        fwrite(STDOUT, GithubReporter::renderFindings($newFindings) . "\n");
+                    } elseif ($args['lint']) {
+                        fwrite(STDOUT, self::formatFindings($newFindings) . "\n");
+                    } else {
+                        fwrite(STDOUT, self::formatDelta($delta) . "\n");
+                    }
+                    return ($delta['summary']['added'] ?? 0) > 0 ? 1 : 0;
+                }
+                $reporter = DefaultRegistry::create()->reporter(self::scanReporterId($args));
                 fwrite(STDOUT, $reporter->render($result) . "\n");
                 return 0;
             }
@@ -1172,7 +1332,31 @@ final class Cli
     /** @param list<string> $argv @return array<string,mixed> */
     private static function parse(array $argv): array
     {
-        $args = ['help' => false, 'json' => false, 'lint' => false, 'ignore' => [], 'command' => null, 'target' => '.', 'base' => null, 'head' => null, 'baseReport' => null, 'headReport' => null, 'failOn' => null];
+        $args = [
+            'help' => false,
+            'json' => false,
+            'lint' => false,
+            'github' => false,
+            'generateBaseline' => false,
+            'baselineFile' => null,
+            'ignore' => [],
+            'command' => null,
+            'target' => '.',
+            'base' => null,
+            'head' => null,
+            'baseReport' => null,
+            'headReport' => null,
+            'failOn' => null,
+        ];
+        $optionValueKeys = [
+            '--ignore' => 'ignore',
+            '--base' => 'base',
+            '--head' => 'head',
+            '--base-report' => 'baseReport',
+            '--head-report' => 'headReport',
+            '--fail-on' => 'failOn',
+            '--baseline-file' => 'baselineFile',
+        ];
         $positionals = [];
         for ($i = 0; $i < count($argv); $i++) {
             $arg = $argv[$i];
@@ -1182,9 +1366,13 @@ final class Cli
                 $args['json'] = true;
             } elseif ($arg === '--lint') {
                 $args['lint'] = true;
-            } elseif (in_array($arg, ['--ignore', '--base', '--head', '--base-report', '--head-report', '--fail-on'], true)) {
+            } elseif ($arg === '--github') {
+                $args['github'] = true;
+            } elseif ($arg === '--generate-baseline') {
+                $args['generateBaseline'] = true;
+            } elseif (isset($optionValueKeys[$arg])) {
                 $value = $argv[++$i] ?? throw new \InvalidArgumentException("Missing value for {$arg}");
-                $key = ['--ignore' => 'ignore', '--base' => 'base', '--head' => 'head', '--base-report' => 'baseReport', '--head-report' => 'headReport', '--fail-on' => 'failOn'][$arg];
+                $key = $optionValueKeys[$arg];
                 if ($key === 'ignore') {
                     $args['ignore'][] = $value;
                 } else {
@@ -1226,6 +1414,30 @@ final class Cli
             $lines[] = $change['status'] . ' ' . ($change['finding']['ruleId'] ?? '<unknown>');
         }
         return implode("\n", $lines);
+    }
+
+    /** @param list<Finding> $findings */
+    private static function formatFindings(array $findings): string
+    {
+        if ($findings === []) {
+            return '0 new findings';
+        }
+        return LintReporter::renderFindings($findings, 'new findings');
+    }
+
+    /** @param array<string,mixed> $args */
+    private static function scanReporterId(array $args): string
+    {
+        if ($args['json']) {
+            return 'json';
+        }
+        if ($args['github']) {
+            return 'github';
+        }
+        if ($args['lint']) {
+            return 'lint';
+        }
+        return 'text';
     }
 
     /** @param array<string,mixed> $delta */
