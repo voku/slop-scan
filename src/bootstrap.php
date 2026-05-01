@@ -761,6 +761,7 @@ final class PhpFacts
             $name = $matches[1][$index][0];
             $params = array_values(array_filter(array_map(static fn(string $param): string => trim(preg_replace('/=.*$/', '', $param) ?? ''), explode(',', $matches[2][$index][0]))));
             $className = self::enclosingClassName($text, $offset);
+            // Qualify methods so common signatures such as constructors do not look duplicated across unrelated classes.
             $signature = ($className !== null ? strtolower($className) . '::' : '') . strtolower($name) . '(' . count($params) . ')';
             $bodyStart = $offset + strlen($match[0]);
             $body = self::balancedBody($text, $bodyStart);
@@ -822,6 +823,9 @@ final class PhpFacts
         return substr($text, $start);
     }
 
+    /**
+     * Returns the class-like scope containing the function at the given byte offset, if any.
+     */
     private static function enclosingClassName(string $text, int $offset): ?string
     {
         $position = 0;
