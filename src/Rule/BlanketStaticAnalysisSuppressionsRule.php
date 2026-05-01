@@ -6,6 +6,7 @@ namespace SlopScan\Rule;
 
 use SlopScan\Model\Finding;
 use SlopScan\Runtime\ProviderContext;
+use SlopScan\Support\CommentText;
 use SlopScan\Support\StaticAnalysisSuppressions;
 
 final class BlanketStaticAnalysisSuppressionsRule extends BaseRule
@@ -22,7 +23,7 @@ final class BlanketStaticAnalysisSuppressionsRule extends BaseRule
     {
         $findings = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.comments') ?? [] as $comment) {
-            $text = self::commentBody($comment['text']);
+            $text = CommentText::body($comment['text']);
             $match = StaticAnalysisSuppressions::phpstanIgnoreDirective($text);
             if ($match === null) {
                 continue;
@@ -48,12 +49,5 @@ final class BlanketStaticAnalysisSuppressionsRule extends BaseRule
             );
         }
         return $findings;
-    }
-
-    private static function commentBody(string $comment): string
-    {
-        $body = trim($comment);
-        $body = preg_replace('/^\s*(?:\/\/|#|\/\*\*?| \*)\s?/', '', $body) ?? $body;
-        return trim(preg_replace('/\s*\*\/\s*$/', '', $body) ?? $body);
     }
 }

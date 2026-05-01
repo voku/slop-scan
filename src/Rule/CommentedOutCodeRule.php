@@ -6,6 +6,7 @@ namespace SlopScan\Rule;
 
 use SlopScan\Model\Finding;
 use SlopScan\Runtime\ProviderContext;
+use SlopScan\Support\CommentText;
 
 final class CommentedOutCodeRule extends BaseRule
 {
@@ -38,7 +39,7 @@ final class CommentedOutCodeRule extends BaseRule
     {
         $findings = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.comments') ?? [] as $comment) {
-            $body = self::commentBody($comment['text']);
+            $body = CommentText::body($comment['text']);
             if ($body === '' || !preg_match(self::codePattern(), $body) || !self::hasStatementShape($body)) {
                 continue;
             }
@@ -56,14 +57,6 @@ final class CommentedOutCodeRule extends BaseRule
         }
 
         return $findings;
-    }
-
-    private static function commentBody(string $comment): string
-    {
-        $body = trim($comment);
-        $body = preg_replace('/^\s*(?:\/\/|#|\/\*\*?| \*)\s?/', '', $body) ?? $body;
-
-        return trim(preg_replace('/\s*\*\/\s*$/', '', $body) ?? $body);
     }
 
     private static function codePattern(): string

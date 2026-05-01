@@ -278,14 +278,11 @@ PHP);
         file_put_contents($fixture . '/src/Leftovers.php', <<<'PHP'
 <?php
 
-class Debugger {
-    public function dump($value) {
-        return $value;
-    }
+function dump($value) {
+    return $value;
 }
 
 // return transform($value);
-$debugger->dump($value);
 print_r($value);
 PHP);
 

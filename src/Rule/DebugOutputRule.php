@@ -54,11 +54,11 @@ final class DebugOutputRule extends BaseRule
                 continue;
             }
 
-            $previous = self::previousMeaningfulToken($tokens, $index);
-            if (is_array($previous) && $previous[0] === T_FUNCTION) {
+            $previousToken = self::previousMeaningfulToken($tokens, $index);
+            if (is_array($previousToken) && $previousToken[0] === T_FUNCTION) {
                 continue;
             }
-            if (is_array($previous) && in_array($previous[0], [T_OBJECT_OPERATOR, T_DOUBLE_COLON], true)) {
+            if (is_array($previousToken) && in_array($previousToken[0], [T_OBJECT_OPERATOR, T_DOUBLE_COLON], true)) {
                 continue;
             }
             if (self::nextMeaningfulToken($tokens, $index) !== '(') {
