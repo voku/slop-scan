@@ -1155,14 +1155,16 @@ final class Baseline
         if ($added === []) {
             return [];
         }
-        return array_values(array_filter($findings, static function (Finding $finding) use ($added): bool {
+        $newFindings = [];
+        foreach ($findings as $finding) {
             foreach (($finding->deltaIdentity['occurrences'] ?? []) as $occurrence) {
                 if (isset($added[(string) ($occurrence['fingerprint'] ?? '')])) {
-                    return true;
+                    $newFindings[] = $finding;
+                    continue 2;
                 }
             }
-            return false;
-        }));
+        }
+        return $newFindings;
     }
 
     /**
@@ -1176,10 +1178,12 @@ final class Baseline
             'summary' => $delta['summary'] ?? ['added' => 0, 'resolved' => 0],
             'changes' => $delta['changes'] ?? [],
         ];
-        $report['newFindings'] = array_values(array_map(
-            static fn(array $change): array => $change['finding'],
-            array_filter($delta['changes'] ?? [], static fn(array $change): bool => ($change['status'] ?? null) === 'added')
-        ));
+        $report['newFindings'] = [];
+        foreach ($delta['changes'] ?? [] as $change) {
+            if (($change['status'] ?? null) === 'added') {
+                $report['newFindings'][] = $change['finding'];
+            }
+        }
         return $report;
     }
 }
@@ -1268,7 +1272,7 @@ final class Cli
                     if ($args['json']) {
                         fwrite(STDOUT, Json::encode(Baseline::reportWithDelta($result->toReport(), $delta), true) . "\n");
                     } elseif ($args['github']) {
-                        fwrite(STDOUT, GithubReporter::renderFindings($newFindings) . ($newFindings === [] ? '' : "\n"));
+                        fwrite(STDOUT, GithubReporter::renderFindings($newFindings) . "\n");
                     } elseif ($args['lint']) {
                         fwrite(STDOUT, self::formatFindings($newFindings) . "\n");
                     } else {
@@ -1304,6 +1308,15 @@ final class Cli
     private static function parse(array $argv): array
     {
         $args = ['help' => false, 'json' => false, 'lint' => false, 'github' => false, 'generateBaseline' => false, 'baselineFile' => null, 'ignore' => [], 'command' => null, 'target' => '.', 'base' => null, 'head' => null, 'baseReport' => null, 'headReport' => null, 'failOn' => null];
+        $optionValueKeys = [
+            '--ignore' => 'ignore',
+            '--base' => 'base',
+            '--head' => 'head',
+            '--base-report' => 'baseReport',
+            '--head-report' => 'headReport',
+            '--fail-on' => 'failOn',
+            '--baseline-file' => 'baselineFile',
+        ];
         $positionals = [];
         for ($i = 0; $i < count($argv); $i++) {
             $arg = $argv[$i];
@@ -1317,9 +1330,9 @@ final class Cli
                 $args['github'] = true;
             } elseif ($arg === '--generate-baseline') {
                 $args['generateBaseline'] = true;
-            } elseif (in_array($arg, ['--ignore', '--base', '--head', '--base-report', '--head-report', '--fail-on', '--baseline-file'], true)) {
+            } elseif (isset($optionValueKeys[$arg])) {
                 $value = $argv[++$i] ?? throw new \InvalidArgumentException("Missing value for {$arg}");
-                $key = ['--ignore' => 'ignore', '--base' => 'base', '--head' => 'head', '--base-report' => 'baseReport', '--head-report' => 'headReport', '--fail-on' => 'failOn', '--baseline-file' => 'baselineFile'][$arg];
+                $key = $optionValueKeys[$arg];
                 if ($key === 'ignore') {
                     $args['ignore'][] = $value;
                 } else {
