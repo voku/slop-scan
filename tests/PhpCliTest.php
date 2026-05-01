@@ -101,7 +101,8 @@ PHP);
         self::assertSame(1, $config['thresholds']['unused']);
         self::assertSame([['path' => 'src/Example.php']], $config['overrides']);
         self::assertSame(['php.pass-through-wrappers', 'php.placeholder-comments'], $this->ruleIds($result->findings));
-        self::assertSame(1.0, $result->findings[0]->score);
+        self::assertSame(1.0, $this->scoreForRule($result->findings, 'php.pass-through-wrappers'));
+        self::assertSame(1.0, $this->scoreForRule($result->findings, 'php.placeholder-comments'));
     }
 
     public function testAnalyzerFindsDirectoryAndRepoRegressions(): void
@@ -301,6 +302,16 @@ PHP;
         $path = sys_get_temp_dir() . '/slop-scan-php-' . bin2hex(random_bytes(4));
         mkdir($path, 0777, true);
         return $path;
+    }
+
+    private function scoreForRule(array $findings, string $ruleId): float
+    {
+        foreach ($findings as $finding) {
+            if ($finding->ruleId === $ruleId) {
+                return $finding->score;
+            }
+        }
+        self::fail("Missing finding for {$ruleId}");
     }
 
     /** @param list<string> $arguments @return array{0:int,1:string} */

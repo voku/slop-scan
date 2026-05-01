@@ -856,7 +856,10 @@ final class PhpFacts
             }
             $position += strlen($content);
         }
-        return $classScopes[array_key_last($classScopes)]['name'] ?? null;
+        if ($classScopes === []) {
+            return null;
+        }
+        return $classScopes[array_key_last($classScopes)]['name'];
     }
 }
 
