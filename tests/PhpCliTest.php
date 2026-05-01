@@ -468,41 +468,54 @@ PHP;
         self::assertSame(11, $catches[0]['line']);
         self::assertSame(['$input'], $functions[0]['params']);
         self::assertSame('', trim($catches[0]['body']));
-        self::assertSame(false, $summary['available']);
-        self::assertSame(0, $summary['classCount']);
-        self::assertSame(0, $summary['functionCount']);
+        self::assertArrayHasKey('available', $summary);
+        self::assertArrayHasKey('classCount', $summary);
+        self::assertArrayHasKey('functionCount', $summary);
     }
 
-    public function testParserSummaryHandlesAvailableAndErrorStatesViaStub(): void
+    public function testParserSummaryHandlesUnavailableInjectedAndErrorStates(): void
     {
-        if (class_exists('voku\\SimplePhpParser\\Parsers\\SimplePhpParser')) {
-            self::markTestSkipped('Real parser class is already available.');
-        }
-
         $file = $this->fixtureDir . '/src/ParserSummary.php';
         file_put_contents($file, "<?php\nclass Parsed {}\nfunction parsed() {}\n");
 
-        $this->ensureParserStub();
+        if (!class_exists('voku\\SimplePhpParser\\Parsers\\SimplePhpParser')) {
+            $unavailable = PhpFacts::parserSummary($file);
+
+            self::assertSame([
+                'available' => false,
+                'classCount' => 0,
+                'functionCount' => 0,
+            ], $unavailable);
+        }
+
+        PhpFacts::useParserFactoryForTesting(static fn(): object => new SimplePhpParserStub());
         SimplePhpParserStub::$classes = ['Parsed'];
         SimplePhpParserStub::$functions = ['parsed'];
         SimplePhpParserStub::$exceptionMessage = null;
 
-        $success = PhpFacts::parserSummary($file);
+        try {
+            $success = PhpFacts::parserSummary($file);
 
-        self::assertSame([
-            'available' => true,
-            'classCount' => 1,
-            'functionCount' => 1,
-        ], $success);
+            self::assertSame([
+                'available' => true,
+                'classCount' => 1,
+                'functionCount' => 1,
+            ], $success);
 
-        SimplePhpParserStub::$exceptionMessage = 'parse failed';
+            SimplePhpParserStub::$exceptionMessage = 'parse failed';
 
-        $error = PhpFacts::parserSummary($file);
+            $error = PhpFacts::parserSummary($file);
 
-        self::assertSame(true, $error['available']);
-        self::assertSame(0, $error['classCount']);
-        self::assertSame(0, $error['functionCount']);
-        self::assertSame('parse failed', $error['error']);
+            self::assertSame(true, $error['available']);
+            self::assertSame(0, $error['classCount']);
+            self::assertSame(0, $error['functionCount']);
+            self::assertSame('parse failed', $error['error']);
+        } finally {
+            PhpFacts::useParserFactoryForTesting(null);
+            SimplePhpParserStub::$classes = [];
+            SimplePhpParserStub::$functions = [];
+            SimplePhpParserStub::$exceptionMessage = null;
+        }
     }
 
     /**
@@ -576,13 +589,6 @@ PHP;
         fclose($pipes[2]);
         $exit = proc_close($process);
         return [$exit, (string) $output, (string) $error];
-    }
-
-    private function ensureParserStub(): void
-    {
-        if (!class_exists('voku\\SimplePhpParser\\Parsers\\SimplePhpParser')) {
-            class_alias(SimplePhpParserStub::class, 'voku\\SimplePhpParser\\Parsers\\SimplePhpParser');
-        }
     }
 
     private function remove(string $path): void

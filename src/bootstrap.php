@@ -736,6 +736,9 @@ final class FunctionDuplicationFactProvider implements FactProvider
 
 final class PhpFacts
 {
+    /** @var null|callable():object */
+    private static $parserFactory = null;
+
     /** @return list<array{text:string,line:int}> */
     public static function comments(string $text): array
     {
@@ -786,15 +789,21 @@ final class PhpFacts
         return $catches;
     }
 
+    /** @param null|callable():object $parserFactory */
+    public static function useParserFactoryForTesting(?callable $parserFactory): void
+    {
+        self::$parserFactory = $parserFactory;
+    }
+
     /** @return array{available:bool,classCount:int,functionCount:int,error?:string} */
     public static function parserSummary(string $absolutePath): array
     {
         $class = '\\voku\\SimplePhpParser\\Parsers\\SimplePhpParser';
-        if (!class_exists($class)) {
+        if (self::$parserFactory === null && !class_exists($class)) {
             return ['available' => false, 'classCount' => 0, 'functionCount' => 0];
         }
         try {
-            $parser = new $class();
+            $parser = self::$parserFactory !== null ? (self::$parserFactory)() : new $class();
             $parser->parse($absolutePath);
             return [
                 'available' => true,
