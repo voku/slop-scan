@@ -9,6 +9,8 @@ use SlopScan\Runtime\ProviderContext;
 
 final class StackedStaticAnalysisSuppressionsRule extends BaseRule
 {
+    private const DEFAULT_THRESHOLD = 2;
+
     public function id(): string { return 'php.stacked-static-analysis-suppressions'; }
     public function family(): string { return 'static-analysis'; }
     public function scope(): string { return 'file'; }
@@ -16,7 +18,7 @@ final class StackedStaticAnalysisSuppressionsRule extends BaseRule
 
     public function evaluate(ProviderContext $context): array
     {
-        $threshold = max(2, (int) ($context->ruleConfig['options']['commentCount'] ?? 2));
+        $threshold = max(2, (int) ($context->ruleConfig['options']['commentCount'] ?? self::DEFAULT_THRESHOLD));
         $clusters = [];
         $current = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.comments') ?? [] as $comment) {
@@ -27,7 +29,8 @@ final class StackedStaticAnalysisSuppressionsRule extends BaseRule
                 $current = [];
                 continue;
             }
-            if ($current !== [] && $comment['line'] !== $current[array_key_last($current)]['line'] + 1) {
+            $lastComment = $current === [] ? null : $current[array_key_last($current)];
+            if ($lastComment !== null && $comment['line'] !== $lastComment['line'] + 1) {
                 if (count($current) >= $threshold) {
                     $clusters[] = $current;
                 }
@@ -44,14 +47,14 @@ final class StackedStaticAnalysisSuppressionsRule extends BaseRule
 
         $findings = [];
         foreach ($clusters as $cluster) {
-            $lines = array_map(static fn(array $comment): string => (string) $comment['line'], $cluster);
+            $lines = implode(',', array_column($cluster, 'line'));
             $findings[] = new Finding(
                 $this->id(),
                 $this->family(),
                 $this->severity(),
                 'file',
                 'Found stacked static-analysis suppression comments above one PHP code site',
-                ['suppressions=' . count($cluster), 'lines=' . implode(',', $lines)],
+                ['suppressions=' . count($cluster), 'lines=' . $lines],
                 min(2.5, 0.75 * count($cluster)),
                 [['path' => $context->file->path, 'line' => $cluster[0]['line'], 'column' => 1]],
                 $context->file->path

@@ -9,6 +9,8 @@ use SlopScan\Runtime\ProviderContext;
 
 final class ExcessiveStaticAnalysisSuppressionsRule extends BaseRule
 {
+    private const DEFAULT_THRESHOLD = 3;
+
     public function id(): string { return 'php.excessive-static-analysis-suppressions'; }
     public function family(): string { return 'static-analysis'; }
     public function scope(): string { return 'file'; }
@@ -16,7 +18,7 @@ final class ExcessiveStaticAnalysisSuppressionsRule extends BaseRule
 
     public function evaluate(ProviderContext $context): array
     {
-        $threshold = max(1, (int) ($context->ruleConfig['options']['commentCount'] ?? 3));
+        $threshold = max(1, (int) ($context->ruleConfig['options']['commentCount'] ?? self::DEFAULT_THRESHOLD));
         $suppressions = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.comments') ?? [] as $comment) {
             if (preg_match('/@(phpstan-ignore(?:-(?:next-)?line)?|psalm-suppress|psalm-ignore-var|phpcsSuppress)\b/i', $comment['text'])) {
