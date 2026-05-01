@@ -19,7 +19,7 @@ final class SlopScanApplication extends Application
         $this->add(new DeltaCommand());
     }
 
-    protected function renderThrowable(\Throwable $exception, OutputInterface $output): void
+    public function renderThrowable(\Throwable $exception, OutputInterface $output): void
     {
         $message = $exception instanceof CommandNotFoundException
             ? $this->unknownCommandMessage($exception)

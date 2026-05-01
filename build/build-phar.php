@@ -3,12 +3,6 @@
 declare(strict_types=1);
 
 $rootDir = dirname(__DIR__);
-$autoload = $rootDir . '/vendor/autoload.php';
-
-if (!is_file($autoload)) {
-    fwrite(STDERR, "Composer autoload file not found. Run composer install.\n");
-    exit(1);
-}
 
 if (!extension_loaded('phar')) {
     fwrite(STDERR, "The phar extension is required to build the PHAR.\n");
@@ -22,6 +16,7 @@ if ((bool) ini_get('phar.readonly')) {
 
 $distDir = $rootDir . '/dist';
 $output = $distDir . '/slop-scan.phar';
+$buildDir = sys_get_temp_dir() . '/slop-scan-phar-' . bin2hex(random_bytes(4));
 
 if (!is_dir($distDir) && !mkdir($distDir, 0777, true) && !is_dir($distDir)) {
     fwrite(STDERR, "Unable to create {$distDir}.\n");
@@ -33,30 +28,47 @@ if (is_file($output) && !unlink($output)) {
     exit(1);
 }
 
-$files = [];
-
-foreach (['bin/slop-scan.php', 'composer.json'] as $relativePath) {
-    $files[$relativePath] = $rootDir . '/' . $relativePath;
+if (!mkdir($buildDir, 0777, true) && !is_dir($buildDir)) {
+    fwrite(STDERR, "Unable to create temporary build directory.\n");
+    exit(1);
 }
 
-foreach (collectDirectoryFiles($rootDir . '/src') as $relativePath => $absolutePath) {
-    $files[$relativePath] = $absolutePath;
-}
+try {
+    foreach (['composer.json', 'composer.lock'] as $file) {
+        if (!copy($rootDir . '/' . $file, $buildDir . '/' . $file)) {
+            throw new RuntimeException("Unable to stage {$file} for PHAR build.");
+        }
+    }
 
-foreach (collectRuntimeVendorFiles($rootDir) as $relativePath => $absolutePath) {
-    $files[$relativePath] = $absolutePath;
-}
+    runCommand(
+        ['composer', 'install', '--no-dev', '--prefer-dist', '--no-interaction', '--optimize-autoloader', '--no-scripts'],
+        $buildDir,
+    );
 
-ksort($files, SORT_STRING);
+    $files = [];
 
-$phar = new Phar($output, 0, 'slop-scan.phar');
-$phar->startBuffering();
+    foreach (['bin/slop-scan.php', 'composer.json'] as $relativePath) {
+        $files[$relativePath] = $rootDir . '/' . $relativePath;
+    }
 
-foreach ($files as $relativePath => $absolutePath) {
-    $phar->addFile($absolutePath, $relativePath);
-}
+    foreach (collectDirectoryFiles($rootDir . '/src', $rootDir) as $relativePath => $absolutePath) {
+        $files[$relativePath] = $absolutePath;
+    }
 
-$phar->setStub(<<<'PHP'
+    foreach (collectDirectoryFiles($buildDir . '/vendor', $buildDir) as $relativePath => $absolutePath) {
+        $files[$relativePath] = $absolutePath;
+    }
+
+    ksort($files, SORT_STRING);
+
+    $phar = new Phar($output, 0, 'slop-scan.phar');
+    $phar->startBuffering();
+
+    foreach ($files as $relativePath => $absolutePath) {
+        $phar->addFile($absolutePath, $relativePath);
+    }
+
+    $phar->setStub(<<<'PHP'
 #!/usr/bin/env php
 <?php
 
@@ -67,16 +79,22 @@ require 'phar://slop-scan.phar/bin/slop-scan.php';
 __HALT_COMPILER();
 PHP);
 
-$phar->stopBuffering();
+    $phar->stopBuffering();
 
-chmod($output, 0755);
+    chmod($output, 0755);
 
-fwrite(STDOUT, "PHAR written to {$output}\n");
+    fwrite(STDOUT, "PHAR written to {$output}\n");
+} catch (Throwable $exception) {
+    fwrite(STDERR, $exception->getMessage() . "\n");
+    exit(1);
+} finally {
+    removePath($buildDir);
+}
 
 /**
  * @return array<string,string>
  */
-function collectDirectoryFiles(string $directory): array
+function collectDirectoryFiles(string $directory, string $baseDir): array
 {
     if (!is_dir($directory)) {
         return [];
@@ -91,7 +109,7 @@ function collectDirectoryFiles(string $directory): array
         }
 
         $absolutePath = $file->getPathname();
-        $relativePath = ltrim(str_replace(dirname(__DIR__) . '/', '', $absolutePath), '/');
+        $relativePath = ltrim(str_replace($baseDir . '/', '', $absolutePath), '/');
         $files[$relativePath] = $absolutePath;
     }
 
@@ -101,41 +119,57 @@ function collectDirectoryFiles(string $directory): array
 }
 
 /**
- * @return array<string,string>
+ * @param list<string> $command
  */
-function collectRuntimeVendorFiles(string $rootDir): array
+function runCommand(array $command, string $workingDirectory): void
 {
-    $vendorDir = $rootDir . '/vendor';
-    $lockFile = $rootDir . '/composer.lock';
-
-    $files = [
-        'vendor/autoload.php' => $vendorDir . '/autoload.php',
+    $descriptor = [
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w'],
     ];
 
-    foreach (collectDirectoryFiles($vendorDir . '/composer') as $relativePath => $absolutePath) {
-        $files[$relativePath] = $absolutePath;
+    $process = proc_open($command, $descriptor, $pipes, $workingDirectory);
+    if (!is_resource($process)) {
+        throw new RuntimeException('Unable to start PHAR build dependency install.');
     }
 
-    if (!is_file($lockFile)) {
-        return $files;
+    $stdout = stream_get_contents($pipes[1]);
+    $stderr = stream_get_contents($pipes[2]);
+
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+
+    $exitCode = proc_close($process);
+
+    if ($exitCode !== 0) {
+        $message = trim((string) $stderr);
+        if ($message === '') {
+            $message = trim((string) $stdout);
+        }
+
+        throw new RuntimeException($message !== '' ? $message : 'PHAR build dependency install failed.');
+    }
+}
+
+function removePath(string $path): void
+{
+    if (!file_exists($path)) {
+        return;
     }
 
-    $lock = json_decode((string) file_get_contents($lockFile), true, 512, JSON_THROW_ON_ERROR);
+    if (is_file($path)) {
+        unlink($path);
 
-    foreach (($lock['packages'] ?? []) as $package) {
-        $name = $package['name'] ?? null;
-        if (!is_string($name) || $name === '') {
+        return;
+    }
+
+    foreach (scandir($path) ?: [] as $entry) {
+        if ($entry === '.' || $entry === '..') {
             continue;
         }
 
-        $packageDir = $vendorDir . '/' . $name;
-
-        foreach (collectDirectoryFiles($packageDir) as $relativePath => $absolutePath) {
-            $files[$relativePath] = $absolutePath;
-        }
+        removePath($path . DIRECTORY_SEPARATOR . $entry);
     }
 
-    ksort($files, SORT_STRING);
-
-    return $files;
+    rmdir($path);
 }
