@@ -824,7 +824,7 @@ final class PhpFacts
     }
 
     /**
-     * Returns the class-like scope containing the function at the given byte offset, if any.
+     * Returns the innermost class, interface, or trait scope containing the function at the given byte offset.
      */
     private static function enclosingClassName(string $text, int $offset): ?string
     {

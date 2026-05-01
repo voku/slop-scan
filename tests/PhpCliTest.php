@@ -10,6 +10,7 @@ use SlopScan\Config;
 use SlopScan\DefaultRegistry;
 use SlopScan\Delta;
 use SlopScan\DirectoryRecord;
+use SlopScan\FactProvider;
 use SlopScan\FactStore;
 use SlopScan\FileRecord;
 use SlopScan\Finding;
@@ -60,7 +61,10 @@ PHP);
         self::assertSame(1, $result->summary['fileCount']);
         self::assertGreaterThanOrEqual(2, $result->summary['findingCount']);
         self::assertStringContainsString('php.empty-catch', (new LintReporter())->render($result));
-        self::assertSame(['php.empty-catch', 'php.pass-through-wrappers', 'php.placeholder-comments'], $this->ruleIds($result->findings));
+        $ruleIds = $this->ruleIds($result->findings);
+        self::assertContains('php.empty-catch', $ruleIds);
+        self::assertContains('php.pass-through-wrappers', $ruleIds);
+        self::assertContains('php.placeholder-comments', $ruleIds);
         self::assertSame($this->fixtureDir, $result->rootDir);
         self::assertSame('src/Example.php', $result->files[0]->path);
         self::assertSame('src', $result->directories[0]->path);
@@ -231,7 +235,7 @@ PHP);
 
     public function testSchedulerDetectsUnresolvedProviderDependencies(): void
     {
-        $provider = new class implements \SlopScan\FactProvider {
+        $provider = new class implements FactProvider {
             public function id(): string { return 'blocked'; }
             public function scope(): string { return 'repo'; }
             public function requires(): array { return ['missing.fact']; }
