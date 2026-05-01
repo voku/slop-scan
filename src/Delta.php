@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SlopScan;
 
+use SlopScan\Model\Finding;
+
 final class Delta
 {
     public static function identityFor(Finding $finding): array

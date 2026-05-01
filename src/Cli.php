@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace SlopScan;
 
+use SlopScan\Model\Finding;
+use SlopScan\Reporter\GithubReporter;
+use SlopScan\Reporter\LintReporter;
+use SlopScan\Support\Json;
+
 final class Cli
 {
     /** @param list<string> $argv */

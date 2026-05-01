@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SlopScan;
 
+use SlopScan\Contract\LanguagePlugin;
+
 final class PhpLanguage implements LanguagePlugin
 {
     public function id(): string

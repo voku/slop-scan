@@ -4,6 +4,17 @@ declare(strict_types=1);
 
 namespace SlopScan;
 
+use SlopScan\Contract\FactProvider;
+use SlopScan\Contract\RulePlugin;
+use SlopScan\Fact\FactStore;
+use SlopScan\Model\AnalysisResult;
+use SlopScan\Model\DirectoryRecord;
+use SlopScan\Model\FileRecord;
+use SlopScan\Model\Finding;
+use SlopScan\Runtime\AnalyzerRuntime;
+use SlopScan\Runtime\ProviderContext;
+use SlopScan\Support\Lines;
+
 final class Analyzer
 {
     public function analyze(string $rootDir, array $config, Registry $registry): AnalysisResult

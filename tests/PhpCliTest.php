@@ -5,29 +5,29 @@ declare(strict_types=1);
 namespace SlopScan\Tests;
 
 use PHPUnit\Framework\TestCase;
-use SlopScan\AnalysisResult;
 use SlopScan\Analyzer;
 use SlopScan\Config;
+use SlopScan\Contract\FactProvider;
 use SlopScan\DefaultRegistry;
 use SlopScan\Delta;
 use SlopScan\Discoverer;
-use SlopScan\DirectoryRecord;
-use SlopScan\FactProvider;
-use SlopScan\FactStore;
-use SlopScan\FileRecord;
-use SlopScan\Finding;
-use SlopScan\GithubReporter;
-use SlopScan\Json;
-use SlopScan\JsonReporter;
-use SlopScan\LintReporter;
-use SlopScan\Lines;
-use SlopScan\PatternMatcher;
-use SlopScan\PhpFacts;
+use SlopScan\Fact\FactStore;
+use SlopScan\Fact\PhpFacts;
+use SlopScan\Model\AnalysisResult;
+use SlopScan\Model\DirectoryRecord;
+use SlopScan\Model\FileRecord;
+use SlopScan\Model\Finding;
 use SlopScan\PhpLanguage;
-use SlopScan\ProviderContext;
 use SlopScan\Registry;
+use SlopScan\Reporter\GithubReporter;
+use SlopScan\Reporter\JsonReporter;
+use SlopScan\Reporter\LintReporter;
+use SlopScan\Reporter\TextReporter;
+use SlopScan\Runtime\ProviderContext;
 use SlopScan\Scheduler;
-use SlopScan\TextReporter;
+use SlopScan\Support\Json;
+use SlopScan\Support\Lines;
+use SlopScan\Support\PatternMatcher;
 
 final class PhpCliTest extends TestCase
 {

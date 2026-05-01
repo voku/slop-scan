@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace SlopScan;
 
+use SlopScan\Model\Finding;
+use SlopScan\Support\Json;
+
 final class Baseline
 {
     public static function readReport(string $path): array

@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace SlopScan;
 
+use SlopScan\Contract\FactProvider;
+use SlopScan\Contract\LanguagePlugin;
+use SlopScan\Contract\ReporterPlugin;
+use SlopScan\Contract\RulePlugin;
+
 final class Registry
 {
     /** @var list<LanguagePlugin> */

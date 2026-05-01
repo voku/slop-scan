@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace SlopScan;
 
+use SlopScan\Model\DirectoryRecord;
+use SlopScan\Model\FileRecord;
+use SlopScan\Support\PatternMatcher;
+
 final class Discoverer
 {
     /** @return array{files:list<FileRecord>,directories:list<DirectoryRecord>} */

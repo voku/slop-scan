@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SlopScan;
 
+use SlopScan\Contract\FactProvider;
+
 final class Scheduler
 {
     /** @param list<FactProvider> $providers @param list<string> $initialFacts @return list<FactProvider> */

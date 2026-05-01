@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 namespace SlopScan;
-
 final class Config
 {
     /** @return array<string,mixed> */

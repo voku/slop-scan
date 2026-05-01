@@ -4,6 +4,21 @@ declare(strict_types=1);
 
 namespace SlopScan;
 
+use SlopScan\Fact\DirectoryMetricsFactProvider;
+use SlopScan\Fact\FunctionDuplicationFactProvider;
+use SlopScan\Fact\PhpStructureFactProvider;
+use SlopScan\Reporter\GithubReporter;
+use SlopScan\Reporter\JsonReporter;
+use SlopScan\Reporter\LintReporter;
+use SlopScan\Reporter\TextReporter;
+use SlopScan\Rule\DirectoryFanoutHotspotRule;
+use SlopScan\Rule\DuplicateFunctionSignaturesRule;
+use SlopScan\Rule\EmptyCatchRule;
+use SlopScan\Rule\ErrorSwallowingRule;
+use SlopScan\Rule\OverFragmentationRule;
+use SlopScan\Rule\PassThroughWrappersRule;
+use SlopScan\Rule\PlaceholderCommentsRule;
+
 final class DefaultRegistry
 {
     public static function create(): Registry
