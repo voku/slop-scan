@@ -16,6 +16,7 @@ use SlopScan\FactProvider;
 use SlopScan\FactStore;
 use SlopScan\FileRecord;
 use SlopScan\Finding;
+use SlopScan\GithubReporter;
 use SlopScan\Json;
 use SlopScan\JsonReporter;
 use SlopScan\LintReporter;
