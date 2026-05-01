@@ -315,7 +315,8 @@ PHP);
 
         self::assertContains('php.stacked-static-analysis-suppressions', $this->ruleIds($result->findings));
         self::assertSame(1, $this->countForRule($result->findings, 'php.stacked-static-analysis-suppressions'));
-        self::assertStringContainsString('suppressions=2', $this->firstEvidenceForRule($result->findings, 'php.stacked-static-analysis-suppressions')[0]);
+        $evidence = $this->firstEvidenceForRule($result->findings, 'php.stacked-static-analysis-suppressions');
+        self::assertStringContainsString('suppressions=2', $evidence[0]);
         self::assertNotContains('php.excessive-static-analysis-suppressions', $this->ruleIds($result->findings));
 
         $this->remove($fixture);

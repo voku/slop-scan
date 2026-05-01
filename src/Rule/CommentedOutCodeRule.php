@@ -11,7 +11,8 @@ use SlopScan\Support\CommentText;
 final class CommentedOutCodeRule extends BaseRule
 {
     private const COMMENTED_OUT_CODE_SCORE = 0.75;
-    // Keep these patterns simple and statement-shaped; nested array access stays out to avoid overfitting prose or complex examples.
+    // Keep these patterns simple and statement-shaped; e.g. "$items['key'] =" can match,
+    // while "$items['key']['nested'] =" intentionally stays out to avoid overfitting prose or complex examples.
     private const CODE_PATTERNS = [
         '<\?php\b',
         'return\b',
