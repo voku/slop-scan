@@ -1,0 +1,9 @@
+{
+  "rules": {
+    "php.directory-fanout-hotspot": {
+      "options": {
+        "fileCount": 50
+      }
+    }
+  }
+}
