@@ -257,7 +257,7 @@ PHP);
         self::assertContains('php.excessive-static-analysis-suppressions', $this->ruleIds($result->findings));
         self::assertSame(3, $this->countForRule($result->findings, 'php.blanket-static-analysis-suppressions'));
         self::assertSame(1, $this->countForRule($result->findings, 'php.excessive-static-analysis-suppressions'));
-        self::assertStringContainsString('suppressions=5', $this->evidenceForRule($result->findings, 'php.excessive-static-analysis-suppressions')[0]);
+        self::assertStringContainsString('suppressions=5', $this->firstEvidenceForRule($result->findings, 'php.excessive-static-analysis-suppressions')[0]);
 
         $this->remove($fixture);
     }
@@ -641,7 +641,7 @@ PHP;
      * @param list<Finding> $findings findings to inspect
      * @return list<string> evidence for the requested rule ID
      */
-    private function evidenceForRule(array $findings, string $ruleId): array
+    private function firstEvidenceForRule(array $findings, string $ruleId): array
     {
         foreach ($findings as $finding) {
             if ($finding->ruleId === $ruleId) {
