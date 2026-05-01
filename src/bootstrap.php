@@ -1061,18 +1061,25 @@ final class LintReporter implements ReporterPlugin
 
     public function render(AnalysisResult $result): string
     {
-        if ($result->findings === []) {
+        return self::renderFindings($result->findings, 'findings');
+    }
+
+    /** @param list<Finding> $findings */
+    public static function renderFindings(array $findings, string $label = 'findings'): string
+    {
+        if ($findings === []) {
             return '0 findings';
         }
         $lines = [];
-        foreach ($result->findings as $finding) {
+        foreach ($findings as $finding) {
             $lines[] = "{$finding->severity}  {$finding->message}  {$finding->ruleId}";
             foreach (array_slice($finding->locations, 0, 3) as $location) {
                 $lines[] = '  at ' . $location['path'] . ':' . $location['line'] . ':' . ($location['column'] ?? 1);
             }
             $lines[] = '';
         }
-        $lines[] = count($result->findings) . ' finding' . (count($result->findings) === 1 ? '' : 's');
+        $count = count($findings);
+        $lines[] = $count . ' ' . ($count === 1 ? rtrim($label, 's') : $label);
         return rtrim(implode("\n", $lines));
     }
 }
@@ -1110,7 +1117,7 @@ final class GithubReporter implements ReporterPlugin
 
     private static function escape(string $value): string
     {
-        return str_replace(['%', "\r", "\n", ':', ','], ['%25', '%0D', '%0A', '%3A', '%2C'], $value);
+        return str_replace(['%', "\r", "\n", ':', ',', '{', '}'], ['%25', '%0D', '%0A', '%3A', '%2C', '%7B', '%7D'], $value);
     }
 }
 
@@ -1280,7 +1287,7 @@ final class Cli
                     }
                     return ($delta['summary']['added'] ?? 0) > 0 ? 1 : 0;
                 }
-                $reporter = DefaultRegistry::create()->reporter($args['json'] ? 'json' : ($args['github'] ? 'github' : ($args['lint'] ? 'lint' : 'text')));
+                $reporter = DefaultRegistry::create()->reporter(self::scanReporterId($args));
                 fwrite(STDOUT, $reporter->render($result) . "\n");
                 return 0;
             }
@@ -1382,8 +1389,22 @@ final class Cli
         if ($findings === []) {
             return '0 new findings';
         }
-        $result = new AnalysisResult('', Config::defaults(), [], [], [], $findings, [], [], 0.0);
-        return (new LintReporter())->render($result);
+        return LintReporter::renderFindings($findings, 'new findings');
+    }
+
+    /** @param array<string,mixed> $args */
+    private static function scanReporterId(array $args): string
+    {
+        if ($args['json']) {
+            return 'json';
+        }
+        if ($args['github']) {
+            return 'github';
+        }
+        if ($args['lint']) {
+            return 'lint';
+        }
+        return 'text';
     }
 
     /** @param array<string,mixed> $delta */
