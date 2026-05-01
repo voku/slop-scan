@@ -35,7 +35,7 @@ jobs:
       - name: Run tests
         run: composer run test
 
-      - name: Run self-scan
+      - name: Run self-scan dogfood check
         run: composer run scan:self
 
       - name: Build PHAR

@@ -1,0 +1,1014 @@
+{
+    "metadata": {
+        "schemaVersion": 1,
+        "tool": {
+            "name": "slop-scan-php",
+            "version": "0.1.0"
+        },
+        "configHash": "34677438d7d8cc7514d759bc2dac430d97c66d52c955484a657a754ef3b93f37",
+        "findingFingerprintVersion": 1,
+        "plugins": []
+    },
+    "rootDir": ".",
+    "config": {
+        "ignores": [
+            "**/vendor/**",
+            "**/.git/**",
+            "**/coverage/**",
+            "**/*.generated.*"
+        ],
+        "rules": [],
+        "thresholds": [],
+        "overrides": []
+    },
+    "summary": {
+        "fileCount": 54,
+        "directoryCount": 12,
+        "findingCount": 15,
+        "repoScore": 24.25,
+        "physicalLineCount": 3440,
+        "logicalLineCount": 2867,
+        "functionCount": 25,
+        "normalized": {
+            "scorePerFile": 0.44907407407407407,
+            "scorePerKloc": 8.45831880013952,
+            "scorePerFunction": 0.97,
+            "findingsPerFile": 0.2777777777777778,
+            "findingsPerKloc": 5.231949773282176,
+            "findingsPerFunction": 0.6
+        }
+    },
+    "files": [
+        {
+            "path": "bin/slop-scan.php",
+            "extension": ".php",
+            "lineCount": 14,
+            "languageId": "php"
+        },
+        {
+            "path": "build/build-phar.php",
+            "extension": ".php",
+            "lineCount": 175,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Analyzer.php",
+            "extension": ".php",
+            "lineCount": 170,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Baseline.php",
+            "extension": ".php",
+            "lineCount": 90,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Config.php",
+            "extension": ".php",
+            "lineCount": 48,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Console/CommandSupport.php",
+            "extension": ".php",
+            "lineCount": 91,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Console/DeltaCommand.php",
+            "extension": ".php",
+            "lineCount": 91,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Console/ScanCommand.php",
+            "extension": ".php",
+            "lineCount": 116,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Console/SlopScanApplication.php",
+            "extension": ".php",
+            "lineCount": 40,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Contract/FactProvider.php",
+            "extension": ".php",
+            "lineCount": 20,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Contract/LanguagePlugin.php",
+            "extension": ".php",
+            "lineCount": 10,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Contract/ReporterPlugin.php",
+            "extension": ".php",
+            "lineCount": 13,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Contract/RulePlugin.php",
+            "extension": ".php",
+            "lineCount": 21,
+            "languageId": "php"
+        },
+        {
+            "path": "src/DefaultRegistry.php",
+            "extension": ".php",
+            "lineCount": 60,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Delta.php",
+            "extension": ".php",
+            "lineCount": 53,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Discoverer.php",
+            "extension": ".php",
+            "lineCount": 61,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Fact/DirectoryMetricsFactProvider.php",
+            "extension": ".php",
+            "lineCount": 22,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Fact/FactStore.php",
+            "extension": ".php",
+            "lineCount": 63,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Fact/FunctionDuplicationFactProvider.php",
+            "extension": ".php",
+            "lineCount": 30,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Fact/PhpFacts.php",
+            "extension": ".php",
+            "lineCount": 148,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Fact/PhpStructureFactProvider.php",
+            "extension": ".php",
+            "lineCount": 28,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Model/AnalysisResult.php",
+            "extension": ".php",
+            "lineCount": 54,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Model/DirectoryRecord.php",
+            "extension": ".php",
+            "lineCount": 18,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Model/FileRecord.php",
+            "extension": ".php",
+            "lineCount": 28,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Model/Finding.php",
+            "extension": ".php",
+            "lineCount": 46,
+            "languageId": "php"
+        },
+        {
+            "path": "src/PhpLanguage.php",
+            "extension": ".php",
+            "lineCount": 20,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Registry.php",
+            "extension": ".php",
+            "lineCount": 75,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Reporter/GithubReporter.php",
+            "extension": ".php",
+            "lineCount": 55,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Reporter/JsonReporter.php",
+            "extension": ".php",
+            "lineCount": 15,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Reporter/LintReporter.php",
+            "extension": ".php",
+            "lineCount": 38,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Reporter/TextReporter.php",
+            "extension": ".php",
+            "lineCount": 32,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/BaseRule.php",
+            "extension": ".php",
+            "lineCount": 14,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/BlanketStaticAnalysisSuppressionsRule.php",
+            "extension": ".php",
+            "lineCount": 53,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/CommentedOutCodeRule.php",
+            "extension": ".php",
+            "lineCount": 74,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/DebugOutputRule.php",
+            "extension": ".php",
+            "lineCount": 100,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/DirectoryFanoutHotspotRule.php",
+            "extension": ".php",
+            "lineCount": 26,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/DuplicateFunctionSignaturesRule.php",
+            "extension": ".php",
+            "lineCount": 25,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/EmptyCatchRule.php",
+            "extension": ".php",
+            "lineCount": 27,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/ErrorSwallowingRule.php",
+            "extension": ".php",
+            "lineCount": 28,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/ExcessiveStaticAnalysisSuppressionsRule.php",
+            "extension": ".php",
+            "lineCount": 54,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/MockHeavyTestsWithoutAssertionsRule.php",
+            "extension": ".php",
+            "lineCount": 75,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/OverFragmentationRule.php",
+            "extension": ".php",
+            "lineCount": 33,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/PassThroughWrappersRule.php",
+            "extension": ".php",
+            "lineCount": 29,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/PlaceholderCommentsRule.php",
+            "extension": ".php",
+            "lineCount": 28,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Rule/StackedStaticAnalysisSuppressionsRule.php",
+            "extension": ".php",
+            "lineCount": 70,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Runtime/AnalyzerRuntime.php",
+            "extension": ".php",
+            "lineCount": 22,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Runtime/ProviderContext.php",
+            "extension": ".php",
+            "lineCount": 20,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Scheduler.php",
+            "extension": ".php",
+            "lineCount": 35,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Support/CommentText.php",
+            "extension": ".php",
+            "lineCount": 16,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Support/Json.php",
+            "extension": ".php",
+            "lineCount": 12,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Support/Lines.php",
+            "extension": ".php",
+            "lineCount": 27,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Support/PatternMatcher.php",
+            "extension": ".php",
+            "lineCount": 27,
+            "languageId": "php"
+        },
+        {
+            "path": "src/Support/StaticAnalysisSuppressions.php",
+            "extension": ".php",
+            "lineCount": 50,
+            "languageId": "php"
+        },
+        {
+            "path": "tests/PhpCliTest.php",
+            "extension": ".php",
+            "lineCount": 850,
+            "languageId": "php"
+        }
+    ],
+    "directories": [
+        {
+            "path": "bin",
+            "filePaths": [
+                "bin/slop-scan.php"
+            ]
+        },
+        {
+            "path": "build",
+            "filePaths": [
+                "build/build-phar.php"
+            ]
+        },
+        {
+            "path": "src",
+            "filePaths": [
+                "src/Analyzer.php",
+                "src/Baseline.php",
+                "src/Config.php",
+                "src/DefaultRegistry.php",
+                "src/Delta.php",
+                "src/Discoverer.php",
+                "src/PhpLanguage.php",
+                "src/Registry.php",
+                "src/Scheduler.php"
+            ]
+        },
+        {
+            "path": "src/Console",
+            "filePaths": [
+                "src/Console/CommandSupport.php",
+                "src/Console/DeltaCommand.php",
+                "src/Console/ScanCommand.php",
+                "src/Console/SlopScanApplication.php"
+            ]
+        },
+        {
+            "path": "src/Contract",
+            "filePaths": [
+                "src/Contract/FactProvider.php",
+                "src/Contract/LanguagePlugin.php",
+                "src/Contract/ReporterPlugin.php",
+                "src/Contract/RulePlugin.php"
+            ]
+        },
+        {
+            "path": "src/Fact",
+            "filePaths": [
+                "src/Fact/DirectoryMetricsFactProvider.php",
+                "src/Fact/FactStore.php",
+                "src/Fact/FunctionDuplicationFactProvider.php",
+                "src/Fact/PhpFacts.php",
+                "src/Fact/PhpStructureFactProvider.php"
+            ]
+        },
+        {
+            "path": "src/Model",
+            "filePaths": [
+                "src/Model/AnalysisResult.php",
+                "src/Model/DirectoryRecord.php",
+                "src/Model/FileRecord.php",
+                "src/Model/Finding.php"
+            ]
+        },
+        {
+            "path": "src/Reporter",
+            "filePaths": [
+                "src/Reporter/GithubReporter.php",
+                "src/Reporter/JsonReporter.php",
+                "src/Reporter/LintReporter.php",
+                "src/Reporter/TextReporter.php"
+            ]
+        },
+        {
+            "path": "src/Rule",
+            "filePaths": [
+                "src/Rule/BaseRule.php",
+                "src/Rule/BlanketStaticAnalysisSuppressionsRule.php",
+                "src/Rule/CommentedOutCodeRule.php",
+                "src/Rule/DebugOutputRule.php",
+                "src/Rule/DirectoryFanoutHotspotRule.php",
+                "src/Rule/DuplicateFunctionSignaturesRule.php",
+                "src/Rule/EmptyCatchRule.php",
+                "src/Rule/ErrorSwallowingRule.php",
+                "src/Rule/ExcessiveStaticAnalysisSuppressionsRule.php",
+                "src/Rule/MockHeavyTestsWithoutAssertionsRule.php",
+                "src/Rule/OverFragmentationRule.php",
+                "src/Rule/PassThroughWrappersRule.php",
+                "src/Rule/PlaceholderCommentsRule.php",
+                "src/Rule/StackedStaticAnalysisSuppressionsRule.php"
+            ]
+        },
+        {
+            "path": "src/Runtime",
+            "filePaths": [
+                "src/Runtime/AnalyzerRuntime.php",
+                "src/Runtime/ProviderContext.php"
+            ]
+        },
+        {
+            "path": "src/Support",
+            "filePaths": [
+                "src/Support/CommentText.php",
+                "src/Support/Json.php",
+                "src/Support/Lines.php",
+                "src/Support/PatternMatcher.php",
+                "src/Support/StaticAnalysisSuppressions.php"
+            ]
+        },
+        {
+            "path": "tests",
+            "filePaths": [
+                "tests/PhpCliTest.php"
+            ]
+        }
+    ],
+    "findings": [
+        {
+            "ruleId": "php.blanket-static-analysis-suppressions",
+            "family": "static-analysis",
+            "severity": "weak",
+            "scope": "file",
+            "message": "Found blanket PHPStan suppression without an identifier or reason",
+            "evidence": [
+                "// Plain @phpstan-ignore may still carry a short single-segment identifier, so this pattern allows that shape too."
+            ],
+            "score": 0.75,
+            "locations": [
+                {
+                    "path": "src/Support/StaticAnalysisSuppressions.php",
+                    "line": 14,
+                    "column": 1
+                }
+            ],
+            "path": "src/Support/StaticAnalysisSuppressions.php",
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "2a84808d96c411f386916daf97b404307cb35b31454b25153cfd081ad5f1ceaf",
+                        "path": "src/Support/StaticAnalysisSuppressions.php",
+                        "line": 14,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.directory-fanout-hotspot",
+            "family": "structure",
+            "severity": "medium",
+            "scope": "directory",
+            "message": "Found high PHP file fanout in one directory",
+            "evidence": [
+                "fileCount=14"
+            ],
+            "score": 1.5,
+            "locations": [
+                {
+                    "path": "src/Rule/BaseRule.php",
+                    "line": 1,
+                    "column": 1
+                }
+            ],
+            "path": "src/Rule",
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "5bdaceec84b445f4ba846be894be0706c25224af88053ec81ca37f0caedb49b2",
+                        "path": "src/Rule/BaseRule.php",
+                        "line": 1,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.duplicate-function-signatures",
+            "family": "duplication",
+            "severity": "medium",
+            "scope": "repo",
+            "message": "Found duplicated PHP function signatures",
+            "evidence": [
+                "__construct(1)"
+            ],
+            "score": 2,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 177,
+                    "column": 1
+                },
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 178,
+                    "column": 1
+                }
+            ],
+            "path": null,
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "1a94692e156c12b7908bf27f5d16f5cb435d0493daf597e10787e3691e02a510",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 177,
+                        "column": 1
+                    },
+                    {
+                        "fingerprint": "98185d0c1ab7a647a90f664c788f330b344aa3780bbf73a26c3ac3ccb6a06539",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 178,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.duplicate-function-signatures",
+            "family": "duplication",
+            "severity": "medium",
+            "scope": "repo",
+            "message": "Found duplicated PHP function signatures",
+            "evidence": [
+                "copied(1)"
+            ],
+            "score": 2,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 151,
+                    "column": 1
+                },
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 152,
+                    "column": 1
+                }
+            ],
+            "path": null,
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "8ee1dab3d58914fa0f0cb86cefdba53c7a784bb2043338940bd1505b42f95f0d",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 151,
+                        "column": 1
+                    },
+                    {
+                        "fingerprint": "9ac2612fa18e781e800409c38889f24897ad72a0f6617a20446f5368cf8b53aa",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 152,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.duplicate-function-signatures",
+            "family": "duplication",
+            "severity": "medium",
+            "scope": "repo",
+            "message": "Found duplicated PHP function signatures",
+            "evidence": [
+                "proxy(1)"
+            ],
+            "score": 2,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 527,
+                    "column": 1
+                },
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 537,
+                    "column": 1
+                }
+            ],
+            "path": null,
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "e9f0872ef4c68fe59787b392c005080751b65dcfb96c532b814c3c7f81459dbe",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 527,
+                        "column": 1
+                    },
+                    {
+                        "fingerprint": "a5b05e8cba56e16cb24d490fe24826fe243fd3fc5c9f0b61398fd3f3f6b45caa",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 537,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.duplicate-function-signatures",
+            "family": "duplication",
+            "severity": "medium",
+            "scope": "repo",
+            "message": "Found duplicated PHP function signatures",
+            "evidence": [
+                "void::clean(0)"
+            ],
+            "score": 2,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 649,
+                    "column": 1
+                },
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 651,
+                    "column": 1
+                }
+            ],
+            "path": null,
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "f8f49aebc956d67e8405ecd9f3df6ca98e57347ec9ab0a270ab2b1bc6920235a",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 649,
+                        "column": 1
+                    },
+                    {
+                        "fingerprint": "c9a5f36a5c3268d547b30284992d0f0a4f4c1ba31c3916f20439fd0c19f34d59",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 651,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.duplicate-function-signatures",
+            "family": "duplication",
+            "severity": "medium",
+            "scope": "repo",
+            "message": "Found duplicated PHP function signatures",
+            "evidence": [
+                "void::value(1)"
+            ],
+            "score": 2,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 610,
+                    "column": 1
+                },
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 614,
+                    "column": 1
+                }
+            ],
+            "path": null,
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "bf33061f814ee5ab468b3043e2a91e382427255412bb947f40d37d1144491395",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 610,
+                        "column": 1
+                    },
+                    {
+                        "fingerprint": "aef75eed521f7ba235c63d3e10307361443e05373c49d4d61de21fa1df01b066",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 614,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.empty-catch",
+            "family": "error-handling",
+            "severity": "medium",
+            "scope": "file",
+            "message": "Found empty PHP catch block",
+            "evidence": [
+                "catch block has no statements"
+            ],
+            "score": 2,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 52,
+                    "column": 1
+                }
+            ],
+            "path": "tests/PhpCliTest.php",
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "f0f0382c76735336eb3d3d9c94f81de3fb92321461385935c7f88d09ca4e1590",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 52,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.empty-catch",
+            "family": "error-handling",
+            "severity": "medium",
+            "scope": "file",
+            "message": "Found empty PHP catch block",
+            "evidence": [
+                "catch block has no statements"
+            ],
+            "score": 2,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 542,
+                    "column": 1
+                }
+            ],
+            "path": "tests/PhpCliTest.php",
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "e73463c9feb4104c7c357afe3c1083893d2ea2a357f34a4455c8d4140a698e15",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 542,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.empty-catch",
+            "family": "error-handling",
+            "severity": "medium",
+            "scope": "file",
+            "message": "Found empty PHP catch block",
+            "evidence": [
+                "catch block has no statements"
+            ],
+            "score": 2,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 617,
+                    "column": 1
+                }
+            ],
+            "path": "tests/PhpCliTest.php",
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "e69837305d4d00690dd4afde1f0fb37ff7ae35601bc0151bae7560654ee09435",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 617,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.error-swallowing",
+            "family": "error-handling",
+            "severity": "medium",
+            "scope": "file",
+            "message": "Found PHP catch block that logs or prints and continues",
+            "evidence": [
+                "catch body logs/prints without throw or return"
+            ],
+            "score": 2,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 153,
+                    "column": 1
+                }
+            ],
+            "path": "tests/PhpCliTest.php",
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "d6e4797b0a7ace3a61573b71615afe837a520d7d27c0f845ae7316d9e06e1441",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 153,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.pass-through-wrappers",
+            "family": "abstraction",
+            "severity": "weak",
+            "scope": "file",
+            "message": "Found pass-through PHP wrapper function",
+            "evidence": [
+                "proxy"
+            ],
+            "score": 1,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 44,
+                    "column": 1
+                }
+            ],
+            "path": "tests/PhpCliTest.php",
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "f4a416d10ae4c134a26e10c06a8711eae6aeb68e846c07fed9dedb774724796a",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 44,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.pass-through-wrappers",
+            "family": "abstraction",
+            "severity": "weak",
+            "scope": "file",
+            "message": "Found pass-through PHP wrapper function",
+            "evidence": [
+                "proxy"
+            ],
+            "score": 1,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 527,
+                    "column": 1
+                }
+            ],
+            "path": "tests/PhpCliTest.php",
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "6bd8b6809a7d81902d0039e05b4f3d42ec39ce3a9478e31ca26a96bdfe2ad62d",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 527,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.pass-through-wrappers",
+            "family": "abstraction",
+            "severity": "weak",
+            "scope": "file",
+            "message": "Found pass-through PHP wrapper function",
+            "evidence": [
+                "proxy"
+            ],
+            "score": 1,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 537,
+                    "column": 1
+                }
+            ],
+            "path": "tests/PhpCliTest.php",
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "d46018efdc18bb8393cb545f58fadfcbeeaca4d1f6de84dc15622fda51d8cab5",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 537,
+                        "column": 1
+                    }
+                ]
+            }
+        },
+        {
+            "ruleId": "php.pass-through-wrappers",
+            "family": "abstraction",
+            "severity": "weak",
+            "scope": "file",
+            "message": "Found pass-through PHP wrapper function",
+            "evidence": [
+                "value"
+            ],
+            "score": 1,
+            "locations": [
+                {
+                    "path": "tests/PhpCliTest.php",
+                    "line": 610,
+                    "column": 1
+                }
+            ],
+            "path": "tests/PhpCliTest.php",
+            "deltaIdentity": {
+                "fingerprintVersion": 1,
+                "occurrences": [
+                    {
+                        "fingerprint": "01431d0800df5b8a039c8f7b37f829e0feb51f104eca2a643aeb1a0eeae8cbf6",
+                        "path": "tests/PhpCliTest.php",
+                        "line": 610,
+                        "column": 1
+                    }
+                ]
+            }
+        }
+    ],
+    "fileScores": [
+        {
+            "path": "tests/PhpCliTest.php",
+            "score": 12,
+            "findingCount": 8
+        },
+        {
+            "path": "src/Rule",
+            "score": 1.5,
+            "findingCount": 1
+        },
+        {
+            "path": "src/Support/StaticAnalysisSuppressions.php",
+            "score": 0.75,
+            "findingCount": 1
+        }
+    ],
+    "directoryScores": [
+        {
+            "path": "src/Rule",
+            "score": 1.5,
+            "findingCount": 1
+        }
+    ]
+}
