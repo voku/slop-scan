@@ -760,7 +760,8 @@ final class PhpFacts
             $line = substr_count(substr($text, 0, $offset), "\n") + 1;
             $name = $matches[1][$index][0];
             $params = array_values(array_filter(array_map(static fn(string $param): string => trim(preg_replace('/=.*$/', '', $param) ?? ''), explode(',', $matches[2][$index][0]))));
-            $signature = strtolower($name) . '(' . count($params) . ')';
+            $className = self::enclosingClassName($text, $offset);
+            $signature = ($className !== null ? strtolower($className) . '::' : '') . strtolower($name) . '(' . count($params) . ')';
             $bodyStart = $offset + strlen($match[0]);
             $body = self::balancedBody($text, $bodyStart);
             $functions[] = ['name' => $name, 'signature' => $signature, 'line' => $line, 'body' => $body, 'params' => $params];
@@ -819,6 +820,43 @@ final class PhpFacts
             }
         }
         return substr($text, $start);
+    }
+
+    private static function enclosingClassName(string $text, int $offset): ?string
+    {
+        $position = 0;
+        $depth = 0;
+        $pendingClass = false;
+        $pendingClassName = null;
+        $classScopes = [];
+        foreach (token_get_all($text) as $token) {
+            $content = is_array($token) ? $token[1] : $token;
+            if ($position >= $offset) {
+                break;
+            }
+            if (is_array($token)) {
+                if ($token[0] === T_CLASS || $token[0] === T_INTERFACE || $token[0] === T_TRAIT) {
+                    $pendingClass = true;
+                    $pendingClassName = null;
+                } elseif ($pendingClass && $token[0] === T_STRING) {
+                    $pendingClassName = $content;
+                }
+            } elseif ($content === '{') {
+                $depth++;
+                if ($pendingClassName !== null) {
+                    $classScopes[] = ['name' => $pendingClassName, 'depth' => $depth];
+                    $pendingClass = false;
+                    $pendingClassName = null;
+                }
+            } elseif ($content === '}') {
+                if ($classScopes !== [] && $classScopes[array_key_last($classScopes)]['depth'] === $depth) {
+                    array_pop($classScopes);
+                }
+                $depth--;
+            }
+            $position += strlen($content);
+        }
+        return $classScopes[array_key_last($classScopes)]['name'] ?? null;
     }
 }
 
