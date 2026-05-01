@@ -23,6 +23,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+
       - name: Validate Composer metadata
         run: composer validate --strict
 
@@ -34,3 +37,9 @@ jobs:
 
       - name: Run self-scan
         run: composer run scan:self
+
+      - name: Build PHAR
+        run: composer run phar:build
+
+      - name: Verify PHAR
+        run: php dist/slop-scan.phar --help

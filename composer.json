@@ -4,6 +4,7 @@
     "type": "project",
     "require": {
         "php": "^8.3",
+        "symfony/console": "^7.4",
         "voku/simple-php-code-parser": "^0.21.0"
     },
     "require-dev": {
@@ -30,9 +31,13 @@
         "bin/slop-scan.php"
     ],
     "scripts": {
-        "format:check": "find src tests bin -name '*.php' -print0 | xargs -0 -n1 php -l",
-        "lint": "find src tests bin -name '*.php' -print0 | xargs -0 -n1 php -l",
-        "analyse": "find src tests bin -name '*.php' -print0 | xargs -0 -n1 php -l",
+        "format:check": "find src tests bin build -name '*.php' -print0 | xargs -0 -n1 php -l",
+        "lint": "find src tests bin build -name '*.php' -print0 | xargs -0 -n1 php -l",
+        "analyse": "find src tests bin build -name '*.php' -print0 | xargs -0 -n1 php -l",
+        "phar:build": [
+            "Composer\\Config::disableProcessTimeout",
+            "php -d phar.readonly=0 build/build-phar.php"
+        ],
         "test": "phpunit tests",
         "test:php": "phpunit tests",
         "scan:self": "php bin/slop-scan.php scan src --json",
