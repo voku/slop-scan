@@ -5,7 +5,7 @@
 ## Start here
 
 - `README.md` for product behavior and CLI expectations.
-- `src/bootstrap.php` for the PHP implementation, including contracts, registry, analyzer flow, facts, rules, reporters, and delta support.
+- `src/` for the PHP implementation, organized into focused directories for contracts, facts, models, reporters, rules, runtime state, and shared support code.
 - `tests/PhpCliTest.php` for behavioral expectations.
 - `slop-scan.config.json` for the repository self-scan config.
 

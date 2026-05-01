@@ -17,9 +17,9 @@
         }
     ],
     "autoload": {
-        "files": [
-            "src/bootstrap.php"
-        ]
+        "psr-4": {
+            "SlopScan\\": "src/"
+        }
     },
     "autoload-dev": {
         "psr-4": {
@@ -33,8 +33,8 @@
         "format:check": "find src tests bin -name '*.php' -print0 | xargs -0 -n1 php -l",
         "lint": "find src tests bin -name '*.php' -print0 | xargs -0 -n1 php -l",
         "analyse": "find src tests bin -name '*.php' -print0 | xargs -0 -n1 php -l",
-        "test": "phpunit --bootstrap src/bootstrap.php tests",
-        "test:php": "phpunit --bootstrap src/bootstrap.php tests",
+        "test": "phpunit tests",
+        "test:php": "phpunit tests",
         "scan:self": "php bin/slop-scan.php scan src --json",
         "scan:php:self": "php bin/slop-scan.php scan src --json"
     }

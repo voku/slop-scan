@@ -1,0 +1,48 @@
+<?php
+
+declare(strict_types=1);
+
+namespace SlopScan;
+
+use SlopScan\Fact\DirectoryMetricsFactProvider;
+use SlopScan\Fact\FunctionDuplicationFactProvider;
+use SlopScan\Fact\PhpStructureFactProvider;
+use SlopScan\Reporter\GithubReporter;
+use SlopScan\Reporter\JsonReporter;
+use SlopScan\Reporter\LintReporter;
+use SlopScan\Reporter\TextReporter;
+use SlopScan\Rule\DirectoryFanoutHotspotRule;
+use SlopScan\Rule\DuplicateFunctionSignaturesRule;
+use SlopScan\Rule\EmptyCatchRule;
+use SlopScan\Rule\ErrorSwallowingRule;
+use SlopScan\Rule\OverFragmentationRule;
+use SlopScan\Rule\PassThroughWrappersRule;
+use SlopScan\Rule\PlaceholderCommentsRule;
+
+final class DefaultRegistry
+{
+    public static function create(): Registry
+    {
+        $registry = new Registry();
+        $registry->registerLanguage(new PhpLanguage());
+        $registry->registerFactProvider(new PhpStructureFactProvider());
+        $registry->registerFactProvider(new DirectoryMetricsFactProvider());
+        $registry->registerFactProvider(new FunctionDuplicationFactProvider());
+        foreach ([
+            new EmptyCatchRule(),
+            new ErrorSwallowingRule(),
+            new PlaceholderCommentsRule(),
+            new PassThroughWrappersRule(),
+            new DirectoryFanoutHotspotRule(),
+            new OverFragmentationRule(),
+            new DuplicateFunctionSignaturesRule(),
+        ] as $rule) {
+            $registry->registerRule($rule);
+        }
+        $registry->registerReporter(new TextReporter());
+        $registry->registerReporter(new JsonReporter());
+        $registry->registerReporter(new LintReporter());
+        $registry->registerReporter(new GithubReporter());
+        return $registry;
+    }
+}
