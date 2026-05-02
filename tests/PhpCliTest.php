@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SlopScan\Tests;
 
 use PHPUnit\Framework\TestCase;
+use PhpParser\Parser;
 use SlopScan\Analyzer;
 use SlopScan\Config;
 use SlopScan\Contract\FactProvider;
@@ -703,7 +704,7 @@ PHP;
         $file = $this->fixtureDir . '/src/ParserSummary.php';
         file_put_contents($file, "<?php\nclass Parsed {}\nfunction parsed() {}\n");
 
-        if (!class_exists('voku\\SimplePhpParser\\Parsers\\SimplePhpParser')) {
+        if (!class_exists(\PhpParser\ParserFactory::class)) {
             $unavailable = PhpFacts::parserSummary($file);
 
             self::assertSame([
@@ -713,10 +714,12 @@ PHP;
             ], $unavailable);
         }
 
-        PhpFacts::useParserFactoryForTesting(static fn(): object => new SimplePhpParserStub());
-        SimplePhpParserStub::$classes = ['Parsed'];
-        SimplePhpParserStub::$functions = ['parsed'];
-        SimplePhpParserStub::$exceptionMessage = null;
+        PhpFacts::useParserFactoryForTesting(static fn(): Parser => new ParserStub());
+        ParserStub::$statements = [
+            new \PhpParser\Node\Stmt\Class_(new \PhpParser\Node\Identifier('Parsed')),
+            new \PhpParser\Node\Stmt\Function_(new \PhpParser\Node\Identifier('parsed')),
+        ];
+        ParserStub::$exceptionMessage = null;
 
         try {
             $success = PhpFacts::parserSummary($file);
@@ -727,7 +730,7 @@ PHP;
                 'functionCount' => 1,
             ], $success);
 
-            SimplePhpParserStub::$exceptionMessage = 'parse failed';
+            ParserStub::$exceptionMessage = 'parse failed';
 
             $error = PhpFacts::parserSummary($file);
 
@@ -737,9 +740,8 @@ PHP;
             self::assertSame('parse failed', $error['error']);
         } finally {
             PhpFacts::useParserFactoryForTesting(null);
-            SimplePhpParserStub::$classes = [];
-            SimplePhpParserStub::$functions = [];
-            SimplePhpParserStub::$exceptionMessage = null;
+            ParserStub::$statements = [];
+            ParserStub::$exceptionMessage = null;
         }
     }
 
@@ -857,33 +859,22 @@ PHP;
     }
 }
 
-final class SimplePhpParserStub
+final class ParserStub implements Parser
 {
-    /** @var list<mixed> */
-    public static array $classes = [];
-    /** @var list<mixed> */
-    public static array $functions = [];
+    /** @var list<\PhpParser\Node\Stmt> */
+    public static array $statements = [];
     public static ?string $exceptionMessage = null;
 
-    public function parse(string $absolutePath): void
+    public function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler = null): ?array
     {
         if (self::$exceptionMessage !== null) {
             throw new \RuntimeException(self::$exceptionMessage);
         }
-        if (!is_file($absolutePath)) {
-            throw new \RuntimeException('missing file');
-        }
+        return self::$statements;
     }
 
-    /** @return list<mixed> */
-    public function getClasses(): array
+    public function getTokens(): array
     {
-        return self::$classes;
-    }
-
-    /** @return list<mixed> */
-    public function getFunctions(): array
-    {
-        return self::$functions;
+        return [];
     }
 }
