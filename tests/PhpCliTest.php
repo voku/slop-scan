@@ -43,6 +43,8 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class PhpCliTest extends TestCase
 {
+    private const JSON_MAX_DEPTH = 512;
+
     private string $fixtureDir;
 
     protected function setUp(): void
@@ -528,7 +530,7 @@ PHP);
         $expected = json_decode(
             (string) file_get_contents(__DIR__ . '/fixtures/expected/' . $expectedSnapshot),
             true,
-            512,
+            self::JSON_MAX_DEPTH,
             JSON_THROW_ON_ERROR
         );
 
@@ -1449,14 +1451,22 @@ PHP);
      */
     private function normalizedFindingSnapshot(array $findings): array
     {
-        return array_map(static fn(Finding $finding): array => [
+        return array_map($this->findingToNormalizedArray(...), $findings);
+    }
+
+    /**
+     * @return array{ruleId:string,path:?string,severity:string,evidence:list<string>,locations:list<array{path:string,line:int,column?:int}>,deltaIdentity:array<string,mixed>}
+     */
+    private function findingToNormalizedArray(Finding $finding): array
+    {
+        return [
             'ruleId' => $finding->ruleId,
             'path' => $finding->path,
             'severity' => $finding->severity,
             'evidence' => $finding->evidence,
             'locations' => $finding->locations,
             'deltaIdentity' => $finding->deltaIdentity,
-        ], $findings);
+        ];
     }
 
     /**
