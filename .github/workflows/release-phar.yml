@@ -1,0 +1,41 @@
+name: Release PHAR
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-phar-${{ github.event.release.id }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    name: Build and publish PHAR
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer
+
+      - name: Build PHAR
+        run: composer run phar:build
+
+      - name: Verify PHAR
+        run: php dist/slop-scan.phar --help
+
+      - name: Upload PHAR to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/slop-scan.phar
+          fail_on_unmatched_files: true

@@ -13,6 +13,15 @@ This repository started from a fork of [`modem-dev/slop-scan`](https://github.co
 
 ## Install
 
+Install the latest release PHAR directly:
+
+```bash
+mkdir -p "$HOME/.local/bin"
+curl -fsSL https://github.com/voku/slop-scan/releases/latest/download/slop-scan.phar -o "$HOME/.local/bin/slop-scan"
+chmod +x "$HOME/.local/bin/slop-scan"
+"$HOME/.local/bin/slop-scan" scan .
+```
+
 Install dependencies for local development:
 
 ```bash
