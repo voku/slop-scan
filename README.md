@@ -4,6 +4,8 @@ Deterministic PHP CLI for finding explainable slop patterns in PHP repositories.
 
 `slop-scan` is a static-analysis style heuristic scanner. It is **not** an authorship detector. It reports concrete findings with rule IDs, evidence, scores, and stable occurrence fingerprints so results can be reviewed, compared, and tracked over time.
 
+This repository started from a fork of [`modem-dev/slop-scan`](https://github.com/modem-dev/slop-scan) and was rewritten in PHP with Codex so it fits PHP tooling, packaging, and CI workflows directly.
+
 ## Requirements
 
 - PHP 8.3+
@@ -64,6 +66,8 @@ php bin/slop-scan.php scan . --ignore 'vendor/**' --ignore 'tests/fixtures/**'
 php bin/slop-scan.php scan . --baseline-file slop-baseline.json --generate-baseline
 php bin/slop-scan.php scan . --baseline-file slop-baseline.json --github
 ```
+
+The generated baseline is intentionally compact: it stores only finding metadata and fingerprints needed to suppress existing findings, not the full scanned file inventory.
 
 ## Delta comparisons
 
@@ -157,7 +161,7 @@ The tool is intentionally heuristic: a finding is a prompt for review, not a ver
 
 ## Report shape
 
-JSON output includes:
+JSON scan output includes:
 
 - `metadata`
 - `rootDir`
@@ -170,6 +174,14 @@ JSON output includes:
 - `directoryScores`
 
 Each finding includes rule identity, severity, scope, message, evidence, score, locations, path, and `deltaIdentity` occurrence fingerprints.
+
+Baseline files are smaller than full JSON scan reports. They contain:
+
+- `metadata`
+- `summary.findingCount`
+- `findings`
+
+That keeps baseline adoption practical for existing repositories: commit the current findings once, then let CI fail only on newly introduced fingerprints.
 
 ## Development
 

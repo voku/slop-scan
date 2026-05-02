@@ -532,6 +532,7 @@ PHP);
         $baselineFile = $fixture . '/slop-baseline.json';
 
         [$generateExit, $generateOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--generate-baseline']);
+        $baselineDecoded = json_decode((string) file_get_contents($baselineFile), true, 512, JSON_THROW_ON_ERROR);
         file_put_contents($fixture . '/src/A.php', <<<'PHP'
 <?php
 // TODO baseline
@@ -550,6 +551,9 @@ PHP);
         self::assertSame(0, $generateExit);
         self::assertStringContainsString('baseline written', $generateOutput);
         self::assertFileExists($baselineFile);
+        self::assertSame(['metadata', 'summary', 'findings'], array_keys($baselineDecoded));
+        self::assertSame('baseline', $baselineDecoded['metadata']['kind']);
+        self::assertSame(count($baselineDecoded['findings']), $baselineDecoded['summary']['findingCount']);
         self::assertSame(1, $jsonExit);
         $decoded = json_decode($jsonOutput, true, 512, JSON_THROW_ON_ERROR);
         self::assertSame(1, $decoded['baseline']['summary']['added']);

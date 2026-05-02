@@ -49,7 +49,7 @@ final class ScanCommand extends Command
                     throw new \InvalidArgumentException('Missing --baseline-file for --generate-baseline.');
                 }
 
-                Baseline::writeReport($baselineFile, $result->toReport());
+                Baseline::writeReport($baselineFile, Baseline::fromReport($result->toReport()));
                 $output->writeln("slop-scan baseline written to {$baselineFile}");
 
                 return Command::SUCCESS;
