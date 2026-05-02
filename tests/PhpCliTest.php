@@ -646,7 +646,12 @@ PHP);
     {
         $fixture = $this->makeFixture();
         mkdir($fixture . '/src', 0777, true);
-        file_put_contents($fixture . '/src/A.php', "<?php\nfunction proxy(\$value) {\n    return transform(\$value);\n}\n");
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+function proxy($value) {
+    return transform($value);
+}
+PHP);
         $cacheFile = $fixture . '/.slop-scan.cache.json';
         $parserCalls = 0;
         PhpFacts::useParserFactoryForTesting(static function () use (&$parserCalls): Parser {
