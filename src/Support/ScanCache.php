@@ -19,6 +19,13 @@ final class ScanCache
     ) {
     }
 
+    public static function defaultPath(string $rootDir): string
+    {
+        $root = realpath($rootDir) ?: $rootDir;
+
+        return rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . '.slop-scan.cache.json';
+    }
+
     public static function load(?string $path): self
     {
         $cache = new self($path);

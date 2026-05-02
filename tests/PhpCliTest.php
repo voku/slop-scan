@@ -35,6 +35,7 @@ use SlopScan\Scheduler;
 use SlopScan\Support\Json;
 use SlopScan\Support\Lines;
 use SlopScan\Support\PatternMatcher;
+use SlopScan\Support\ScanCache;
 use Symfony\Component\Console\Exception\CommandNotFoundException;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -596,6 +597,8 @@ PHP);
         self::assertSame(0, $helpExit);
         self::assertStringContainsString('slop-scan', $helpOutput);
         self::assertSame(1, $unknownExit);
+        self::assertFileExists(ScanCache::defaultPath($head));
+        self::assertFileExists(ScanCache::defaultPath($base));
     }
 
     public function testAnalyzerReusesCachedPhpStructureFactsBetweenRuns(): void
@@ -941,12 +944,12 @@ PHP);
         $this->remove($fixture);
     }
 
-    public function testScanCommandCacheOptionReusesCachedFacts(): void
+    public function testScanCommandUsesDefaultCacheAndReusesCachedFacts(): void
     {
         $fixture = $this->makeFixture();
         mkdir($fixture . '/src', 0777, true);
         file_put_contents($fixture . '/src/A.php', "<?php\nvar_dump(\$value);\n");
-        $cacheFile = $fixture . '/scan-cache.json';
+        $cacheFile = ScanCache::defaultPath($fixture);
         $parserCalls = 0;
         PhpFacts::useParserFactoryForTesting(static function () use (&$parserCalls): Parser {
             $parserCalls++;
@@ -956,10 +959,10 @@ PHP);
 
         try {
             $scanTester = new CommandTester(new ScanCommand());
-            $firstExit = $scanTester->execute(['path' => $fixture, '--json' => true, '--cache-file' => $cacheFile]);
+            $firstExit = $scanTester->execute(['path' => $fixture, '--json' => true]);
             $firstParserCalls = $parserCalls;
             $parserCalls = 0;
-            $secondExit = $scanTester->execute(['path' => $fixture, '--json' => true, '--cache-file' => $cacheFile]);
+            $secondExit = $scanTester->execute(['path' => $fixture, '--json' => true]);
 
             self::assertSame(0, $firstExit);
             self::assertSame(0, $secondExit);
@@ -968,6 +971,25 @@ PHP);
             self::assertFileExists($cacheFile);
         } finally {
             PhpFacts::useParserFactoryForTesting(null);
+            $this->remove($fixture);
+        }
+    }
+
+    public function testScanCommandCacheOptionOverridesDefaultCacheLocation(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', "<?php\nvar_dump(\$value);\n");
+        $customCacheFile = $fixture . '/custom-cache.json';
+
+        try {
+            $scanTester = new CommandTester(new ScanCommand());
+            $exit = $scanTester->execute(['path' => $fixture, '--json' => true, '--cache-file' => $customCacheFile]);
+
+            self::assertSame(0, $exit);
+            self::assertFileExists($customCacheFile);
+            self::assertFileDoesNotExist(ScanCache::defaultPath($fixture));
+        } finally {
             $this->remove($fixture);
         }
     }

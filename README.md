@@ -60,10 +60,10 @@ php bin/slop-scan.php scan . --github
 php bin/slop-scan.php scan . --ignore 'vendor/**' --ignore 'tests/fixtures/**'
 ```
 
-5. Reuse cached file analysis across repeated local runs:
+5. Reuse the default cache across repeated local runs:
 
 ```bash
-php bin/slop-scan.php scan . --cache-file .slop-scan.cache.json
+php bin/slop-scan.php scan .
 ```
 
 6. Create a baseline when you want CI to fail only on newly introduced findings:
@@ -156,7 +156,7 @@ The tool is intentionally heuristic: a finding is a prompt for review, not a ver
 
 `slop-scan` reads JSON config from `slop-scan.config.json` or `repo-slop.config.json` in the scan root.
 
-Use `--cache-file` when you want repeated local scans to reuse unchanged per-file analysis instead of recomputing it every run.
+Scans now reuse unchanged per-file analysis by default through `.slop-scan.cache.json` in the scan root. Use `--cache-file` to override that location.
 
 ```json
 {

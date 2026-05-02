@@ -9,6 +9,7 @@ use SlopScan\Config;
 use SlopScan\DefaultRegistry;
 use SlopScan\Model\Finding;
 use SlopScan\Reporter\LintReporter;
+use SlopScan\Support\ScanCache;
 
 final class CommandSupport
 {
@@ -29,7 +30,7 @@ final class CommandSupport
         $config = Config::load($targetPath);
         $config['ignores'] = array_values(array_merge($config['ignores'], $ignore));
 
-        return (new Analyzer())->analyze($targetPath, $config, DefaultRegistry::create())->toReport();
+        return (new Analyzer())->analyze($targetPath, $config, DefaultRegistry::create(), ScanCache::defaultPath($targetPath))->toReport();
     }
 
     /** @param array<string,mixed> $delta */
