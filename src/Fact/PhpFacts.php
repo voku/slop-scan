@@ -365,9 +365,7 @@ final class PhpFacts
     private static function countMockCalls(array $statements): int
     {
         $count = 0;
-        foreach (self::nodeFinder()->find($statements, static function (Node $node): bool {
-            return $node instanceof Expr\MethodCall || $node instanceof Expr\StaticCall;
-        }) as $node) {
+        foreach (self::methodAndStaticCalls($statements) as $node) {
             $name = self::callIdentifier($node);
             if ($name === null) {
                 continue;
@@ -390,15 +388,13 @@ final class PhpFacts
     private static function countAssertions(array $statements): int
     {
         $count = 0;
-        foreach (self::nodeFinder()->find($statements, static function (Node $node): bool {
-            return $node instanceof Expr\MethodCall || $node instanceof Expr\StaticCall;
-        }) as $node) {
+        foreach (self::methodAndStaticCalls($statements) as $node) {
             $name = self::callIdentifier($node);
             if ($name === null) {
                 continue;
             }
 
-            if (preg_match('/^assert[A-Z]/', $node->name->toString()) === 1 && self::isPhpUnitAssertionReceiver($node)) {
+            if (str_starts_with($name, 'assert') && self::isPhpUnitAssertionReceiver($node)) {
                 $count++;
                 continue;
             }
@@ -409,6 +405,15 @@ final class PhpFacts
         }
 
         return $count;
+    }
+
+    /** @param list<Stmt> $statements @return list<Expr\MethodCall|Expr\StaticCall> */
+    private static function methodAndStaticCalls(array $statements): array
+    {
+        return array_merge(
+            self::nodeFinder()->findInstanceOf($statements, Expr\MethodCall::class),
+            self::nodeFinder()->findInstanceOf($statements, Expr\StaticCall::class),
+        );
     }
 
     /** @param list<Stmt> $statements */

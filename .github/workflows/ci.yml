@@ -32,6 +32,9 @@ jobs:
       - name: Check PHP syntax
         run: composer run lint
 
+      - name: Run PHPStan
+        run: composer run analyse
+
       - name: Run tests
         run: composer run test
 

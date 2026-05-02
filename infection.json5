@@ -1,0 +1,18 @@
+{
+    source: {
+        directories: [
+            "src"
+        ]
+    },
+    phpUnit: {
+        configDir: "."
+    },
+    phpStan: {
+        configDir: "."
+    },
+    threads: "max",
+    timeout: 10,
+    testFramework: "phpunit",
+    staticAnalysisTool: "phpstan",
+    staticAnalysisToolOptions: "--no-progress"
+}

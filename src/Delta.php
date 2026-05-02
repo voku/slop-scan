@@ -11,9 +11,13 @@ final class Delta
     public static function identityFor(Finding $finding): array
     {
         $occurrences = [];
-        foreach ($finding->locations ?: [['path' => $finding->path ?? '<repo>', 'line' => 1, 'column' => 1]] as $location) {
-            $key = implode(':', [$finding->ruleId, $finding->message, $location['path'] ?? '<repo>', (string) ($location['line'] ?? 1)]);
-            $occurrences[] = ['fingerprint' => hash('sha256', $key), 'path' => $location['path'] ?? null, 'line' => $location['line'] ?? null, 'column' => $location['column'] ?? 1];
+        $locations = $finding->locations !== []
+            ? $finding->locations
+            : [['path' => $finding->path ?? '<repo>', 'line' => 1, 'column' => 1]];
+
+        foreach ($locations as $location) {
+            $key = implode(':', [$finding->ruleId, $finding->message, $location['path'], (string) $location['line']]);
+            $occurrences[] = ['fingerprint' => hash('sha256', $key), 'path' => $location['path'], 'line' => $location['line'], 'column' => $location['column'] ?? 1];
         }
         return ['fingerprintVersion' => 1, 'occurrences' => $occurrences];
     }

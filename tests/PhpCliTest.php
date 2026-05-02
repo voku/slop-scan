@@ -253,6 +253,62 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testInfectionStaticAnalysisRuleDetectsMissingIntegration(): void
+    {
+        $fixture = $this->makeFixture();
+        file_put_contents($fixture . '/composer.json', Json::encode([
+            'require-dev' => ['infection/infection' => '^0.32'],
+            'scripts' => ['mutate' => 'infection --threads=max'],
+        ], true));
+        file_put_contents($fixture . '/infection.json5', <<<'JSON5'
+{
+    source: {
+        directories: ["src"]
+    }
+}
+JSON5);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(['php.infection-without-static-analysis'], $this->ruleIds($result->findings));
+        self::assertSame('infection.json5', $result->findings[0]->path);
+        self::assertContains('missing staticAnalysisTool=phpstan|mago in Infection config or command', $result->findings[0]->evidence);
+
+        $this->remove($fixture);
+    }
+
+    public function testInfectionStaticAnalysisRuleAcceptsConfigAndCliIntegration(): void
+    {
+        $configFixture = $this->makeFixture();
+        file_put_contents($configFixture . '/composer.json', Json::encode([
+            'require-dev' => ['infection/infection' => '^0.32'],
+        ], true));
+        file_put_contents($configFixture . '/infection.json5', <<<'JSON5'
+{
+    source: {
+        directories: ["src"]
+    },
+    staticAnalysisTool: "phpstan"
+}
+JSON5);
+
+        $cliFixture = $this->makeFixture();
+        file_put_contents($cliFixture . '/composer.json', Json::encode([
+            'scripts' => ['mutate' => 'infection --threads=max --static-analysis-tool=phpstan'],
+        ], true));
+
+        try {
+            $configResult = (new Analyzer())->analyze($configFixture, Config::defaults(), DefaultRegistry::create());
+            $cliResult = (new Analyzer())->analyze($cliFixture, Config::defaults(), DefaultRegistry::create());
+
+            self::assertNotContains('php.infection-without-static-analysis', $this->ruleIds($configResult->findings));
+            self::assertNotContains('php.infection-without-static-analysis', $this->ruleIds($cliResult->findings));
+        } finally {
+            $this->remove($configFixture);
+            $this->remove($cliFixture);
+        }
+    }
+
     public function testStaticAnalysisSuppressionDetection(): void
     {
         $fixture = $this->makeFixture();
@@ -1585,7 +1641,7 @@ final class ParserStub implements Parser
     public static array $statements = [];
     public static ?string $exceptionMessage = null;
 
-    public function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler = null): ?array
+    public function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler = null): array
     {
         if (self::$exceptionMessage !== null) {
             throw new \RuntimeException(self::$exceptionMessage);

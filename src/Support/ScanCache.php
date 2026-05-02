@@ -86,11 +86,11 @@ final class ScanCache
         }
 
         $entry = $this->fileProviders[$providerId][$filePath] ?? null;
-        if (!is_array($entry) || ($entry['fingerprint'] ?? null) !== self::fingerprint($providerId, $contentHash)) {
+        if ($entry === null || $entry['fingerprint'] !== self::fingerprint($providerId, $contentHash)) {
             return null;
         }
 
-        return is_array($entry['facts'] ?? null) ? $entry['facts'] : null;
+        return $entry['facts'];
     }
 
     /** @param array<string,mixed> $facts */

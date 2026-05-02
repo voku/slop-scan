@@ -158,6 +158,7 @@ The PHP implementation scans:
 | `php.directory-fanout-hotspot` | Directories with unusually high PHP file counts | Large clusters of files can indicate sprawl and review-unfriendly structure. |
 | `php.over-fragmentation` | Directories with many tiny PHP files | Excessively tiny files can make simple behavior harder to follow. |
 | `php.duplicate-function-signatures` | Repeated function signatures across the repository | Repetition can point to copy-paste design and missed abstraction opportunities. |
+| `php.infection-without-static-analysis` | Infection mutation testing set up without `staticAnalysisTool=phpstan|mago` or the matching CLI flag | Mutation testing without static-analysis-assisted escaped-mutant checks leaves avoidable type and reachability regressions on the table. |
 
 The tool is intentionally heuristic: a finding is a prompt for review, not a verdict.
 
@@ -209,9 +210,16 @@ Run local validation:
 ```bash
 composer validate --strict
 composer run lint
+composer run analyse
 composer run test
 composer run scan:self
 composer run phar:build
+```
+
+Run mutation testing with Infection and PHPStan-backed escaped-mutant checks:
+
+```bash
+composer run mutate
 ```
 
 The repository dogfoods `slop-scan` in CI by scanning the whole checkout directly, without a committed baseline file, so pull requests must keep the repository clean enough to pass the same heuristics it ships.

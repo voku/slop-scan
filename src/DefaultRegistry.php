@@ -7,6 +7,7 @@ namespace SlopScan;
 use SlopScan\Fact\DirectoryMetricsFactProvider;
 use SlopScan\Fact\FunctionDuplicationFactProvider;
 use SlopScan\Fact\PhpStructureFactProvider;
+use SlopScan\Fact\RepoToolingFactProvider;
 use SlopScan\Reporter\GithubReporter;
 use SlopScan\Reporter\JsonReporter;
 use SlopScan\Reporter\LintReporter;
@@ -19,6 +20,7 @@ use SlopScan\Rule\DuplicateFunctionSignaturesRule;
 use SlopScan\Rule\EmptyCatchRule;
 use SlopScan\Rule\ErrorSwallowingRule;
 use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\InfectionStaticAnalysisIntegrationRule;
 use SlopScan\Rule\MockHeavyTestsWithoutAssertionsRule;
 use SlopScan\Rule\MisleadingPhpDocTypesRule;
 use SlopScan\Rule\OverFragmentationRule;
@@ -35,6 +37,7 @@ final class DefaultRegistry
         $registry->registerFactProvider(new PhpStructureFactProvider());
         $registry->registerFactProvider(new DirectoryMetricsFactProvider());
         $registry->registerFactProvider(new FunctionDuplicationFactProvider());
+        $registry->registerFactProvider(new RepoToolingFactProvider());
         foreach ([
             new EmptyCatchRule(),
             new ErrorSwallowingRule(),
@@ -50,6 +53,7 @@ final class DefaultRegistry
             new DirectoryFanoutHotspotRule(),
             new OverFragmentationRule(),
             new DuplicateFunctionSignaturesRule(),
+            new InfectionStaticAnalysisIntegrationRule(),
         ] as $rule) {
             $registry->registerRule($rule);
         }

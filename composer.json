@@ -9,6 +9,8 @@
         "voku/simple-php-code-parser": "^0.21.0"
     },
     "require-dev": {
+        "infection/infection": "^0.32.7",
+        "phpstan/phpstan": "^2.1.54",
         "phpunit/phpunit": "^11.5"
     },
     "license": "MIT",
@@ -34,14 +36,20 @@
     "scripts": {
         "format:check": "find src tests bin build -name '*.php' -print0 | xargs -0 -n1 php -l",
         "lint": "find src tests bin build -name '*.php' -print0 | xargs -0 -n1 php -l",
-        "analyse": "find src tests bin build -name '*.php' -print0 | xargs -0 -n1 php -l",
+        "analyse": "phpstan analyse --no-progress",
         "phar:build": [
             "Composer\\Config::disableProcessTimeout",
             "php -d phar.readonly=0 build/build-phar.php"
         ],
+        "mutate": "XDEBUG_MODE=coverage infection --threads=max --min-msi=0 --min-covered-msi=0",
         "test": "phpunit tests",
         "test:php": "phpunit tests",
         "scan:self": "php bin/slop-scan.php scan . --github",
         "scan:php:self": "php bin/slop-scan.php scan . --github"
+    },
+    "config": {
+        "allow-plugins": {
+            "infection/extension-installer": false
+        }
     }
 }
