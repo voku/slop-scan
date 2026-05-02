@@ -597,8 +597,6 @@ PHP);
         self::assertSame(0, $helpExit);
         self::assertStringContainsString('slop-scan', $helpOutput);
         self::assertSame(1, $unknownExit);
-        self::assertFileExists(ScanCache::defaultPath($head));
-        self::assertFileExists(ScanCache::defaultPath($base));
     }
 
     public function testAnalyzerReusesCachedPhpStructureFactsBetweenRuns(): void
@@ -973,6 +971,27 @@ PHP);
             PhpFacts::useParserFactoryForTesting(null);
             $this->remove($fixture);
         }
+    }
+
+    public function testCliScanAndDeltaCreateDefaultCacheFiles(): void
+    {
+        $base = $this->makeFixture();
+        $head = $this->makeFixture();
+        mkdir($base . '/src', 0777, true);
+        mkdir($head . '/src', 0777, true);
+        file_put_contents($base . '/src/A.php', "<?php\nfunction clean_base() { return 1; }\n");
+        file_put_contents($head . '/src/A.php', "<?php\n// TODO added\nfunction clean_head() { return 1; }\n");
+
+        [$scanExit] = $this->runCommand(['scan', $head, '--json']);
+        [$deltaExit] = $this->runCommand(['delta', '--base', $base, '--head', $head, '--fail-on', 'added']);
+
+        self::assertSame(0, $scanExit);
+        self::assertSame(1, $deltaExit);
+        self::assertFileExists(ScanCache::defaultPath($head));
+        self::assertFileExists(ScanCache::defaultPath($base));
+
+        $this->remove($base);
+        $this->remove($head);
     }
 
     public function testScanCommandCacheOptionOverridesDefaultCacheLocation(): void
