@@ -7,7 +7,12 @@ namespace SlopScan\Tests;
 use PHPUnit\Framework\TestCase;
 use PhpParser\Parser;
 use SlopScan\Analyzer;
+use SlopScan\Baseline;
 use SlopScan\Config;
+use SlopScan\Console\CommandSupport;
+use SlopScan\Console\DeltaCommand;
+use SlopScan\Console\ScanCommand;
+use SlopScan\Console\SlopScanApplication;
 use SlopScan\Contract\FactProvider;
 use SlopScan\DefaultRegistry;
 use SlopScan\Delta;
@@ -29,6 +34,9 @@ use SlopScan\Scheduler;
 use SlopScan\Support\Json;
 use SlopScan\Support\Lines;
 use SlopScan\Support\PatternMatcher;
+use Symfony\Component\Console\Exception\CommandNotFoundException;
+use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\Console\Tester\CommandTester;
 
 final class PhpCliTest extends TestCase
 {
@@ -588,6 +596,195 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testGithubReporterEscapesValuesAndDefaultsMissingLocations(): void
+    {
+        $findingWithLocation = new Finding(
+            'php.rule',
+            'family',
+            'medium',
+            'file',
+            "broken:value,\nnext",
+            [],
+            1.0,
+            [['path' => 'src/{Odd},Name.php', 'line' => 7, 'column' => 3]],
+            'src/{Odd},Name.php'
+        );
+        $findingWithoutLocation = new Finding(
+            'php.other',
+            'family',
+            'weak',
+            'file',
+            "needs\rdefault",
+            [],
+            1.0,
+            [],
+            'src/Fallback.php'
+        );
+        $result = new AnalysisResult('/repo', [], ['findingCount' => 2], [], [], [$findingWithLocation, $findingWithoutLocation], [], [], 0.0);
+
+        $rendered = (new GithubReporter())->render($result);
+
+        self::assertStringContainsString('::error file=src/%7BOdd%7D%2CName.php,line=7,col=3::broken%3Avalue%2C%0Anext (php.rule)', $rendered);
+        self::assertStringContainsString('::error file=src/Fallback.php,line=1,col=1::needs%0Ddefault (php.other)', $rendered);
+        self::assertSame('github', (new GithubReporter())->id());
+    }
+
+    public function testCommandSupportHelpersAndBaselineValidation(): void
+    {
+        $finding = new Finding('php.added', 'family', 'medium', 'file', 'Added finding', [], 1.0, [['path' => 'src/New.php', 'line' => 2]], 'src/New.php');
+        $report = [
+            'metadata' => ['schemaVersion' => 9, 'tool' => ['name' => 'custom', 'version' => '1.2.3'], 'configHash' => 'abc', 'findingFingerprintVersion' => 4],
+            'findings' => [$finding->toReport()],
+        ];
+        $baseline = Baseline::fromReport($report);
+        $baselinePath = $this->fixtureDir . '/baseline.json';
+
+        Baseline::writeReport($baselinePath, $baseline);
+        $decoded = Baseline::readReport($baselinePath);
+        $delta = [
+            'summary' => ['added' => 1, 'resolved' => 0],
+            'changes' => [
+                ['status' => 'added', 'fingerprint' => $finding->deltaIdentity['occurrences'][0]['fingerprint'], 'finding' => $finding->toReport()],
+                ['status' => 'resolved', 'fingerprint' => 'gone', 'finding' => ['ruleId' => 'php.gone']],
+            ],
+        ];
+
+        self::assertSame('baseline', $decoded['metadata']['kind']);
+        self::assertSame(1, $decoded['summary']['findingCount']);
+        self::assertCount(1, Baseline::addedFindings([$finding], $delta));
+        self::assertSame('php.added', Baseline::addedFindings([$finding], $delta)[0]->ruleId);
+        self::assertSame([], Baseline::addedFindings([$finding], ['changes' => []]));
+        self::assertSame(['added' => 1, 'resolved' => 0], Baseline::reportWithDelta($report, $delta)['baseline']['summary']);
+        self::assertSame([$finding->toReport()], Baseline::reportWithDelta($report, $delta)['newFindings']);
+        self::assertSame('baseline', CommandSupport::reportInput($baselinePath, null, [])['metadata']['kind']);
+        self::assertSame(1, CommandSupport::reportInput($baselinePath, null, [])['summary']['findingCount']);
+        self::assertSame('0 new findings', CommandSupport::formatFindings([]));
+        self::assertStringContainsString('added php.added', CommandSupport::formatDelta($delta));
+        self::assertSame('json', CommandSupport::scanReporterId(true, false, false));
+        self::assertSame('github', CommandSupport::scanReporterId(false, true, false));
+        self::assertSame('lint', CommandSupport::scanReporterId(false, false, true));
+        self::assertSame('text', CommandSupport::scanReporterId(false, false, false));
+        self::assertTrue(CommandSupport::shouldFail($delta, 'resolved,added'));
+        self::assertFalse(CommandSupport::shouldFail($delta, null));
+        self::assertFalse(CommandSupport::shouldFail($delta, ''));
+
+        try {
+            Baseline::readReport($this->fixtureDir . '/missing.json');
+            self::fail('Expected missing baseline file to throw.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('does not exist', $exception->getMessage());
+        }
+
+        file_put_contents($this->fixtureDir . '/invalid.json', Json::encode(['summary' => []]));
+        try {
+            Baseline::readReport($this->fixtureDir . '/invalid.json');
+            self::fail('Expected invalid baseline JSON report to throw.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('not a slop-scan JSON report', $exception->getMessage());
+        }
+
+        try {
+            Baseline::writeReport($this->fixtureDir . '/missing-dir/baseline.json', $baseline);
+            self::fail('Expected write to missing directory to throw.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('directory does not exist', $exception->getMessage());
+        }
+
+        try {
+            CommandSupport::reportInput(null, null, []);
+            self::fail('Expected missing delta input to throw.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('Missing delta input', $exception->getMessage());
+        }
+    }
+
+    public function testInProcessScanAndDeltaCommandsCoverBranches(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO baseline
+function wrapper($value) {
+    return transform($value);
+}
+PHP);
+
+        $scanTester = new CommandTester(new ScanCommand());
+        $scanExit = $scanTester->execute(['path' => $fixture, '--json' => true]);
+        $scanReport = json_decode($scanTester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+        $baselinePath = $fixture . '/baseline.json';
+        $baselineExit = $scanTester->execute(['path' => $fixture, '--baseline-file' => $baselinePath, '--generate-baseline' => true]);
+
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO baseline
+function wrapper($value) {
+    return transform($value);
+}
+try {
+    risky();
+} catch (Throwable $e) {
+}
+PHP);
+
+        $baselineJsonExit = $scanTester->execute(['path' => $fixture, '--baseline-file' => $baselinePath, '--json' => true]);
+        $baselineJson = json_decode($scanTester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+        $baselineGithubExit = $scanTester->execute(['path' => $fixture, '--baseline-file' => $baselinePath, '--github' => true]);
+        $baselineGithub = $scanTester->getDisplay();
+        $baselineLintExit = $scanTester->execute(['path' => $fixture, '--baseline-file' => $baselinePath, '--lint' => true]);
+        $baselineLint = $scanTester->getDisplay();
+        $missingBaselineExit = $scanTester->execute(['path' => $fixture, '--generate-baseline' => true]);
+
+        self::assertSame(0, $scanExit);
+        self::assertSame(2, $scanReport['summary']['findingCount']);
+        self::assertSame(0, $baselineExit);
+        self::assertFileExists($baselinePath);
+        self::assertSame(1, $baselineJsonExit);
+        self::assertSame(1, $baselineJson['baseline']['summary']['added']);
+        self::assertSame(1, $baselineGithubExit);
+        self::assertStringContainsString('php.empty-catch', $baselineGithub);
+        self::assertSame(1, $baselineLintExit);
+        self::assertStringContainsString('new finding', $baselineLint);
+        self::assertSame(1, $missingBaselineExit);
+        self::assertStringContainsString('Missing --baseline-file', $scanTester->getDisplay());
+
+        $baseReport = $fixture . '/base-report.json';
+        $headReport = $fixture . '/head-report.json';
+        $finding = new Finding('php.new', 'family', 'medium', 'file', 'new', [], 1.0, [['path' => 'src/B.php', 'line' => 1]], 'src/B.php');
+        file_put_contents($baseReport, Json::encode(['findings' => []]));
+        file_put_contents($headReport, Json::encode(['findings' => [$finding->toReport()]]));
+
+        $deltaTester = new CommandTester(new DeltaCommand());
+        $deltaExit = $deltaTester->execute(['--base-report' => $baseReport, '--head-report' => $headReport, '--json' => true, '--fail-on' => 'added']);
+        $deltaJson = json_decode($deltaTester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+        $deltaTextExit = $deltaTester->execute(['base-path' => $fixture, 'head-path' => $fixture]);
+        $deltaText = $deltaTester->getDisplay();
+        $deltaErrorExit = $deltaTester->execute([]);
+
+        self::assertSame(1, $deltaExit);
+        self::assertSame(1, $deltaJson['summary']['added']);
+        self::assertSame(0, $deltaTextExit);
+        self::assertStringContainsString('slop-scan delta', $deltaText);
+        self::assertSame(1, $deltaErrorExit);
+        self::assertStringContainsString('Missing delta input', $deltaTester->getDisplay());
+
+        $this->remove($fixture);
+    }
+
+    public function testApplicationRendersThrowableMessagesToStandardAndErrorOutputs(): void
+    {
+        $application = new SlopScanApplication();
+        $buffer = new BufferedOutput();
+        $consoleOutput = new ConsoleOutputStub();
+
+        $application->renderThrowable(new \RuntimeException('plain failure'), $buffer);
+        $application->renderThrowable(new CommandNotFoundException('Command "mystery" is not defined.'), $consoleOutput);
+
+        self::assertStringContainsString('plain failure', $buffer->fetch());
+        self::assertStringContainsString('Unknown command: mystery', $consoleOutput->getErrorOutput()->fetch());
+    }
+
     public function testPatternMatchingLanguageRegistryAndSchedulerEdges(): void
     {
         $registry = new Registry();
@@ -895,5 +1092,35 @@ final class ParserStub implements Parser
     public function getTokens(): array
     {
         return [];
+    }
+}
+
+final class ConsoleOutputStub extends BufferedOutput implements \Symfony\Component\Console\Output\ConsoleOutputInterface
+{
+    private BufferedOutput $errorOutput;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->errorOutput = new BufferedOutput();
+    }
+
+    public function getErrorOutput(): BufferedOutput
+    {
+        return $this->errorOutput;
+    }
+
+    public function setErrorOutput(\Symfony\Component\Console\Output\OutputInterface $error): void
+    {
+        if (!$error instanceof BufferedOutput) {
+            throw new \InvalidArgumentException('Expected BufferedOutput.');
+        }
+
+        $this->errorOutput = $error;
+    }
+
+    public function section(): \Symfony\Component\Console\Output\ConsoleSectionOutput
+    {
+        throw new \BadMethodCallException('Sections are not needed in tests.');
     }
 }
