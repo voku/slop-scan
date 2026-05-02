@@ -6,7 +6,10 @@ namespace SlopScan\Fact;
 
 use PhpParser\Node;
 use PhpParser\Node\Arg;
+use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Name;
 use PhpParser\NodeFinder;
 use PhpParser\Node\Stmt;
 use PhpParser\Parser;
@@ -104,6 +107,78 @@ final class PhpFacts
         );
 
         return $entries;
+    }
+
+    /** @return list<array{name:string,line:int}> */
+    public static function debugCalls(string $text): array
+    {
+        $statements = self::parseStatements($text);
+        if ($statements === null) {
+            return [];
+        }
+
+        $calls = [];
+        foreach (self::nodeFinder()->findInstanceOf($statements, Expr\FuncCall::class) as $call) {
+            if (!$call->name instanceof Name) {
+                continue;
+            }
+
+            $name = strtolower($call->name->toString());
+            if (!in_array($name, ['dd', 'print_r', 'ray', 'var_dump'], true)) {
+                continue;
+            }
+
+            $calls[] = [
+                'name' => $name,
+                'line' => $call->getStartLine(),
+            ];
+        }
+
+        return $calls;
+    }
+
+    /** @return array{looksLikeTest:bool,testCount:int,mockCount:int,assertionCount:int,expectationCount:int} */
+    public static function testCallSummary(string $text, string $path): array
+    {
+        $statements = self::parseStatements($text);
+        if ($statements === null) {
+            return [
+                'looksLikeTest' => false,
+                'testCount' => 0,
+                'mockCount' => 0,
+                'assertionCount' => 0,
+                'expectationCount' => 0,
+            ];
+        }
+
+        $finder = self::nodeFinder();
+        $looksLikeTest = preg_match('#(?:^|/)(?:tests?|spec)(?:/|$)|(?:Test|TestCase)\.php$#i', $path) === 1
+            || $finder->findFirst($statements, static fn(Node $node): bool => self::classExtendsTestCase($node)) !== null;
+
+        if (!$looksLikeTest) {
+            return [
+                'looksLikeTest' => false,
+                'testCount' => 0,
+                'mockCount' => 0,
+                'assertionCount' => 0,
+                'expectationCount' => 0,
+            ];
+        }
+
+        $testMethods = [];
+        foreach ($finder->findInstanceOf($statements, Stmt\ClassMethod::class) as $method) {
+            if (preg_match('/^test[A-Z0-9_][A-Za-z0-9_]*$/', $method->name->toString()) === 1 || self::hasPhpUnitTestAttribute($method->attrGroups)) {
+                $testMethods[$method->getStartLine() . ':' . $method->name->toString()] = true;
+            }
+        }
+
+        return [
+            'looksLikeTest' => true,
+            'testCount' => count($testMethods),
+            'mockCount' => self::countMockCalls($statements),
+            'assertionCount' => self::countAssertions($statements),
+            'expectationCount' => self::countExpectations($statements),
+        ];
     }
 
     /**
@@ -250,6 +325,126 @@ final class PhpFacts
         }
 
         return true;
+    }
+
+    private static function classExtendsTestCase(Node $node): bool
+    {
+        if (!$node instanceof Stmt\Class_ || !$node->extends instanceof Name) {
+            return false;
+        }
+
+        $name = ltrim(strtolower($node->extends->toString()), '\\');
+
+        return $name === 'phpunit\\framework\\testcase' || str_ends_with($name, '\\testcase') || $name === 'testcase';
+    }
+
+    /** @param list<Node\AttributeGroup> $attributeGroups */
+    private static function hasPhpUnitTestAttribute(array $attributeGroups): bool
+    {
+        foreach ($attributeGroups as $group) {
+            foreach ($group->attrs as $attribute) {
+                if (self::isPhpUnitTestAttribute($attribute)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static function isPhpUnitTestAttribute(Attribute $attribute): bool
+    {
+        $name = ltrim(strtolower($attribute->name->toString()), '\\');
+
+        return $name === 'test' || $name === 'phpunit\\framework\\attributes\\test' || str_ends_with($name, '\\test');
+    }
+
+    /** @param list<Stmt> $statements */
+    private static function countMockCalls(array $statements): int
+    {
+        $count = 0;
+        foreach (self::nodeFinder()->find($statements, static function (Node $node): bool {
+            return $node instanceof Expr\MethodCall || $node instanceof Expr\StaticCall;
+        }) as $node) {
+            $name = self::callIdentifier($node);
+            if ($name === null) {
+                continue;
+            }
+
+            if (in_array($name, ['createmock', 'createconfiguredmock', 'getmockbuilder', 'prophesize'], true)) {
+                $count++;
+                continue;
+            }
+
+            if ($node instanceof Expr\StaticCall && $name === 'mock' && $node->class instanceof Name && strtolower(ltrim($node->class->toString(), '\\')) === 'mockery') {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /** @param list<Stmt> $statements */
+    private static function countAssertions(array $statements): int
+    {
+        $count = 0;
+        foreach (self::nodeFinder()->find($statements, static function (Node $node): bool {
+            return $node instanceof Expr\MethodCall || $node instanceof Expr\StaticCall;
+        }) as $node) {
+            $name = self::callIdentifier($node);
+            if ($name === null) {
+                continue;
+            }
+
+            if (preg_match('/^assert[A-Z]/', $node instanceof Expr\MethodCall || $node instanceof Expr\StaticCall ? (string) $node->name : '') === 1 && self::isPhpUnitAssertionReceiver($node)) {
+                $count++;
+                continue;
+            }
+
+            if (in_array($name, ['expectexception', 'expectexceptioncode', 'expectexceptionmessage', 'expectexceptionmessagematches', 'expectexceptionobject', 'expectnottoperformassertions'], true) && self::isPhpUnitAssertionReceiver($node)) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /** @param list<Stmt> $statements */
+    private static function countExpectations(array $statements): int
+    {
+        $count = 0;
+        foreach (self::nodeFinder()->findInstanceOf($statements, Expr\MethodCall::class) as $call) {
+            $name = self::callIdentifier($call);
+            if ($name !== null && in_array($name, ['expects', 'shouldreceive', 'shouldhavereceived'], true)) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    private static function isPhpUnitAssertionReceiver(Expr\MethodCall|Expr\StaticCall $call): bool
+    {
+        if ($call instanceof Expr\MethodCall) {
+            return $call->var instanceof Expr\Variable && $call->var->name === 'this';
+        }
+
+        if (!$call->class instanceof Name) {
+            return false;
+        }
+
+        $class = strtolower($call->class->toString());
+
+        return $class === 'self' || $class === 'static';
+    }
+
+    private static function callIdentifier(Expr\MethodCall|Expr\StaticCall $call): ?string
+    {
+        if (!$call->name instanceof Identifier) {
+            return null;
+        }
+
+        return strtolower($call->name->toString());
     }
 
     /**

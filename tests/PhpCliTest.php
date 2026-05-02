@@ -1004,6 +1004,81 @@ PHP;
         self::assertStringContainsString('return fallback', $catches[0]['body']);
     }
 
+    public function testPhpFactsCollectDebugCallsFromAstOnly(): void
+    {
+        $php = <<<'PHP'
+<?php
+function var_dump($value) {
+    return $value;
+}
+
+final class Debugger
+{
+    public function dumpValue(mixed $value): void
+    {
+        $this->var_dump($value);
+        self::print_r($value);
+    }
+}
+
+// var_dump($comment);
+$doc = 'print_r($string)';
+var_dump($real);
+print_r($other);
+PHP;
+
+        self::assertSame(
+            [
+                ['name' => 'var_dump', 'line' => 17],
+                ['name' => 'print_r', 'line' => 18],
+            ],
+            PhpFacts::debugCalls($php)
+        );
+    }
+
+    public function testPhpFactsCollectParserBackedTestCallSummary(): void
+    {
+        $php = <<<'PHP'
+<?php
+
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+
+final class ExampleTest extends TestCase
+{
+    #[Test]
+    public function buildsMocks(): void
+    {
+        $dependency = $this->createMock(\stdClass::class);
+        $builder = $this->getMockBuilder(\ArrayObject::class);
+        $this->assertSame(1, 1);
+        $dependency->expects($this->once());
+    }
+}
+PHP;
+
+        self::assertSame(
+            [
+                'looksLikeTest' => true,
+                'testCount' => 1,
+                'mockCount' => 2,
+                'assertionCount' => 1,
+                'expectationCount' => 1,
+            ],
+            PhpFacts::testCallSummary($php, 'tests/ExampleTest.php')
+        );
+        self::assertSame(
+            [
+                'looksLikeTest' => false,
+                'testCount' => 0,
+                'mockCount' => 0,
+                'assertionCount' => 0,
+                'expectationCount' => 0,
+            ],
+            PhpFacts::testCallSummary("<?php\nfunction helper() {}\n", 'src/Helper.php')
+        );
+    }
+
     public function testPhpFactsCollectPhpDocTypeSummariesFromFunctionsAndMethods(): void
     {
         $file = $this->fixtureDir . '/src/PhpDocFacts.php';
