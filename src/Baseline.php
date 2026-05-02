@@ -9,6 +9,26 @@ use SlopScan\Support\Json;
 
 final class Baseline
 {
+    /** @param array<string,mixed> $report @return array<string,mixed> */
+    public static function fromReport(array $report): array
+    {
+        $metadata = $report['metadata'] ?? [];
+
+        return [
+            'metadata' => [
+                'schemaVersion' => $metadata['schemaVersion'] ?? 1,
+                'kind' => 'baseline',
+                'tool' => $metadata['tool'] ?? ['name' => 'slop-scan-php', 'version' => '0.1.0'],
+                'configHash' => $metadata['configHash'] ?? '',
+                'findingFingerprintVersion' => $metadata['findingFingerprintVersion'] ?? 1,
+            ],
+            'summary' => [
+                'findingCount' => count($report['findings'] ?? []),
+            ],
+            'findings' => array_values($report['findings'] ?? []),
+        ];
+    }
+
     public static function readReport(string $path): array
     {
         if (!is_file($path)) {

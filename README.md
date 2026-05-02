@@ -4,6 +4,8 @@ Deterministic PHP CLI for finding explainable slop patterns in PHP repositories.
 
 `slop-scan` is a static-analysis style heuristic scanner. It is **not** an authorship detector. It reports concrete findings with rule IDs, evidence, scores, and stable occurrence fingerprints so results can be reviewed, compared, and tracked over time.
 
+This repository started from a fork of [`modem-dev/slop-scan`](https://github.com/modem-dev/slop-scan) and was rewritten in PHP with Codex so it fits PHP tooling, packaging, and CI workflows directly.
+
 ## Requirements
 
 - PHP 8.3+
@@ -32,35 +34,40 @@ php dist/slop-scan.phar scan .
 
 ## Quick start
 
-Scan the current repository:
+1. Install dependencies:
+
+```bash
+composer install
+```
+
+2. Scan the current repository:
 
 ```bash
 php bin/slop-scan.php scan .
 ```
 
-Scan in lint mode:
+3. Pick an output format that matches your workflow:
 
 ```bash
 php bin/slop-scan.php scan . --lint
-```
-
-Emit JSON:
-
-```bash
 php bin/slop-scan.php scan . --json
-```
-
-Emit GitHub Actions annotations:
-
-```bash
 php bin/slop-scan.php scan . --github
 ```
 
-Ignore paths:
+4. Ignore generated or irrelevant paths when needed:
 
 ```bash
 php bin/slop-scan.php scan . --ignore 'vendor/**' --ignore 'tests/fixtures/**'
 ```
+
+5. Create a baseline when you want CI to fail only on newly introduced findings:
+
+```bash
+php bin/slop-scan.php scan . --baseline-file slop-baseline.json --generate-baseline
+php bin/slop-scan.php scan . --baseline-file slop-baseline.json --github
+```
+
+The generated baseline is intentionally compact: it stores only finding metadata and fingerprints needed to suppress existing findings, not the full scanned file inventory.
 
 ## Delta comparisons
 
@@ -115,21 +122,28 @@ The PHP implementation scans:
 - `.phtml`
 - `.inc`
 
-## Current built-in rules
+## What the built-in rules check and why
 
-- `php.empty-catch`
-- `php.error-swallowing`
-- `php.blanket-static-analysis-suppressions`
-- `php.excessive-static-analysis-suppressions`
-- `php.stacked-static-analysis-suppressions`
-- `php.commented-out-code`
-- `php.debug-output`
-- `php.mock-heavy-tests-without-assertions`
-- `php.placeholder-comments`
-- `php.pass-through-wrappers`
-- `php.directory-fanout-hotspot`
-- `php.over-fragmentation`
-- `php.duplicate-function-signatures`
+`slop-scan` focuses on explainable, reviewable heuristics. These rules try to catch patterns that often show up in rushed, weakly reviewed, or partially cleaned-up code:
+
+| Rule | What it checks | Why it matters |
+| --- | --- | --- |
+| `php.empty-catch` | `catch` blocks with no statements | Exceptions disappear silently and make failures harder to debug. |
+| `php.error-swallowing` | `catch` blocks that log/print and continue without `throw` or `return` | Errors are acknowledged but not handled, so broken execution keeps going. |
+| `php.blanket-static-analysis-suppressions` | Broad `@phpstan-ignore`, `@psalm-suppress`, and similar comments | Blanket suppressions hide real problems and reduce trust in static analysis. |
+| `php.excessive-static-analysis-suppressions` | Files with more suppression comments than the configured threshold | A file full of suppressions often signals design debt or papered-over typing issues. |
+| `php.stacked-static-analysis-suppressions` | Back-to-back suppression comments above one code site | Stacked ignores are a strong smell that one line is resisting cleanup. |
+| `php.commented-out-code` | Comments that look like disabled code | Dead code in comments adds noise and creates doubt about what is still relevant. |
+| `php.debug-output` | Calls like `var_dump()`, `print_r()`, `dd()`, or `ray()` left in source | Debug leftovers usually should not ship in production code. |
+| `php.mock-heavy-tests-without-assertions` | Tests that mostly build mocks but do not assert behavior | These tests look busy but often do not protect behavior. |
+| `php.misleading-phpdoc-types` | PHPDoc param/return types that either disagree with or merely duplicate native types | Misleading docs undermine trust, while redundant docs add noise without extra type value. |
+| `php.placeholder-comments` | Comments such as TODO, FIXME, HACK, placeholder, temporary | These markers often reveal unfinished or intentionally deferred work. |
+| `php.pass-through-wrappers` | Functions that mostly forward input to another function | Thin wrappers can indicate unnecessary indirection and generated-looking structure. |
+| `php.directory-fanout-hotspot` | Directories with unusually high PHP file counts | Large clusters of files can indicate sprawl and review-unfriendly structure. |
+| `php.over-fragmentation` | Directories with many tiny PHP files | Excessively tiny files can make simple behavior harder to follow. |
+| `php.duplicate-function-signatures` | Repeated function signatures across the repository | Repetition can point to copy-paste design and missed abstraction opportunities. |
+
+The tool is intentionally heuristic: a finding is a prompt for review, not a verdict.
 
 ## Configuration
 
@@ -148,7 +162,7 @@ The PHP implementation scans:
 
 ## Report shape
 
-JSON output includes:
+JSON scan output includes:
 
 - `metadata`
 - `rootDir`
@@ -162,6 +176,14 @@ JSON output includes:
 
 Each finding includes rule identity, severity, scope, message, evidence, score, locations, path, and `deltaIdentity` occurrence fingerprints.
 
+Baseline files are smaller than full JSON scan reports. They contain:
+
+- `metadata`
+- `summary.findingCount`
+- `findings`
+
+That keeps baseline adoption practical for existing repositories: commit the current findings once, then let CI fail only on newly introduced fingerprints.
+
 ## Development
 
 Run local validation:
@@ -173,5 +195,7 @@ composer run test
 composer run scan:self
 composer run phar:build
 ```
+
+The repository dogfoods `slop-scan` in CI by scanning the whole checkout directly, without a committed baseline file, so pull requests must keep the repository clean enough to pass the same heuristics it ships.
 
 The implementation lives in PSR-4 class files under `src/`, organized by responsibility (for example `Contract/`, `Fact/`, `Model/`, `Reporter/`, `Rule/`, `Runtime/`, and `Support/`); tests live in `tests/`.

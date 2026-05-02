@@ -20,6 +20,7 @@ use SlopScan\Rule\EmptyCatchRule;
 use SlopScan\Rule\ErrorSwallowingRule;
 use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
 use SlopScan\Rule\MockHeavyTestsWithoutAssertionsRule;
+use SlopScan\Rule\MisleadingPhpDocTypesRule;
 use SlopScan\Rule\OverFragmentationRule;
 use SlopScan\Rule\PassThroughWrappersRule;
 use SlopScan\Rule\PlaceholderCommentsRule;
@@ -43,6 +44,7 @@ final class DefaultRegistry
             new CommentedOutCodeRule(),
             new DebugOutputRule(),
             new MockHeavyTestsWithoutAssertionsRule(),
+            new MisleadingPhpDocTypesRule(),
             new PlaceholderCommentsRule(),
             new PassThroughWrappersRule(),
             new DirectoryFanoutHotspotRule(),

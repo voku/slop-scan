@@ -5,8 +5,14 @@ declare(strict_types=1);
 namespace SlopScan\Tests;
 
 use PHPUnit\Framework\TestCase;
+use PhpParser\Parser;
 use SlopScan\Analyzer;
+use SlopScan\Baseline;
 use SlopScan\Config;
+use SlopScan\Console\CommandSupport;
+use SlopScan\Console\DeltaCommand;
+use SlopScan\Console\ScanCommand;
+use SlopScan\Console\SlopScanApplication;
 use SlopScan\Contract\FactProvider;
 use SlopScan\DefaultRegistry;
 use SlopScan\Delta;
@@ -28,6 +34,9 @@ use SlopScan\Scheduler;
 use SlopScan\Support\Json;
 use SlopScan\Support\Lines;
 use SlopScan\Support\PatternMatcher;
+use Symfony\Component\Console\Exception\CommandNotFoundException;
+use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\Console\Tester\CommandTester;
 
 final class PhpCliTest extends TestCase
 {
@@ -110,7 +119,8 @@ PHP);
         self::assertSame(['src/Ignore.php'], $config['ignores']);
         self::assertSame(1, $config['thresholds']['unused']);
         self::assertSame([['path' => 'src/Example.php']], $config['overrides']);
-        self::assertSame(['php.pass-through-wrappers', 'php.placeholder-comments'], $this->ruleIds($result->findings));
+        self::assertSame(['php.debug-output', 'php.pass-through-wrappers', 'php.placeholder-comments'], $this->ruleIds($result->findings));
+        self::assertSame(1.25, $this->scoreForRule($result->findings, 'php.debug-output'));
         self::assertSame(1.0, $this->scoreForRule($result->findings, 'php.pass-through-wrappers'));
         self::assertSame(1.0, $this->scoreForRule($result->findings, 'php.placeholder-comments'));
     }
@@ -343,6 +353,105 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testPassThroughWrapperRuleSkipsFunctionsThatAddContext(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Helpers.php', <<<'PHP'
+<?php
+
+function encode_value($value, $pretty = false) {
+    return json_encode($value, JSON_THROW_ON_ERROR | ($pretty ? JSON_PRETTY_PRINT : 0));
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.pass-through-wrappers', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testMisleadingPhpDocTypeRuleDetectsConflictsAndRedundantDocsButSkipsHelpfulDetail(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Docs.php', <<<'PHP'
+<?php
+
+/**
+ * @param string $name
+ * @return int
+ */
+function redundant(string $name): int {
+    return 1;
+}
+
+/**
+ * @param string $count
+ */
+function wrong_param(int $count): int {
+    return $count;
+}
+
+/**
+ * @return string
+ */
+function wrong_return(): int {
+    return 1;
+}
+
+/**
+ * @param array<int, string> $items
+ * @return non-empty-string
+ */
+function helpful(array $items): string {
+    return 'ok';
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertContains('php.misleading-phpdoc-types', $this->ruleIds($result->findings));
+        self::assertSame(4, $this->countForRule($result->findings, 'php.misleading-phpdoc-types'));
+        self::assertSame(
+            [
+                'subject=redundant',
+                'annotation=@param $name',
+                'native=string',
+                'phpdoc=string $name',
+                'reason=phpdoc-repeats-native-type',
+            ],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.misleading-phpdoc-types', 7)
+        );
+        self::assertSame(
+            [
+                'subject=wrong_param',
+                'annotation=@param $count',
+                'native=int',
+                'phpdoc=string $count',
+                'reason=phpdoc-disagrees-with-native-type',
+            ],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.misleading-phpdoc-types', 14)
+        );
+        self::assertSame(
+            [
+                'subject=wrong_return',
+                'annotation=@return',
+                'native=int',
+                'phpdoc=string',
+                'reason=phpdoc-disagrees-with-native-type',
+            ],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.misleading-phpdoc-types', 21)
+        );
+        self::assertSame(0, count(array_filter(
+            $result->findings,
+            static fn(Finding $finding): bool => $finding->ruleId === 'php.misleading-phpdoc-types' && in_array('subject=helpful', $finding->evidence, true)
+        )));
+
+        $this->remove($fixture);
+    }
+
     public function testStackedStaticAnalysisSuppressionsRuleDetectsClusteredSuppressions(): void
     {
         $fixture = $this->makeFixture();
@@ -531,6 +640,7 @@ PHP);
         $baselineFile = $fixture . '/slop-baseline.json';
 
         [$generateExit, $generateOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--generate-baseline']);
+        $baselineDecoded = json_decode((string) file_get_contents($baselineFile), true, 512, JSON_THROW_ON_ERROR);
         file_put_contents($fixture . '/src/A.php', <<<'PHP'
 <?php
 // TODO baseline
@@ -549,6 +659,9 @@ PHP);
         self::assertSame(0, $generateExit);
         self::assertStringContainsString('baseline written', $generateOutput);
         self::assertFileExists($baselineFile);
+        self::assertSame(['metadata', 'summary', 'findings'], array_keys($baselineDecoded));
+        self::assertSame('baseline', $baselineDecoded['metadata']['kind']);
+        self::assertSame(count($baselineDecoded['findings']), $baselineDecoded['summary']['findingCount']);
         self::assertSame(1, $jsonExit);
         $decoded = json_decode($jsonOutput, true, 512, JSON_THROW_ON_ERROR);
         self::assertSame(1, $decoded['baseline']['summary']['added']);
@@ -561,6 +674,197 @@ PHP);
         self::assertStringNotContainsString('php.placeholder-comments', $lintOutput);
 
         $this->remove($fixture);
+    }
+
+    public function testGithubReporterEscapesValuesAndDefaultsMissingLocations(): void
+    {
+        $findingWithLocation = new Finding(
+            'php.rule',
+            'family',
+            'medium',
+            'file',
+            "broken:value,\nnext",
+            [],
+            1.0,
+            [['path' => 'src/{Odd},Name.php', 'line' => 7, 'column' => 3]],
+            'src/{Odd},Name.php'
+        );
+        $findingWithoutLocation = new Finding(
+            'php.other',
+            'family',
+            'weak',
+            'file',
+            "needs\rdefault",
+            [],
+            1.0,
+            [],
+            'src/Fallback.php'
+        );
+        $result = new AnalysisResult('/repo', [], ['findingCount' => 2], [], [], [$findingWithLocation, $findingWithoutLocation], [], [], 0.0);
+
+        $rendered = (new GithubReporter())->render($result);
+
+        self::assertMatchesRegularExpression('/^::error file=src\/%7BOdd%7D%2CName\.php,line=7,col=3::/m', $rendered);
+        self::assertStringContainsString('::error file=src/%7BOdd%7D%2CName.php,line=7,col=3::broken%3Avalue%2C%0Anext (php.rule)', $rendered);
+        self::assertStringContainsString('::error file=src/Fallback.php,line=1,col=1::needs%0Ddefault (php.other)', $rendered);
+        self::assertSame('github', (new GithubReporter())->id());
+    }
+
+    public function testCommandSupportHelpersAndBaselineValidation(): void
+    {
+        $finding = new Finding('php.added', 'family', 'medium', 'file', 'Added finding', [], 1.0, [['path' => 'src/New.php', 'line' => 2]], 'src/New.php');
+        $report = [
+            'metadata' => ['schemaVersion' => 9, 'tool' => ['name' => 'custom', 'version' => '1.2.3'], 'configHash' => 'abc', 'findingFingerprintVersion' => 4],
+            'findings' => [$finding->toReport()],
+        ];
+        $baseline = Baseline::fromReport($report);
+        $baselinePath = $this->fixtureDir . '/baseline.json';
+
+        Baseline::writeReport($baselinePath, $baseline);
+        $decoded = Baseline::readReport($baselinePath);
+        $delta = [
+            'summary' => ['added' => 1, 'resolved' => 0],
+            'changes' => [
+                ['status' => 'added', 'fingerprint' => $finding->deltaIdentity['occurrences'][0]['fingerprint'], 'finding' => $finding->toReport()],
+                ['status' => 'resolved', 'fingerprint' => 'gone', 'finding' => ['ruleId' => 'php.gone']],
+            ],
+        ];
+
+        self::assertSame('baseline', $decoded['metadata']['kind']);
+        self::assertSame(1, $decoded['summary']['findingCount']);
+        self::assertCount(1, Baseline::addedFindings([$finding], $delta));
+        self::assertSame('php.added', Baseline::addedFindings([$finding], $delta)[0]->ruleId);
+        self::assertSame([], Baseline::addedFindings([$finding], ['changes' => []]));
+        self::assertSame(['added' => 1, 'resolved' => 0], Baseline::reportWithDelta($report, $delta)['baseline']['summary']);
+        self::assertSame([$finding->toReport()], Baseline::reportWithDelta($report, $delta)['newFindings']);
+        self::assertSame('baseline', CommandSupport::reportInput($baselinePath, null, [])['metadata']['kind']);
+        self::assertSame(1, CommandSupport::reportInput($baselinePath, null, [])['summary']['findingCount']);
+        self::assertSame('0 new findings', CommandSupport::formatFindings([]));
+        self::assertStringContainsString('added php.added', CommandSupport::formatDelta($delta));
+        self::assertSame('json', CommandSupport::scanReporterId(true, false, false));
+        self::assertSame('github', CommandSupport::scanReporterId(false, true, false));
+        self::assertSame('lint', CommandSupport::scanReporterId(false, false, true));
+        self::assertSame('text', CommandSupport::scanReporterId(false, false, false));
+        self::assertTrue(CommandSupport::shouldFail($delta, 'resolved,added'));
+        self::assertFalse(CommandSupport::shouldFail($delta, null));
+        self::assertFalse(CommandSupport::shouldFail($delta, ''));
+
+        try {
+            Baseline::readReport($this->fixtureDir . '/missing.json');
+            self::fail('Expected missing baseline file to throw.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('does not exist', $exception->getMessage());
+        }
+
+        file_put_contents($this->fixtureDir . '/invalid.json', Json::encode(['summary' => []]));
+        try {
+            Baseline::readReport($this->fixtureDir . '/invalid.json');
+            self::fail('Expected invalid baseline JSON report to throw.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('not a slop-scan JSON report', $exception->getMessage());
+        }
+
+        try {
+            Baseline::writeReport($this->fixtureDir . '/missing-dir/baseline.json', $baseline);
+            self::fail('Expected write to missing directory to throw.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('directory does not exist', $exception->getMessage());
+        }
+
+        try {
+            CommandSupport::reportInput(null, null, []);
+            self::fail('Expected missing delta input to throw.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('Missing delta input', $exception->getMessage());
+        }
+    }
+
+    public function testInProcessScanAndDeltaCommandsCoverBranches(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO baseline
+function wrapper($value) {
+    return transform($value);
+}
+PHP);
+
+        $scanTester = new CommandTester(new ScanCommand());
+        $scanExit = $scanTester->execute(['path' => $fixture, '--json' => true]);
+        $scanReport = json_decode($scanTester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+        $baselinePath = $fixture . '/baseline.json';
+        $baselineExit = $scanTester->execute(['path' => $fixture, '--baseline-file' => $baselinePath, '--generate-baseline' => true]);
+
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO baseline
+function wrapper($value) {
+    return transform($value);
+}
+try {
+    risky();
+} catch (Throwable $e) {
+}
+PHP);
+
+        $baselineJsonExit = $scanTester->execute(['path' => $fixture, '--baseline-file' => $baselinePath, '--json' => true]);
+        $baselineJson = json_decode($scanTester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+        $baselineGithubExit = $scanTester->execute(['path' => $fixture, '--baseline-file' => $baselinePath, '--github' => true]);
+        $baselineGithub = $scanTester->getDisplay();
+        $baselineLintExit = $scanTester->execute(['path' => $fixture, '--baseline-file' => $baselinePath, '--lint' => true]);
+        $baselineLint = $scanTester->getDisplay();
+        $missingBaselineExit = $scanTester->execute(['path' => $fixture, '--generate-baseline' => true]);
+
+        self::assertSame(0, $scanExit);
+        self::assertSame(2, $scanReport['summary']['findingCount']);
+        self::assertSame(0, $baselineExit);
+        self::assertFileExists($baselinePath);
+        self::assertSame(1, $baselineJsonExit);
+        self::assertSame(1, $baselineJson['baseline']['summary']['added']);
+        self::assertSame(1, $baselineGithubExit);
+        self::assertStringContainsString('php.empty-catch', $baselineGithub);
+        self::assertSame(1, $baselineLintExit);
+        self::assertStringContainsString('new finding', $baselineLint);
+        self::assertSame(1, $missingBaselineExit);
+        self::assertStringContainsString('Missing --baseline-file', $scanTester->getDisplay());
+
+        $baseReport = $fixture . '/base-report.json';
+        $headReport = $fixture . '/head-report.json';
+        $finding = new Finding('php.new', 'family', 'medium', 'file', 'new', [], 1.0, [['path' => 'src/B.php', 'line' => 1]], 'src/B.php');
+        file_put_contents($baseReport, Json::encode(['findings' => []]));
+        file_put_contents($headReport, Json::encode(['findings' => [$finding->toReport()]]));
+
+        $deltaTester = new CommandTester(new DeltaCommand());
+        $deltaExit = $deltaTester->execute(['--base-report' => $baseReport, '--head-report' => $headReport, '--json' => true, '--fail-on' => 'added']);
+        $deltaJson = json_decode($deltaTester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+        $deltaTextExit = $deltaTester->execute(['base-path' => $fixture, 'head-path' => $fixture]);
+        $deltaText = $deltaTester->getDisplay();
+        $deltaErrorExit = $deltaTester->execute([]);
+
+        self::assertSame(1, $deltaExit);
+        self::assertSame(1, $deltaJson['summary']['added']);
+        self::assertSame(0, $deltaTextExit);
+        self::assertStringContainsString('slop-scan delta', $deltaText);
+        self::assertSame(1, $deltaErrorExit);
+        self::assertStringContainsString('Missing delta input', $deltaTester->getDisplay());
+
+        $this->remove($fixture);
+    }
+
+    public function testApplicationRendersThrowableMessagesToStandardAndErrorOutputs(): void
+    {
+        $application = new SlopScanApplication();
+        $buffer = new BufferedOutput();
+        $consoleOutput = new ConsoleOutputStub();
+
+        $application->renderThrowable(new \RuntimeException('plain failure'), $buffer);
+        $application->renderThrowable(new CommandNotFoundException('Command "mystery" is not defined.'), $consoleOutput);
+
+        self::assertStringContainsString('plain failure', $buffer->fetch());
+        self::assertSame('', $consoleOutput->fetch());
+        self::assertStringContainsString('Unknown command: mystery', $consoleOutput->getErrorOutput()->fetch());
     }
 
     public function testPatternMatchingLanguageRegistryAndSchedulerEdges(): void
@@ -653,10 +957,166 @@ PHP;
         self::assertSame(['box::value(1)', 'value(1)'], array_column($functions, 'signature'));
         self::assertSame(11, $catches[0]['line']);
         self::assertSame(['$input'], $functions[0]['params']);
+        self::assertSame(['callee' => 'wrap', 'args' => ['$input']], $functions[0]['passThroughCall']);
         self::assertSame('', trim($catches[0]['body']));
+        self::assertSame(0, $catches[0]['statementCount']);
+        self::assertFalse($catches[0]['hasThrow']);
+        self::assertFalse($catches[0]['hasReturn']);
+        self::assertSame([], $catches[0]['callNames']);
         self::assertArrayHasKey('available', $summary);
         self::assertArrayHasKey('classCount', $summary);
         self::assertArrayHasKey('functionCount', $summary);
+    }
+
+    public function testPhpFactsIgnoreCodeLikeTextInsideCommentsAndStrings(): void
+    {
+        $php = <<<'PHP'
+<?php
+// function ignored($value) { return wrap($value); }
+$fixture = <<<'FIXTURE'
+<?php
+function proxy($value) {
+    return transform($value);
+}
+try {
+    risky();
+} catch (Throwable $e) {
+    error_log($e->getMessage());
+}
+FIXTURE;
+function clean($value) {
+    return keep($value);
+}
+try {
+    risky();
+} catch (Throwable $e) {
+    return fallback($e);
+}
+PHP;
+
+        $functions = PhpFacts::functions($php);
+        $catches = PhpFacts::tryCatches($php);
+
+        self::assertSame(['clean(1)'], array_column($functions, 'signature'));
+        self::assertSame(1, count($catches));
+        self::assertSame(['callee' => 'keep', 'args' => ['$value']], $functions[0]['passThroughCall']);
+        self::assertTrue($catches[0]['hasReturn']);
+        self::assertStringContainsString('return fallback', $catches[0]['body']);
+    }
+
+    public function testPhpFactsCollectDebugCallsFromAstOnly(): void
+    {
+        $php = <<<'PHP'
+<?php
+function var_dump($value) {
+    return $value;
+}
+
+final class Debugger
+{
+    public function dumpValue(mixed $value): void
+    {
+        $this->var_dump($value);
+        self::print_r($value);
+    }
+}
+
+// var_dump($comment);
+$doc = 'print_r($string)';
+var_dump($real);
+print_r($other);
+PHP;
+
+        self::assertSame(
+            [
+                ['name' => 'var_dump', 'line' => 17],
+                ['name' => 'print_r', 'line' => 18],
+            ],
+            PhpFacts::debugCalls($php)
+        );
+    }
+
+    public function testPhpFactsCollectParserBackedTestCallSummary(): void
+    {
+        $php = <<<'PHP'
+<?php
+
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+
+final class ExampleTest extends TestCase
+{
+    #[Test]
+    public function buildsMocks(): void
+    {
+        $dependency = $this->createMock(\stdClass::class);
+        $builder = $this->getMockBuilder(\ArrayObject::class);
+        $this->assertSame(1, 1);
+        $dependency->expects($this->once());
+    }
+
+    public function test_helper(): void
+    {
+    }
+}
+PHP;
+
+        self::assertSame(
+            [
+                'looksLikeTest' => true,
+                'testCount' => 2,
+                'mockCount' => 2,
+                'assertionCount' => 1,
+                'expectationCount' => 1,
+            ],
+            PhpFacts::testCallSummary($php, 'tests/ExampleTest.php')
+        );
+        self::assertSame(
+            [
+                'looksLikeTest' => false,
+                'testCount' => 0,
+                'mockCount' => 0,
+                'assertionCount' => 0,
+                'expectationCount' => 0,
+            ],
+            PhpFacts::testCallSummary("<?php\nfunction helper() {}\n", 'src/Helper.php')
+        );
+    }
+
+    public function testPhpFactsCollectPhpDocTypeSummariesFromFunctionsAndMethods(): void
+    {
+        $file = $this->fixtureDir . '/src/PhpDocFacts.php';
+        file_put_contents($file, <<<'PHP'
+<?php
+
+/**
+ * @param string $name
+ * @return string|null
+ */
+function format_name(string $name): ?string {
+    return $name;
+}
+
+final class Formatter
+{
+    /**
+     * @param int $count
+     * @return array<int, string>
+     */
+    public function names(int $count): array
+    {
+        return [];
+    }
+}
+PHP);
+
+        $summaries = PhpFacts::phpDocTypeSummaries($file);
+
+        self::assertSame(['format_name', 'Formatter::names'], array_column($summaries, 'subject'));
+        self::assertSame('string', $summaries[0]['params'][0]['nativeType']);
+        self::assertSame('string|null', $summaries[0]['return']['phpDocType']);
+        self::assertSame('int', $summaries[1]['params'][0]['nativeType']);
+        self::assertSame('array<int, string>', $summaries[1]['return']['phpDocExtendedType']);
     }
 
     public function testParserSummaryHandlesUnavailableInjectedAndErrorStates(): void
@@ -664,7 +1124,7 @@ PHP;
         $file = $this->fixtureDir . '/src/ParserSummary.php';
         file_put_contents($file, "<?php\nclass Parsed {}\nfunction parsed() {}\n");
 
-        if (!class_exists('voku\\SimplePhpParser\\Parsers\\SimplePhpParser')) {
+        if (!class_exists(\PhpParser\ParserFactory::class)) {
             $unavailable = PhpFacts::parserSummary($file);
 
             self::assertSame([
@@ -674,10 +1134,12 @@ PHP;
             ], $unavailable);
         }
 
-        PhpFacts::useParserFactoryForTesting(static fn(): object => new SimplePhpParserStub());
-        SimplePhpParserStub::$classes = ['Parsed'];
-        SimplePhpParserStub::$functions = ['parsed'];
-        SimplePhpParserStub::$exceptionMessage = null;
+        PhpFacts::useParserFactoryForTesting(static fn(): Parser => new ParserStub());
+        ParserStub::$statements = [
+            new \PhpParser\Node\Stmt\Class_(new \PhpParser\Node\Identifier('Parsed')),
+            new \PhpParser\Node\Stmt\Function_(new \PhpParser\Node\Identifier('parsed')),
+        ];
+        ParserStub::$exceptionMessage = null;
 
         try {
             $success = PhpFacts::parserSummary($file);
@@ -688,7 +1150,7 @@ PHP;
                 'functionCount' => 1,
             ], $success);
 
-            SimplePhpParserStub::$exceptionMessage = 'parse failed';
+            ParserStub::$exceptionMessage = 'parse failed';
 
             $error = PhpFacts::parserSummary($file);
 
@@ -698,9 +1160,8 @@ PHP;
             self::assertSame('parse failed', $error['error']);
         } finally {
             PhpFacts::useParserFactoryForTesting(null);
-            SimplePhpParserStub::$classes = [];
-            SimplePhpParserStub::$functions = [];
-            SimplePhpParserStub::$exceptionMessage = null;
+            ParserStub::$statements = [];
+            ParserStub::$exceptionMessage = null;
         }
     }
 
@@ -724,7 +1185,6 @@ PHP;
 
     /**
      * @param list<Finding> $findings findings to inspect
-     * @return float score for the requested rule ID
      */
     private function scoreForRule(array $findings, string $ruleId): float
     {
@@ -756,6 +1216,21 @@ PHP;
             }
         }
         self::fail("Missing finding for {$ruleId}");
+    }
+
+    /**
+     * @param list<Finding> $findings findings to inspect
+     * @return list<string> evidence for the requested rule ID and line
+     */
+    private function findEvidenceForRuleAndLine(array $findings, string $ruleId, int $line): array
+    {
+        foreach ($findings as $finding) {
+            if ($finding->ruleId === $ruleId && ($finding->locations[0]['line'] ?? null) === $line) {
+                return $finding->evidence;
+            }
+        }
+
+        self::fail("Missing finding for {$ruleId} on line {$line}");
     }
 
     /**
@@ -818,33 +1293,52 @@ PHP;
     }
 }
 
-final class SimplePhpParserStub
+final class ParserStub implements Parser
 {
-    /** @var list<mixed> */
-    public static array $classes = [];
-    /** @var list<mixed> */
-    public static array $functions = [];
+    /** @var list<\PhpParser\Node\Stmt> */
+    public static array $statements = [];
     public static ?string $exceptionMessage = null;
 
-    public function parse(string $absolutePath): void
+    public function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler = null): ?array
     {
         if (self::$exceptionMessage !== null) {
             throw new \RuntimeException(self::$exceptionMessage);
         }
-        if (!is_file($absolutePath)) {
-            throw new \RuntimeException('missing file');
+        return self::$statements;
+    }
+
+    public function getTokens(): array
+    {
+        return [];
+    }
+}
+
+final class ConsoleOutputStub extends BufferedOutput implements \Symfony\Component\Console\Output\ConsoleOutputInterface
+{
+    private BufferedOutput $errorOutput;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->errorOutput = new BufferedOutput();
+    }
+
+    public function getErrorOutput(): BufferedOutput
+    {
+        return $this->errorOutput;
+    }
+
+    public function setErrorOutput(\Symfony\Component\Console\Output\OutputInterface $error): void
+    {
+        if (!$error instanceof BufferedOutput) {
+            throw new \InvalidArgumentException('Expected BufferedOutput.');
         }
+
+        $this->errorOutput = $error;
     }
 
-    /** @return list<mixed> */
-    public function getClasses(): array
+    public function section(): \Symfony\Component\Console\Output\ConsoleSectionOutput
     {
-        return self::$classes;
-    }
-
-    /** @return list<mixed> */
-    public function getFunctions(): array
-    {
-        return self::$functions;
+        throw new \BadMethodCallException('Sections are not needed in tests.');
     }
 }

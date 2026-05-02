@@ -11,7 +11,7 @@ final class StaticAnalysisSuppressions
     // Keep the reason single-level so simple regex parsing can distinguish one optional reason
     // from other trailing text without nested-parenthesis handling.
     // PHPStan identifiers are treated as dot-or-hyphen separated segments such as "argument.type" or "return-type".
-    // Plain @phpstan-ignore may still carry a short single-segment identifier, so this pattern allows that shape too.
+    // The unsuffixed PHPStan ignore directive may still carry a short single-segment identifier, so this pattern allows that shape too.
     private const PHPSTAN_IGNORE_IDENTIFIER_PATTERN = '/^[a-z0-9_]+(?:[.-][a-z0-9_]+)*(?:\s+\([^()\r\n]+\))?$/i';
     private const INLINE_CONTEXT_PATTERN = '/^(?:[A-Za-z][A-Za-z0-9 _.,:-]{1,}|\([^()\r\n]+\))$/';
 

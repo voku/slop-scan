@@ -3,6 +3,7 @@
     "description": "Deterministic PHP CLI for explainable slop heuristics in PHP repositories.",
     "type": "project",
     "require": {
+        "nikic/php-parser": "^5.7",
         "php": "^8.3",
         "symfony/console": "^7.4",
         "voku/simple-php-code-parser": "^0.21.0"
@@ -40,7 +41,7 @@
         ],
         "test": "phpunit tests",
         "test:php": "phpunit tests",
-        "scan:self": "php bin/slop-scan.php scan src --json",
-        "scan:php:self": "php bin/slop-scan.php scan src --json"
+        "scan:self": "php bin/slop-scan.php scan . --github",
+        "scan:php:self": "php bin/slop-scan.php scan . --github"
     }
 }

@@ -18,8 +18,8 @@ final class ErrorSwallowingRule extends BaseRule
     {
         $findings = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.tryCatches') ?? [] as $catch) {
-            $body = strtolower($catch['body']);
-            if (preg_match('/\b(error_log|echo|print|var_dump|trigger_error)\b/', $body) && !preg_match('/\b(throw|return)\b/', $body)) {
+            $callNames = $catch['callNames'] ?? [];
+            if (array_intersect(['echo', 'error_log', 'print', 'trigger_error', 'var_dump'], $callNames) !== [] && !($catch['hasThrow'] ?? false) && !($catch['hasReturn'] ?? false)) {
                 $findings[] = new Finding($this->id(), $this->family(), $this->severity(), 'file', 'Found PHP catch block that logs or prints and continues', ['catch body logs/prints without throw or return'], 2.0, [['path' => $context->file->path, 'line' => $catch['line'], 'column' => 1]], $context->file->path);
             }
         }

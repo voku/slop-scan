@@ -5,6 +5,12 @@
     "**/coverage/**",
     "**/*.generated.*"
   ],
-  "rules": {},
+  "rules": {
+    "php.directory-fanout-hotspot": {
+      "options": {
+        "fileCount": 16
+      }
+    }
+  },
   "overrides": []
 }
