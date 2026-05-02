@@ -53,7 +53,7 @@ final class RepoToolingFactProvider implements FactProvider
             if ($composer !== null) {
                 if (self::composerUsesInfection($composer)) {
                     $usesInfection = true;
-                    $locationPath ??= 'composer.json';
+                    $locationPath = 'composer.json';
                     $evidence[] = 'composer.json requires infection/infection';
                 }
 
@@ -64,7 +64,7 @@ final class RepoToolingFactProvider implements FactProvider
                         }
 
                         $usesInfection = true;
-                        $locationPath ??= 'composer.json';
+                        $locationPath = 'composer.json';
                         $evidence[] = 'composer script "' . $scriptName . '" runs Infection';
 
                         $tool = self::staticAnalysisToolFromText($command);

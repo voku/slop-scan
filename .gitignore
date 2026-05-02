@@ -3,6 +3,7 @@
 .phpunit.result.cache
 dist/
 vendor/
+build/phpstan/
 autoresearch.md
 autoresearch.sh
 autoresearch.checks.sh

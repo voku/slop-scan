@@ -41,7 +41,10 @@
             "Composer\\Config::disableProcessTimeout",
             "php -d phar.readonly=0 build/build-phar.php"
         ],
-        "mutate": "XDEBUG_MODE=coverage infection --threads=max --min-msi=0 --min-covered-msi=0",
+        "mutate": [
+            "Composer\\Config::disableProcessTimeout",
+            "XDEBUG_MODE=coverage infection --threads=max --min-msi=0 --min-covered-msi=0"
+        ],
         "test": "phpunit tests",
         "test:php": "phpunit tests",
         "scan:self": "php bin/slop-scan.php scan . --github",
