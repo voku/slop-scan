@@ -394,7 +394,7 @@ final class PhpFacts
                 continue;
             }
 
-            if (str_starts_with($name, 'assert') && self::isPhpUnitAssertionReceiver($node)) {
+            if ($node->name instanceof Identifier && preg_match('/^assert[A-Z]/', $node->name->toString()) === 1 && self::isPhpUnitAssertionReceiver($node)) {
                 $count++;
                 continue;
             }
