@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace SlopScan\Fact;
 
 use PhpParser\Node;
+use PhpParser\Node\Arg;
+use PhpParser\Node\Expr;
 use PhpParser\NodeFinder;
 use PhpParser\Node\Stmt;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
+use voku\SimplePhpParser\Parsers\PhpCodeParser;
 
 final class PhpFacts
 {
@@ -28,7 +31,7 @@ final class PhpFacts
         return $comments;
     }
 
-    /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>}> */
+    /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>}}> */
     public static function functions(string $text): array
     {
         $statements = self::parseStatements($text);
@@ -41,7 +44,7 @@ final class PhpFacts
         return $functions;
     }
 
-    /** @return list<array{line:int,body:string}> */
+    /** @return list<array{line:int,body:string,statementCount:int,hasThrow:bool,hasReturn:bool,callNames:list<string>}> */
     public static function tryCatches(string $text): array
     {
         $statements = self::parseStatements($text);
@@ -50,12 +53,57 @@ final class PhpFacts
         }
 
         return array_map(
-            static fn(Stmt\Catch_ $catch): array => [
-                'line' => $catch->getStartLine(),
-                'body' => self::printStatements($catch->stmts),
-            ],
+            static fn(Stmt\Catch_ $catch): array => self::catchSummary($catch),
             self::nodeFinder()->findInstanceOf($statements, Stmt\Catch_::class)
         );
+    }
+
+    /**
+     * @return list<array{
+     *     kind:string,
+     *     subject:string,
+     *     line:int,
+     *     params:list<array{name:string,nativeType:?string,phpDocType:?string,phpDocRaw:?string,phpDocExtendedType:?string}>,
+     *     return:null|array{nativeType:?string,phpDocType:?string,phpDocRaw:?string,phpDocExtendedType:?string}
+     * }>
+     */
+    public static function phpDocTypeSummaries(string $absolutePath): array
+    {
+        if (!class_exists(PhpCodeParser::class)) {
+            return [];
+        }
+
+        try {
+            $container = PhpCodeParser::getPhpFiles($absolutePath);
+        } catch (\Throwable) {
+            return [];
+        }
+
+        $entries = [];
+        foreach ($container->getFunctionsInfo() as $functionName => $info) {
+            $entry = self::phpDocTypeSummaryEntry('function', (string) $functionName, null, $info);
+            if ($entry !== null) {
+                $entries[] = $entry;
+            }
+        }
+
+        $classes = $container->getClasses();
+        ksort($classes, SORT_STRING);
+        foreach ($classes as $className => $class) {
+            foreach ($class->getMethodsInfo() as $methodName => $info) {
+                $entry = self::phpDocTypeSummaryEntry('method', (string) $methodName, (string) $className, $info);
+                if ($entry !== null) {
+                    $entries[] = $entry;
+                }
+            }
+        }
+
+        usort(
+            $entries,
+            static fn(array $left, array $right): int => ($left['line'] <=> $right['line']) ?: strcmp($left['subject'], $right['subject'])
+        );
+
+        return $entries;
     }
 
     /**
@@ -124,7 +172,7 @@ final class PhpFacts
         }
     }
 
-    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>} */
+    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>}} */
     private static function functionSummary(Stmt\ClassMethod|Stmt\Function_ $function, ?string $className): array
     {
         $name = $function->name->toString();
@@ -140,6 +188,7 @@ final class PhpFacts
             'line' => $function->getStartLine(),
             'body' => self::printStatements($function->stmts ?? []),
             'params' => $params,
+            'passThroughCall' => self::passThroughCallSummary($function, $params),
         ];
     }
 
@@ -201,5 +250,139 @@ final class PhpFacts
         }
 
         return true;
+    }
+
+    /**
+     * @param array<string,mixed> $info
+     * @return null|array{
+     *     kind:string,
+     *     subject:string,
+     *     line:int,
+     *     params:list<array{name:string,nativeType:?string,phpDocType:?string,phpDocRaw:?string,phpDocExtendedType:?string}>,
+     *     return:null|array{nativeType:?string,phpDocType:?string,phpDocRaw:?string,phpDocExtendedType:?string}
+     * }
+     */
+    private static function phpDocTypeSummaryEntry(string $kind, string $memberName, ?string $className, array $info): ?array
+    {
+        $params = [];
+        foreach (($info['paramsTypes'] ?? []) as $paramName => $types) {
+            $raw = $info['paramsPhpDocRaw'][$paramName] ?? null;
+            if (!is_string($raw) || trim($raw) === '') {
+                continue;
+            }
+
+            $params[] = [
+                'name' => (string) $paramName,
+                'nativeType' => is_string($types['type'] ?? null) ? $types['type'] : null,
+                'phpDocType' => is_string($types['typeFromPhpDoc'] ?? null) ? $types['typeFromPhpDoc'] : null,
+                'phpDocRaw' => $raw,
+                'phpDocExtendedType' => is_string($types['typeFromPhpDocExtended'] ?? null) ? $types['typeFromPhpDocExtended'] : null,
+            ];
+        }
+
+        $returnRaw = $info['returnPhpDocRaw'] ?? null;
+        $return = is_string($returnRaw) && trim($returnRaw) !== ''
+            ? [
+                'nativeType' => is_string($info['returnTypes']['type'] ?? null) ? $info['returnTypes']['type'] : null,
+                'phpDocType' => is_string($info['returnTypes']['typeFromPhpDoc'] ?? null) ? $info['returnTypes']['typeFromPhpDoc'] : null,
+                'phpDocRaw' => $returnRaw,
+                'phpDocExtendedType' => is_string($info['returnTypes']['typeFromPhpDocExtended'] ?? null) ? $info['returnTypes']['typeFromPhpDocExtended'] : null,
+            ]
+            : null;
+
+        if ($params === [] && $return === null) {
+            return null;
+        }
+
+        $subject = $className !== null ? $className . '::' . $memberName : $memberName;
+
+        return [
+            'kind' => $kind,
+            'subject' => $subject,
+            'line' => is_int($info['line'] ?? null) ? $info['line'] : 1,
+            'params' => $params,
+            'return' => $return,
+        ];
+    }
+
+    /** @param list<string> $params @return null|array{callee:string,args:list<string>} */
+    private static function passThroughCallSummary(Stmt\ClassMethod|Stmt\Function_ $function, array $params): ?array
+    {
+        if ($params === [] || ($function->stmts ?? []) === [] || count($function->stmts ?? []) !== 1) {
+            return null;
+        }
+
+        $statement = $function->stmts[0] ?? null;
+        if (!$statement instanceof Stmt\Return_ || !$statement->expr instanceof Expr\FuncCall) {
+            return null;
+        }
+
+        if (!$statement->expr->name instanceof Node\Name) {
+            return null;
+        }
+
+        $args = [];
+        foreach ($statement->expr->getArgs() as $arg) {
+            $argName = self::variableArgumentName($arg);
+            if ($argName === null) {
+                return null;
+            }
+
+            $args[] = $argName;
+        }
+
+        if ($args !== $params) {
+            return null;
+        }
+
+        return [
+            'callee' => $statement->expr->name->toString(),
+            'args' => $args,
+        ];
+    }
+
+    private static function variableArgumentName(Arg $arg): ?string
+    {
+        if ($arg->name !== null || $arg->unpack || !$arg->value instanceof Expr\Variable || !is_string($arg->value->name)) {
+            return null;
+        }
+
+        return '$' . $arg->value->name;
+    }
+
+    /** @return array{line:int,body:string,statementCount:int,hasThrow:bool,hasReturn:bool,callNames:list<string>} */
+    private static function catchSummary(Stmt\Catch_ $catch): array
+    {
+        $finder = self::nodeFinder();
+        $callNames = [];
+        foreach ($finder->find($catch->stmts, static function (Node $node): bool {
+            return $node instanceof Expr\FuncCall || $node instanceof Expr\Print_ || $node instanceof Stmt\Echo_;
+        }) as $node) {
+            if ($node instanceof Expr\FuncCall && $node->name instanceof Node\Name) {
+                $callNames[] = strtolower($node->name->toString());
+                continue;
+            }
+
+            if ($node instanceof Expr\Print_) {
+                $callNames[] = 'print';
+                continue;
+            }
+
+            if ($node instanceof Stmt\Echo_) {
+                $callNames[] = 'echo';
+            }
+        }
+
+        $callNames = array_values(array_unique($callNames));
+        sort($callNames, SORT_STRING);
+
+        return [
+            'line' => $catch->getStartLine(),
+            'body' => self::printStatements($catch->stmts),
+            'statementCount' => count($catch->stmts),
+            'hasThrow' => $finder->findFirst($catch->stmts, static fn(Node $node): bool => $node instanceof Expr\Throw_) !== null,
+            'hasReturn' => $finder->findFirstInstanceOf($catch->stmts, Stmt\Return_::class) !== null,
+            'callNames' => $callNames,
+        ];
     }
 }

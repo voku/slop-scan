@@ -18,7 +18,7 @@ final class EmptyCatchRule extends BaseRule
     {
         $findings = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.tryCatches') ?? [] as $catch) {
-            if (trim($catch['body']) === '') {
+            if (($catch['statementCount'] ?? 0) === 0) {
                 $findings[] = new Finding($this->id(), $this->family(), $this->severity(), 'file', 'Found empty PHP catch block', ['catch block has no statements'], 2.0, [['path' => $context->file->path, 'line' => $catch['line'], 'column' => 1]], $context->file->path);
             }
         }

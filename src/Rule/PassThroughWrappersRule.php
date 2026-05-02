@@ -19,9 +19,7 @@ final class PassThroughWrappersRule extends BaseRule
     {
         $findings = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.functionSummaries') ?? [] as $function) {
-            $body = trim(preg_replace('/\s+/', ' ', $function['body']) ?? '');
-            $expectedArguments = implode(', ', $function['params']);
-            if ($expectedArguments !== '' && preg_match('/^return\s+[A-Za-z_\\\\][A-Za-z0-9_\\\\]*\s*\((?<args>[^;]*)\);?$/', $body, $match) === 1 && trim(preg_replace('/\s+/', ' ', (string) $match['args']) ?? '') === $expectedArguments) {
+            if (($function['passThroughCall'] ?? null) !== null) {
                 $findings[] = new Finding($this->id(), $this->family(), $this->severity(), 'file', 'Found pass-through PHP wrapper function', [$function['name']], 1.0, [['path' => $context->file->path, 'line' => $function['line'], 'column' => 1]], $context->file->path);
             }
         }

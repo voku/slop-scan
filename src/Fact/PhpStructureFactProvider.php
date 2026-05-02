@@ -12,7 +12,7 @@ final class PhpStructureFactProvider implements FactProvider
     public function id(): string { return 'php.structure'; }
     public function scope(): string { return 'file'; }
     public function requires(): array { return ['file.text']; }
-    public function provides(): array { return ['file.comments', 'file.functionSummaries', 'file.tryCatches', 'file.parserSummary']; }
+    public function provides(): array { return ['file.comments', 'file.functionSummaries', 'file.tryCatches', 'file.parserSummary', 'file.phpDocTypeSummaries']; }
     public function supports(ProviderContext $context): bool { return $context->file?->languageId === 'php'; }
 
     public function run(ProviderContext $context): array
@@ -23,6 +23,7 @@ final class PhpStructureFactProvider implements FactProvider
             'file.functionSummaries' => PhpFacts::functions($text),
             'file.tryCatches' => PhpFacts::tryCatches($text),
             'file.parserSummary' => PhpFacts::parserSummary($context->file->absolutePath),
+            'file.phpDocTypeSummaries' => PhpFacts::phpDocTypeSummaries($context->file->absolutePath),
         ];
     }
 }

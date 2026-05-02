@@ -372,6 +372,86 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testMisleadingPhpDocTypeRuleDetectsConflictsAndRedundantDocsButSkipsHelpfulDetail(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Docs.php', <<<'PHP'
+<?php
+
+/**
+ * @param string $name
+ * @return int
+ */
+function redundant(string $name): int {
+    return 1;
+}
+
+/**
+ * @param string $count
+ */
+function wrong_param(int $count): int {
+    return $count;
+}
+
+/**
+ * @return string
+ */
+function wrong_return(): int {
+    return 1;
+}
+
+/**
+ * @param array<int, string> $items
+ * @return non-empty-string
+ */
+function helpful(array $items): string {
+    return 'ok';
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertContains('php.misleading-phpdoc-types', $this->ruleIds($result->findings));
+        self::assertSame(4, $this->countForRule($result->findings, 'php.misleading-phpdoc-types'));
+        self::assertSame(
+            [
+                'subject=redundant',
+                'annotation=@param $name',
+                'native=string',
+                'phpdoc=string $name',
+                'reason=phpdoc-repeats-native-type',
+            ],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.misleading-phpdoc-types', 7)
+        );
+        self::assertSame(
+            [
+                'subject=wrong_param',
+                'annotation=@param $count',
+                'native=int',
+                'phpdoc=string $count',
+                'reason=phpdoc-disagrees-with-native-type',
+            ],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.misleading-phpdoc-types', 14)
+        );
+        self::assertSame(
+            [
+                'subject=wrong_return',
+                'annotation=@return',
+                'native=int',
+                'phpdoc=string',
+                'reason=phpdoc-disagrees-with-native-type',
+            ],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.misleading-phpdoc-types', 21)
+        );
+        self::assertSame(0, count(array_filter(
+            $result->findings,
+            static fn(Finding $finding): bool => $finding->ruleId === 'php.misleading-phpdoc-types' && in_array('subject=helpful', $finding->evidence, true)
+        )));
+
+        $this->remove($fixture);
+    }
+
     public function testStackedStaticAnalysisSuppressionsRuleDetectsClusteredSuppressions(): void
     {
         $fixture = $this->makeFixture();
@@ -877,7 +957,12 @@ PHP;
         self::assertSame(['box::value(1)', 'value(1)'], array_column($functions, 'signature'));
         self::assertSame(11, $catches[0]['line']);
         self::assertSame(['$input'], $functions[0]['params']);
+        self::assertSame(['callee' => 'wrap', 'args' => ['$input']], $functions[0]['passThroughCall']);
         self::assertSame('', trim($catches[0]['body']));
+        self::assertSame(0, $catches[0]['statementCount']);
+        self::assertFalse($catches[0]['hasThrow']);
+        self::assertFalse($catches[0]['hasReturn']);
+        self::assertSame([], $catches[0]['callNames']);
         self::assertArrayHasKey('available', $summary);
         self::assertArrayHasKey('classCount', $summary);
         self::assertArrayHasKey('functionCount', $summary);
@@ -914,7 +999,45 @@ PHP;
 
         self::assertSame(['clean(1)'], array_column($functions, 'signature'));
         self::assertSame(1, count($catches));
+        self::assertSame(['callee' => 'keep', 'args' => ['$value']], $functions[0]['passThroughCall']);
+        self::assertTrue($catches[0]['hasReturn']);
         self::assertStringContainsString('return fallback', $catches[0]['body']);
+    }
+
+    public function testPhpFactsCollectPhpDocTypeSummariesFromFunctionsAndMethods(): void
+    {
+        $file = $this->fixtureDir . '/src/PhpDocFacts.php';
+        file_put_contents($file, <<<'PHP'
+<?php
+
+/**
+ * @param string $name
+ * @return string|null
+ */
+function format_name(string $name): ?string {
+    return $name;
+}
+
+final class Formatter
+{
+    /**
+     * @param int $count
+     * @return array<int, string>
+     */
+    public function names(int $count): array
+    {
+        return [];
+    }
+}
+PHP);
+
+        $summaries = PhpFacts::phpDocTypeSummaries($file);
+
+        self::assertSame(['format_name', 'Formatter::names'], array_column($summaries, 'subject'));
+        self::assertSame('string', $summaries[0]['params'][0]['nativeType']);
+        self::assertSame('string|null', $summaries[0]['return']['phpDocType']);
+        self::assertSame('int', $summaries[1]['params'][0]['nativeType']);
+        self::assertSame('array<int, string>', $summaries[1]['return']['phpDocExtendedType']);
     }
 
     public function testParserSummaryHandlesUnavailableInjectedAndErrorStates(): void
@@ -1015,6 +1138,21 @@ PHP;
             }
         }
         self::fail("Missing finding for {$ruleId}");
+    }
+
+    /**
+     * @param list<Finding> $findings findings to inspect
+     * @return list<string> evidence for the requested rule ID and line
+     */
+    private function findEvidenceForRuleAndLine(array $findings, string $ruleId, int $line): array
+    {
+        foreach ($findings as $finding) {
+            if ($finding->ruleId === $ruleId && ($finding->locations[0]['line'] ?? null) === $line) {
+                return $finding->evidence;
+            }
+        }
+
+        self::fail("Missing finding for {$ruleId} on line {$line}");
     }
 
     /**
