@@ -526,7 +526,7 @@ PHP);
     {
         $result = $this->scanStoredFixture('slop', $fixtureName, $relativePath);
         $expected = json_decode(
-            (string) file_get_contents(dirname(__DIR__) . '/tests/fixtures/expected/' . $expectedSnapshot),
+            (string) file_get_contents(__DIR__ . '/fixtures/expected/' . $expectedSnapshot),
             true,
             512,
             JSON_THROW_ON_ERROR
@@ -1431,7 +1431,7 @@ PHP);
     private function scanStoredFixture(string $group, string $fixtureName, string $relativePath): AnalysisResult
     {
         $fixture = $this->makeFixture();
-        $sourcePath = dirname(__DIR__) . "/tests/fixtures/{$group}/{$fixtureName}";
+        $sourcePath = __DIR__ . "/fixtures/{$group}/{$fixtureName}";
         $destinationPath = $fixture . '/' . $relativePath;
         mkdir(dirname($destinationPath), 0777, true);
         copy($sourcePath, $destinationPath);
