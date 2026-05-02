@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SlopScan\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
@@ -472,9 +473,7 @@ PHP);
         ];
     }
 
-    /**
-     * @dataProvider positiveFixtureProvider
-     */
+    #[DataProvider('positiveFixtureProvider')]
     public function testPositiveFixturesProduceSingleExpectedFinding(string $fixtureName, string $relativePath, string $expectedRuleId): void
     {
         $result = $this->scanStoredFixture('slop', $fixtureName, $relativePath);
@@ -501,9 +500,7 @@ PHP);
         ];
     }
 
-    /**
-     * @dataProvider cleanFixtureProvider
-     */
+    #[DataProvider('cleanFixtureProvider')]
     public function testCleanFixturesStayQuiet(string $fixtureName, string $relativePath): void
     {
         $result = $this->scanStoredFixture('clean', $fixtureName, $relativePath);
