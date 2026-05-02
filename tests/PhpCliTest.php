@@ -1106,7 +1106,6 @@ PHP);
 
     /**
      * @param list<Finding> $findings findings to inspect
-     * @return float score for the requested rule ID
      */
     private function scoreForRule(array $findings, string $ruleId): float
     {
