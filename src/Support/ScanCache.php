@@ -34,7 +34,12 @@ final class ScanCache
         }
 
         try {
-            $decoded = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+            $raw = file_get_contents($path);
+            if ($raw === false) {
+                return $cache;
+            }
+
+            $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         } catch (\Throwable) {
             return $cache;
         }

@@ -70,10 +70,12 @@ final class Analyzer
                 continue;
             }
 
-            $cachedFacts = $this->cachedFileProviderFacts($provider, $context, $store, $cache);
-            if ($cachedFacts !== null) {
-                $store->setFileFacts($context->file->path, $cachedFacts);
-                continue;
+            if ($context->scope === 'file') {
+                $cachedFacts = $this->cachedFileProviderFacts($provider, $context, $store, $cache);
+                if ($cachedFacts !== null) {
+                    $store->setFileFacts($context->file->path, $cachedFacts);
+                    continue;
+                }
             }
 
             $facts = $provider->run($context);

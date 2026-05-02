@@ -958,15 +958,19 @@ PHP);
         try {
             $scanTester = new CommandTester(new ScanCommand());
             $firstExit = $scanTester->execute(['path' => $fixture, '--json' => true]);
+            $firstReport = json_decode($scanTester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
             $firstParserCalls = $parserCalls;
             $parserCalls = 0;
             $secondExit = $scanTester->execute(['path' => $fixture, '--json' => true]);
+            $secondReport = json_decode($scanTester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
 
             self::assertSame(0, $firstExit);
             self::assertSame(0, $secondExit);
             self::assertGreaterThan(0, $firstParserCalls);
             self::assertSame(0, $parserCalls);
             self::assertFileExists($cacheFile);
+            self::assertSame(['php.debug-output'], array_column($firstReport['findings'], 'ruleId'));
+            self::assertSame(['php.debug-output'], array_column($secondReport['findings'], 'ruleId'));
         } finally {
             PhpFacts::useParserFactoryForTesting(null);
             $this->remove($fixture);
