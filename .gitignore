@@ -1,4 +1,5 @@
 .pi/
+.slop-scan.cache.json
 .phpunit.result.cache
 dist/
 vendor/
