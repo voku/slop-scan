@@ -1054,13 +1054,17 @@ final class ExampleTest extends TestCase
         $this->assertSame(1, 1);
         $dependency->expects($this->once());
     }
+
+    public function test_helper(): void
+    {
+    }
 }
 PHP;
 
         self::assertSame(
             [
                 'looksLikeTest' => true,
-                'testCount' => 1,
+                'testCount' => 2,
                 'mockCount' => 2,
                 'assertionCount' => 1,
                 'expectationCount' => 1,

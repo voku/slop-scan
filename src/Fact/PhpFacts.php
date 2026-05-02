@@ -167,7 +167,7 @@ final class PhpFacts
 
         $testMethods = [];
         foreach ($finder->findInstanceOf($statements, Stmt\ClassMethod::class) as $method) {
-            if (preg_match('/^test[A-Z][A-Za-z0-9_]*$/', $method->name->toString()) === 1 || self::hasPhpUnitTestAttribute($method->attrGroups)) {
+            if (preg_match('/^test[A-Z0-9_][A-Za-z0-9_]*$/', $method->name->toString()) === 1 || self::hasPhpUnitTestAttribute($method->attrGroups)) {
                 $testMethods[$method->getStartLine() . ':' . $method->name->toString()] = true;
             }
         }
