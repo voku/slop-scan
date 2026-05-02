@@ -1,0 +1,6 @@
+<?php
+
+function proxy_value(mixed $value): mixed
+{
+    return transform($value);
+}

@@ -1,0 +1,8 @@
+<?php
+
+function debug_value(mixed $value): mixed
+{
+    var_dump($value);
+
+    return $value;
+}

@@ -454,6 +454,65 @@ PHP);
         $this->remove($fixture);
     }
 
+    /**
+     * @return array<string, array{0:string, 1:string, 2:string}>
+     */
+    public static function positiveFixtureProvider(): array
+    {
+        return [
+            'empty catch' => ['empty-catch.fixture', 'src/EmptyCatch.php', 'php.empty-catch'],
+            'error swallowing' => ['error-swallowing.fixture', 'src/ErrorSwallowing.php', 'php.error-swallowing'],
+            'blanket suppression' => ['blanket-suppression.fixture', 'src/BlanketSuppression.php', 'php.blanket-static-analysis-suppressions'],
+            'commented out code' => ['commented-out-code.fixture', 'src/CommentedOutCode.php', 'php.commented-out-code'],
+            'debug output' => ['debug-output.fixture', 'src/DebugOutput.php', 'php.debug-output'],
+            'mock heavy test without assertions' => ['mock-heavy-test-without-assertions.fixture', 'tests/OnlyMocksTest.php', 'php.mock-heavy-tests-without-assertions'],
+            'misleading phpdoc types' => ['misleading-phpdoc-types.fixture', 'src/MisleadingPhpDoc.php', 'php.misleading-phpdoc-types'],
+            'placeholder comments' => ['placeholder-comments.fixture', 'src/PlaceholderComments.php', 'php.placeholder-comments'],
+            'pass through wrapper' => ['pass-through-wrapper.fixture', 'src/PassThroughWrapper.php', 'php.pass-through-wrappers'],
+        ];
+    }
+
+    /**
+     * @dataProvider positiveFixtureProvider
+     */
+    public function testPositiveFixturesProduceSingleExpectedFinding(string $fixtureName, string $relativePath, string $expectedRuleId): void
+    {
+        $result = $this->scanStoredFixture('slop', $fixtureName, $relativePath);
+
+        self::assertSame([$expectedRuleId], $this->ruleIds($result->findings));
+        self::assertCount(1, $result->findings);
+        self::assertSame($expectedRuleId, $result->findings[0]->ruleId);
+        self::assertSame($relativePath, $result->findings[0]->path);
+        self::assertSame($relativePath, $result->findings[0]->locations[0]['path'] ?? null);
+        self::assertNotSame([], $result->findings[0]->evidence);
+        self::assertSame(1, $result->findings[0]->deltaIdentity['fingerprintVersion']);
+        self::assertSame($relativePath, $result->findings[0]->deltaIdentity['occurrences'][0]['path'] ?? null);
+    }
+
+    /**
+     * @return array<string, array{0:string, 1:string}>
+     */
+    public static function cleanFixtureProvider(): array
+    {
+        return [
+            'handled catch with return' => ['handled-catch-return.fixture', 'src/HandledCatch.php'],
+            'test with mocks and assertions' => ['test-with-mocks-and-real-assertions.fixture', 'tests/MockAssertionsTest.php'],
+            'helpful phpdoc types' => ['helpful-phpdoc-types.fixture', 'src/HelpfulPhpDoc.php'],
+        ];
+    }
+
+    /**
+     * @dataProvider cleanFixtureProvider
+     */
+    public function testCleanFixturesStayQuiet(string $fixtureName, string $relativePath): void
+    {
+        $result = $this->scanStoredFixture('clean', $fixtureName, $relativePath);
+
+        self::assertSame([], $result->findings);
+        self::assertSame([], $this->ruleIds($result->findings));
+        self::assertSame(0, $result->summary['findingCount']);
+    }
+
     public function testStackedStaticAnalysisSuppressionsRuleDetectsClusteredSuppressions(): void
     {
         $fixture = $this->makeFixture();
@@ -1345,6 +1404,21 @@ PHP);
         $path = sys_get_temp_dir() . '/slop-scan-php-' . bin2hex(random_bytes(4));
         mkdir($path, 0777, true);
         return $path;
+    }
+
+    private function scanStoredFixture(string $group, string $fixtureName, string $relativePath): AnalysisResult
+    {
+        $fixture = $this->makeFixture();
+        $sourcePath = dirname(__DIR__) . "/tests/fixtures/{$group}/{$fixtureName}";
+        $destinationPath = $fixture . '/' . $relativePath;
+        mkdir(dirname($destinationPath), 0777, true);
+        copy($sourcePath, $destinationPath);
+
+        try {
+            return (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+        } finally {
+            $this->remove($fixture);
+        }
     }
 
     /**

@@ -1,0 +1,7 @@
+<?php
+
+// TODO replace placeholder logic
+function stable_value(int $value): int
+{
+    return $value + 1;
+}

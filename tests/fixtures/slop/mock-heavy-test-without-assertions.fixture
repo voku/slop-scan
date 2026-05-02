@@ -1,0 +1,14 @@
+<?php
+
+use PHPUnit\Framework\TestCase;
+
+final class OnlyMocksTest extends TestCase
+{
+    public function testBuildsMocksButAssertsNothing(): void
+    {
+        $first = $this->createMock(\stdClass::class);
+        $second = $this->createMock(\ArrayObject::class);
+
+        takes_dependencies($first, $second);
+    }
+}

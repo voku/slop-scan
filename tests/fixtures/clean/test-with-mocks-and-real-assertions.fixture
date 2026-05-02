@@ -1,0 +1,13 @@
+<?php
+
+use PHPUnit\Framework\TestCase;
+
+final class MockAssertionsTest extends TestCase
+{
+    public function testMocksAndAsserts(): void
+    {
+        $dependency = $this->createMock(\stdClass::class);
+
+        self::assertInstanceOf(\stdClass::class, $dependency);
+    }
+}

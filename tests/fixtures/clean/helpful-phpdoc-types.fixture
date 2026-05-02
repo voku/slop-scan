@@ -1,0 +1,10 @@
+<?php
+
+/**
+ * @param array<int, string> $items
+ * @return non-empty-string
+ */
+function helpful_types(array $items): string
+{
+    return 'ok';
+}
