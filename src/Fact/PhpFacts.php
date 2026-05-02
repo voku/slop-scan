@@ -23,20 +23,21 @@ final class PhpFacts
     /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>}> */
     public static function functions(string $text): array
     {
+        $structureText = self::structureText($text);
         $functions = [];
-        if (!preg_match_all('/function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*\{/m', $text, $matches, PREG_OFFSET_CAPTURE)) {
+        if (!preg_match_all('/function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*\{/m', $structureText, $matches, PREG_OFFSET_CAPTURE)) {
             return [];
         }
         foreach ($matches[0] as $index => $match) {
             $offset = $match[1];
-            $line = substr_count(substr($text, 0, $offset), "\n") + 1;
+            $line = substr_count(substr($structureText, 0, $offset), "\n") + 1;
             $name = $matches[1][$index][0];
             $params = array_values(array_filter(array_map(static fn(string $param): string => trim(preg_replace('/=.*$/', '', $param) ?? ''), explode(',', $matches[2][$index][0]))));
-            $className = self::enclosingClassName($text, $offset);
+            $className = self::enclosingClassName($structureText, $offset);
             // Qualify methods so common signatures such as constructors do not look duplicated across unrelated classes.
             $signature = ($className !== null ? strtolower($className) . '::' : '') . strtolower($name) . '(' . count($params) . ')';
             $bodyStart = $offset + strlen($match[0]);
-            $body = self::balancedBody($text, $bodyStart);
+            $body = self::balancedBody($structureText, $bodyStart);
             $functions[] = ['name' => $name, 'signature' => $signature, 'line' => $line, 'body' => $body, 'params' => $params];
         }
         return $functions;
@@ -45,14 +46,15 @@ final class PhpFacts
     /** @return list<array{line:int,body:string}> */
     public static function tryCatches(string $text): array
     {
+        $structureText = self::structureText($text);
         $catches = [];
-        if (!preg_match_all('/catch\s*\([^)]*\)\s*\{/m', $text, $matches, PREG_OFFSET_CAPTURE)) {
+        if (!preg_match_all('/catch\s*\([^)]*\)\s*\{/m', $structureText, $matches, PREG_OFFSET_CAPTURE)) {
             return [];
         }
         foreach ($matches[0] as $match) {
             $offset = $match[1];
-            $line = substr_count(substr($text, 0, $offset), "\n") + 1;
-            $body = self::balancedBody($text, $offset + strlen($match[0]));
+            $line = substr_count(substr($structureText, 0, $offset), "\n") + 1;
+            $body = self::balancedBody($structureText, $offset + strlen($match[0]));
             $catches[] = ['line' => $line, 'body' => $body];
         }
         return $catches;
@@ -101,6 +103,30 @@ final class PhpFacts
             }
         }
         return substr($text, $start);
+    }
+
+    private static function structureText(string $text): string
+    {
+        $structure = '';
+        foreach (token_get_all($text) as $token) {
+            $content = is_array($token) ? $token[1] : $token;
+            if (is_array($token) && in_array($token[0], [
+                T_COMMENT,
+                T_DOC_COMMENT,
+                T_CONSTANT_ENCAPSED_STRING,
+                T_ENCAPSED_AND_WHITESPACE,
+                T_INLINE_HTML,
+                T_START_HEREDOC,
+                T_END_HEREDOC,
+            ], true)) {
+                $structure .= preg_replace('/[^\r\n]/', ' ', $content);
+                continue;
+            }
+
+            $structure .= $content;
+        }
+
+        return $structure;
     }
 
     /**

@@ -664,6 +664,40 @@ PHP;
         self::assertArrayHasKey('functionCount', $summary);
     }
 
+    public function testPhpFactsIgnoreCodeLikeTextInsideCommentsAndStrings(): void
+    {
+        $php = <<<'PHP'
+<?php
+// function ignored($value) { return wrap($value); }
+$fixture = <<<'FIXTURE'
+<?php
+function proxy($value) {
+    return transform($value);
+}
+try {
+    risky();
+} catch (Throwable $e) {
+    error_log($e->getMessage());
+}
+FIXTURE;
+function clean($value) {
+    return keep($value);
+}
+try {
+    risky();
+} catch (Throwable $e) {
+    return fallback($e);
+}
+PHP;
+
+        $functions = PhpFacts::functions($php);
+        $catches = PhpFacts::tryCatches($php);
+
+        self::assertSame(['clean(1)'], array_column($functions, 'signature'));
+        self::assertSame(1, count($catches));
+        self::assertStringContainsString('return fallback', $catches[0]['body']);
+    }
+
     public function testParserSummaryHandlesUnavailableInjectedAndErrorStates(): void
     {
         $file = $this->fixtureDir . '/src/ParserSummary.php';

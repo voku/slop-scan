@@ -40,7 +40,7 @@
         ],
         "test": "phpunit tests",
         "test:php": "phpunit tests",
-        "scan:self": "php bin/slop-scan.php scan . --baseline-file slop-scan.baseline.json --github",
-        "scan:php:self": "php bin/slop-scan.php scan . --baseline-file slop-scan.baseline.json --github"
+        "scan:self": "php bin/slop-scan.php scan . --github",
+        "scan:php:self": "php bin/slop-scan.php scan . --github"
     }
 }
