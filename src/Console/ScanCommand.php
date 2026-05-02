@@ -11,6 +11,7 @@ use SlopScan\DefaultRegistry;
 use SlopScan\Delta;
 use SlopScan\Reporter\GithubReporter;
 use SlopScan\Support\Json;
+use SlopScan\Support\ScanCache;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -30,6 +31,7 @@ final class ScanCommand extends Command
             ->addOption('lint', null, InputOption::VALUE_NONE, 'Emit lint output.')
             ->addOption('github', null, InputOption::VALUE_NONE, 'Emit GitHub annotations.')
             ->addOption('ignore', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Ignore path pattern.')
+            ->addOption('cache-file', null, InputOption::VALUE_REQUIRED, 'Read and write a scan cache file.')
             ->addOption('baseline-file', null, InputOption::VALUE_REQUIRED, 'Read or write a baseline report file.')
             ->addOption('generate-baseline', null, InputOption::VALUE_NONE, 'Write the current scan as a baseline.');
     }
@@ -41,7 +43,7 @@ final class ScanCommand extends Command
             $ignore = $this->stringListOption($input, 'ignore');
             $config = Config::load($target);
             $config['ignores'] = array_values(array_merge($config['ignores'], $ignore));
-            $result = (new Analyzer())->analyze($target, $config, DefaultRegistry::create());
+            $result = (new Analyzer())->analyze($target, $config, DefaultRegistry::create(), $this->cacheFile($target, $input));
             $baselineFile = $this->stringOption($input, 'baseline-file');
 
             if ((bool) $input->getOption('generate-baseline')) {
@@ -95,6 +97,11 @@ final class ScanCommand extends Command
         $value = $input->getOption($name);
 
         return is_string($value) ? $value : null;
+    }
+
+    private function cacheFile(string $target, InputInterface $input): string
+    {
+        return $this->stringOption($input, 'cache-file') ?? ScanCache::defaultPath($target);
     }
 
     /** @return list<string> */

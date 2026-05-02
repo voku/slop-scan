@@ -60,7 +60,13 @@ php bin/slop-scan.php scan . --github
 php bin/slop-scan.php scan . --ignore 'vendor/**' --ignore 'tests/fixtures/**'
 ```
 
-5. Create a baseline when you want CI to fail only on newly introduced findings:
+5. Reuse the default cache across repeated local runs:
+
+```bash
+php bin/slop-scan.php scan .
+```
+
+6. Create a baseline when you want CI to fail only on newly introduced findings:
 
 ```bash
 php bin/slop-scan.php scan . --baseline-file slop-baseline.json --generate-baseline
@@ -106,6 +112,7 @@ Supported command/options:
 - `--lint`
 - `--github`
 - `--ignore`
+- `--cache-file`
 - `--baseline-file`
 - `--generate-baseline`
 - `--base`
@@ -148,6 +155,8 @@ The tool is intentionally heuristic: a finding is a prompt for review, not a ver
 ## Configuration
 
 `slop-scan` reads JSON config from `slop-scan.config.json` or `repo-slop.config.json` in the scan root.
+
+Scans now reuse unchanged per-file analysis by default through `.slop-scan.cache.json` in the scan root. Use `--cache-file` to override that location.
 
 ```json
 {
