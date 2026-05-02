@@ -167,7 +167,7 @@ final class PhpFacts
 
         $testMethods = [];
         foreach ($finder->findInstanceOf($statements, Stmt\ClassMethod::class) as $method) {
-            if (preg_match('/^test[A-Z0-9_][A-Za-z0-9_]*$/', $method->name->toString()) === 1 || self::hasPhpUnitTestAttribute($method->attrGroups)) {
+            if (preg_match('/^test[A-Z][A-Za-z0-9_]*$/', $method->name->toString()) === 1 || self::hasPhpUnitTestAttribute($method->attrGroups)) {
                 $testMethods[$method->getStartLine() . ':' . $method->name->toString()] = true;
             }
         }
@@ -396,7 +396,7 @@ final class PhpFacts
                 continue;
             }
 
-            if (preg_match('/^assert[A-Z]/', $node instanceof Expr\MethodCall || $node instanceof Expr\StaticCall ? (string) $node->name : '') === 1 && self::isPhpUnitAssertionReceiver($node)) {
+            if (preg_match('/^assert[A-Z]/', $node->name->toString()) === 1 && self::isPhpUnitAssertionReceiver($node)) {
                 $count++;
                 continue;
             }
