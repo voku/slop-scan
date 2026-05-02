@@ -624,6 +624,7 @@ PHP);
 
         $rendered = (new GithubReporter())->render($result);
 
+        self::assertMatchesRegularExpression('/^::error file=src\/%7BOdd%7D%2CName\.php,line=7,col=3::/m', $rendered);
         self::assertStringContainsString('::error file=src/%7BOdd%7D%2CName.php,line=7,col=3::broken%3Avalue%2C%0Anext (php.rule)', $rendered);
         self::assertStringContainsString('::error file=src/Fallback.php,line=1,col=1::needs%0Ddefault (php.other)', $rendered);
         self::assertSame('github', (new GithubReporter())->id());
@@ -782,6 +783,7 @@ PHP);
         $application->renderThrowable(new CommandNotFoundException('Command "mystery" is not defined.'), $consoleOutput);
 
         self::assertStringContainsString('plain failure', $buffer->fetch());
+        self::assertSame('', $consoleOutput->fetch());
         self::assertStringContainsString('Unknown command: mystery', $consoleOutput->getErrorOutput()->fetch());
     }
 
