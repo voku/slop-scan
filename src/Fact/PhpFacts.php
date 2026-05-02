@@ -19,6 +19,8 @@ use voku\SimplePhpParser\Parsers\PhpCodeParser;
 
 final class PhpFacts
 {
+    private const RECOGNIZED_DEBUG_FUNCTIONS = ['dd', 'print_r', 'ray', 'var_dump'];
+
     /** @var null|callable():Parser */
     private static $parserFactory = null;
 
@@ -124,7 +126,7 @@ final class PhpFacts
             }
 
             $name = strtolower($call->name->toString());
-            if (!in_array($name, ['dd', 'print_r', 'ray', 'var_dump'], true)) {
+            if (!in_array($name, self::RECOGNIZED_DEBUG_FUNCTIONS, true)) {
                 continue;
             }
 
