@@ -345,6 +345,25 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testPassThroughWrapperRuleSkipsFunctionsThatAddContext(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Helpers.php', <<<'PHP'
+<?php
+
+function encode_value($value, $pretty = false) {
+    return json_encode($value, JSON_THROW_ON_ERROR | ($pretty ? JSON_PRETTY_PRINT : 0));
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.pass-through-wrappers', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
     public function testStackedStaticAnalysisSuppressionsRuleDetectsClusteredSuppressions(): void
     {
         $fixture = $this->makeFixture();

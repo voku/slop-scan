@@ -32,14 +32,14 @@ final class MockHeavyTestsWithoutAssertionsRule extends BaseRule
             return [];
         }
 
-        $testCount = self::countMatches(self::TEST_METHOD_PATTERN, $text) + self::countMatches(self::TEST_ATTRIBUTE_PATTERN, $text);
+        $testCount = preg_match_all(self::TEST_METHOD_PATTERN, $text) + preg_match_all(self::TEST_ATTRIBUTE_PATTERN, $text);
         if ($testCount === 0) {
             return [];
         }
 
-        $mockCount = self::countMatches(self::MOCK_PATTERN, $text);
-        $assertionCount = self::countMatches(self::ASSERTION_PATTERN, $text);
-        $expectationCount = self::countMatches(self::EXPECTATION_PATTERN, $text);
+        $mockCount = preg_match_all(self::MOCK_PATTERN, $text);
+        $assertionCount = preg_match_all(self::ASSERTION_PATTERN, $text);
+        $expectationCount = preg_match_all(self::EXPECTATION_PATTERN, $text);
         $threshold = max(1, (int) ($context->ruleConfig['options']['mockCount'] ?? self::DEFAULT_MOCK_THRESHOLD));
         if ($mockCount < $threshold || $assertionCount > 0 || $expectationCount > 0) {
             return [];
@@ -66,10 +66,5 @@ final class MockHeavyTestsWithoutAssertionsRule extends BaseRule
     private static function looksLikeTestFile(string $path, string $text): bool
     {
         return preg_match(self::TEST_PATH_PATTERN, $path) === 1 || preg_match(self::TEST_CLASS_PATTERN, $text) === 1;
-    }
-
-    private static function countMatches(string $pattern, string $text): int
-    {
-        return preg_match_all($pattern, $text);
     }
 }
