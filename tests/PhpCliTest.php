@@ -510,6 +510,31 @@ PHP);
         self::assertSame(0, $result->summary['findingCount']);
     }
 
+    /**
+     * @return array<string, array{0:string, 1:string, 2:string}>
+     */
+    public static function expectedSnapshotProvider(): array
+    {
+        return [
+            'empty catch snapshot' => ['empty-catch.fixture', 'src/EmptyCatch.php', 'empty-catch.json'],
+            'blanket suppression snapshot' => ['blanket-suppression.fixture', 'src/BlanketSuppression.php', 'blanket-suppression.json'],
+        ];
+    }
+
+    #[DataProvider('expectedSnapshotProvider')]
+    public function testSelectedFixturesMatchStableJsonSnapshots(string $fixtureName, string $relativePath, string $expectedSnapshot): void
+    {
+        $result = $this->scanStoredFixture('slop', $fixtureName, $relativePath);
+        $expected = json_decode(
+            (string) file_get_contents(dirname(__DIR__) . '/tests/fixtures/expected/' . $expectedSnapshot),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame($expected, $this->normalizedFindingSnapshot($result->findings));
+    }
+
     public function testStackedStaticAnalysisSuppressionsRuleDetectsClusteredSuppressions(): void
     {
         $fixture = $this->makeFixture();
@@ -1416,6 +1441,22 @@ PHP);
         } finally {
             $this->remove($fixture);
         }
+    }
+
+    /**
+     * @param list<Finding> $findings findings to normalize
+     * @return list<array{ruleId:string,path:?string,severity:string,evidence:list<string>,locations:list<array{path:string,line:int,column?:int}>,deltaIdentity:array<string,mixed>}>
+     */
+    private function normalizedFindingSnapshot(array $findings): array
+    {
+        return array_map(static fn(Finding $finding): array => [
+            'ruleId' => $finding->ruleId,
+            'path' => $finding->path,
+            'severity' => $finding->severity,
+            'evidence' => $finding->evidence,
+            'locations' => $finding->locations,
+            'deltaIdentity' => $finding->deltaIdentity,
+        ], $findings);
     }
 
     /**
