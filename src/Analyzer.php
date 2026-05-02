@@ -14,14 +14,16 @@ use SlopScan\Model\Finding;
 use SlopScan\Runtime\AnalyzerRuntime;
 use SlopScan\Runtime\ProviderContext;
 use SlopScan\Support\Lines;
+use SlopScan\Support\ScanCache;
 
 final class Analyzer
 {
-    public function analyze(string $rootDir, array $config, Registry $registry): AnalysisResult
+    public function analyze(string $rootDir, array $config, Registry $registry, ?string $cacheFile = null): AnalysisResult
     {
         $root = realpath($rootDir) ?: $rootDir;
         $discovery = Discoverer::discover($root, $config, $registry);
         $store = new FactStore();
+        $cache = ScanCache::load($cacheFile);
         $runtime = new AnalyzerRuntime($root, $config, $discovery['files'], $discovery['directories'], $store);
         $store->setRepoFact('repo.files', $discovery['files']);
         $store->setRepoFact('repo.directories', $discovery['directories']);
@@ -36,31 +38,46 @@ final class Analyzer
             $file->lineCount = Lines::physical($text);
             $file->logicalLineCount = Lines::logical($text);
             $context = new ProviderContext('file', $runtime, $file);
-            $store->setFileFacts($file->path, ['file.record' => $file, 'file.text' => $text, 'file.lineCount' => $file->lineCount, 'file.logicalLineCount' => $file->logicalLineCount]);
-            $this->runProviders($providers, $context, $store);
+            $store->setFileFacts($file->path, [
+                'file.record' => $file,
+                'file.text' => $text,
+                'file.contentHash' => hash('sha256', $text),
+                'file.lineCount' => $file->lineCount,
+                'file.logicalLineCount' => $file->logicalLineCount,
+            ]);
+            $this->runProviders($providers, $context, $store, $cache);
             $findings = array_merge($findings, $this->runRules($registry->rules(), $context, $config));
         }
         foreach ($discovery['directories'] as $directory) {
             $context = new ProviderContext('directory', $runtime, null, $directory);
-            $this->runProviders($providers, $context, $store);
+            $this->runProviders($providers, $context, $store, $cache);
             $findings = array_merge($findings, $this->runRules($registry->rules(), $context, $config));
         }
         $repoContext = new ProviderContext('repo', $runtime);
-        $this->runProviders($providers, $repoContext, $store);
+        $this->runProviders($providers, $repoContext, $store, $cache);
         $findings = array_merge($findings, $this->runRules($registry->rules(), $repoContext, $config));
         usort($findings, static fn(Finding $left, Finding $right): int => strcmp($left->ruleId . ($left->path ?? ''), $right->ruleId . ($right->path ?? '')));
+        $cache->persist();
 
         return $this->result($root, $config, $discovery['files'], $discovery['directories'], $findings, $store);
     }
 
     /** @param list<FactProvider> $providers */
-    private function runProviders(array $providers, ProviderContext $context, FactStore $store): void
+    private function runProviders(array $providers, ProviderContext $context, FactStore $store, ScanCache $cache): void
     {
         foreach ($providers as $provider) {
             if ($provider->scope() !== $context->scope || !$provider->supports($context)) {
                 continue;
             }
-            foreach ($provider->run($context) as $fact => $value) {
+
+            $cachedFacts = $this->cachedFileProviderFacts($provider, $context, $store, $cache);
+            if ($cachedFacts !== null) {
+                $store->setFileFacts($context->file->path, $cachedFacts);
+                continue;
+            }
+
+            $facts = $provider->run($context);
+            foreach ($facts as $fact => $value) {
                 if ($context->scope === 'file' && $context->file !== null) {
                     $store->setFileFact($context->file->path, $fact, $value);
                 } elseif ($context->scope === 'directory' && $context->directory !== null) {
@@ -69,7 +86,28 @@ final class Analyzer
                     $store->setRepoFact($fact, $value);
                 }
             }
+
+            if ($context->scope === 'file' && $context->file !== null) {
+                $contentHash = $store->getFileFact($context->file->path, 'file.contentHash');
+                if (is_string($contentHash)) {
+                    $cache->setFileProviderFacts($provider->id(), $context->file->path, $contentHash, $facts);
+                }
+            }
         }
+    }
+
+    /** @return null|array<string,mixed> */
+    private function cachedFileProviderFacts(FactProvider $provider, ProviderContext $context, FactStore $store, ScanCache $cache): ?array
+    {
+        if ($context->scope !== 'file' || $context->file === null) {
+            return null;
+        }
+
+        $contentHash = $store->getFileFact($context->file->path, 'file.contentHash');
+
+        return is_string($contentHash)
+            ? $cache->getFileProviderFacts($provider->id(), $context->file->path, $contentHash)
+            : null;
     }
 
     /** @param list<RulePlugin> $rules @param array<string,mixed> $config @return list<Finding> */
