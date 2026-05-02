@@ -23,7 +23,7 @@ final class ScanCache
     {
         $root = realpath($rootDir) ?: $rootDir;
 
-        return rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . '.slop-scan.cache.json';
+        return $root . DIRECTORY_SEPARATOR . '.slop-scan.cache.json';
     }
 
     public static function load(?string $path): self
