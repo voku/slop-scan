@@ -15,7 +15,8 @@ final class FindingIgnorer
      */
     public static function filter(array $findings, array $config): array
     {
-        $rules = self::rules($config['ignoreErrors'] ?? []);
+        $ignoreErrors = $config['ignoreErrors'] ?? [];
+        $rules = is_array($ignoreErrors) ? self::rules($ignoreErrors) : [];
         if ($rules === []) {
             return $findings;
         }
@@ -31,15 +32,11 @@ final class FindingIgnorer
     }
 
     /**
-     * @param mixed $raw
+     * @param array<array-key,mixed> $raw
      * @return list<array{messages:list<string>,paths:list<string>,ruleIds:list<string>,remaining:?int}>
      */
-    private static function rules(mixed $raw): array
+    private static function rules(array $raw): array
     {
-        if (!is_array($raw)) {
-            return [];
-        }
-
         $rules = [];
         foreach ($raw as $entry) {
             if (is_string($entry) && $entry !== '') {
@@ -51,33 +48,40 @@ final class FindingIgnorer
                 continue;
             }
 
-            $messages = self::stringsFrom($entry['messages'] ?? []);
+            $messagesValue = $entry['messages'] ?? [];
+            $messages = is_array($messagesValue) ? self::stringsFrom($messagesValue) : [];
             if (is_string($entry['message'] ?? null) && $entry['message'] !== '') {
                 $messages[] = $entry['message'];
             }
 
-            $paths = self::stringsFrom($entry['paths'] ?? []);
+            $pathsValue = $entry['paths'] ?? [];
+            $paths = is_array($pathsValue) ? self::stringsFrom($pathsValue) : [];
             if (is_string($entry['path'] ?? null) && $entry['path'] !== '') {
                 $paths[] = $entry['path'];
             }
 
-            $ruleIds = self::stringsFrom($entry['ruleIds'] ?? []);
+            $ruleIdsValue = $entry['ruleIds'] ?? [];
+            $ruleIds = is_array($ruleIdsValue) ? self::stringsFrom($ruleIdsValue) : [];
             foreach (['ruleId', 'identifier'] as $key) {
                 if (is_string($entry[$key] ?? null) && $entry[$key] !== '') {
                     $ruleIds[] = $entry[$key];
                 }
             }
-            $ruleIds = array_merge($ruleIds, self::stringsFrom($entry['identifiers'] ?? []));
+            $identifiersValue = $entry['identifiers'] ?? [];
+            if (is_array($identifiersValue)) {
+                $ruleIds = array_merge($ruleIds, self::stringsFrom($identifiersValue));
+            }
 
             if ($messages === [] && $paths === [] && $ruleIds === []) {
                 continue;
             }
 
+            $countValue = $entry['count'] ?? null;
             $rules[] = [
                 'messages' => array_values(array_unique($messages)),
                 'paths' => array_values(array_unique($paths)),
                 'ruleIds' => array_values(array_unique($ruleIds)),
-                'remaining' => self::countLimit($entry['count'] ?? null),
+                'remaining' => is_int($countValue) || is_string($countValue) ? self::countLimit($countValue) : null,
             ];
         }
 
@@ -175,13 +179,12 @@ final class FindingIgnorer
         return array_values(array_unique($paths));
     }
 
-    /** @return list<string> */
-    private static function stringsFrom(mixed $value): array
+    /**
+     * @param array<array-key,mixed> $value
+     * @return list<string>
+     */
+    private static function stringsFrom(array $value): array
     {
-        if (!is_array($value)) {
-            return [];
-        }
-
         $strings = [];
         foreach ($value as $item) {
             if (is_string($item) && $item !== '') {
@@ -192,10 +195,12 @@ final class FindingIgnorer
         return $strings;
     }
 
-    private static function countLimit(mixed $value): ?int
+    private static function countLimit(int|string $value): ?int
     {
-        return is_int($value) || is_string($value) && ctype_digit($value)
-            ? max(0, (int) $value)
-            : null;
+        if (is_int($value)) {
+            return max(0, $value);
+        }
+
+        return ctype_digit($value) ? max(0, (int) $value) : null;
     }
 }
