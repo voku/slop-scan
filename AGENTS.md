@@ -7,7 +7,7 @@
 - `README.md` for product behavior and CLI expectations.
 - `src/` for the PHP implementation, organized into focused directories for contracts, facts, models, reporters, rules, runtime state, and shared support code.
 - `tests/PhpCliTest.php` for behavioral expectations.
-- `infra/githooks/slop-scan.config.json` for the repository self-scan config.
+- `slop-scan.config.json` for the repository self-scan config.
 
 ## Mental model
 
