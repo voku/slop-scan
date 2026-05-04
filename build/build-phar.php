@@ -34,7 +34,12 @@ if (!mkdir($buildDir, 0777, true) && !is_dir($buildDir)) {
 }
 
 try {
-    foreach (['composer.json', 'composer.lock'] as $file) {
+    $stagedFiles = ['composer.json'];
+    if (is_file($rootDir . '/composer.lock')) {
+        $stagedFiles[] = 'composer.lock';
+    }
+
+    foreach ($stagedFiles as $file) {
         if (!copy($rootDir . '/' . $file, $buildDir . '/' . $file)) {
             throw new RuntimeException("Unable to stage {$file} for PHAR build.");
         }
