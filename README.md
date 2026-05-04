@@ -183,7 +183,7 @@ Scans now reuse unchanged per-file analysis by default through `.slop-scan.cache
     "php.directory-fanout-hotspot": { "options": { "fileCount": 12 } }
   },
   "ignoreErrors": [
-    "#Found debug output call#",
+    "#Found PHP debug-output call#",
     { "identifier": "php.empty-catch", "path": "src/Legacy.php", "count": 1 },
     { "ruleId": "php.placeholder-comments", "paths": ["src/Generated/**"] }
   ],
