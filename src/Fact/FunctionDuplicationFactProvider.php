@@ -9,6 +9,15 @@ use SlopScan\Runtime\ProviderContext;
 
 final class FunctionDuplicationFactProvider implements FactProvider
 {
+    private const IGNORED_LIFECYCLE_FUNCTIONS = [
+        '__construct',
+        '__destruct',
+        '_before',
+        '_after',
+        'setup',
+        'teardown',
+    ];
+
     public function id(): string { return 'repo.functionDuplication'; }
     public function scope(): string { return 'repo'; }
     public function requires(): array { return ['repo.files', 'file.functionSummaries']; }
@@ -22,6 +31,11 @@ final class FunctionDuplicationFactProvider implements FactProvider
 
         foreach ($context->runtime->files as $file) {
             foreach ($context->runtime->store->getFileFact($file->path, 'file.functionSummaries') ?? [] as $function) {
+                $functionName = strtolower((string) ($function['name'] ?? ''));
+                if (in_array($functionName, self::IGNORED_LIFECYCLE_FUNCTIONS, true)) {
+                    continue;
+                }
+
                 $signatureGroups[$function['signature']][] = ['path' => $file->path, 'line' => $function['line'], 'name' => $function['name']];
 
                 $body = $function['body'] ?? '';

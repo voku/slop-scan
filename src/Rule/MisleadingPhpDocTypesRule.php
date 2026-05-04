@@ -25,6 +25,9 @@ final class MisleadingPhpDocTypesRule extends BaseRule
                 if ($issue === null) {
                     continue;
                 }
+                if ($issue['kind'] === 'redundant' && self::hasDescriptionText($param['phpDocRaw'], $param['name'])) {
+                    continue;
+                }
 
                 $findings[] = new Finding(
                     $this->id(),
@@ -54,6 +57,9 @@ final class MisleadingPhpDocTypesRule extends BaseRule
 
             $issue = self::issueForTypes($return['nativeType'], $return['phpDocType'], $return['phpDocRaw'], $return['phpDocExtendedType']);
             if ($issue === null) {
+                continue;
+            }
+            if ($issue['kind'] === 'redundant' && self::hasDescriptionText($return['phpDocRaw'], null)) {
                 continue;
             }
 
@@ -133,5 +139,29 @@ final class MisleadingPhpDocTypesRule extends BaseRule
 
         return preg_match('/[<>{}\\[\\](),:&]/', $candidate) === 1
             || preg_match('/\b(array-key|callable-string|class-string|closed-resource|int-mask|key-of|list|literal-string|negative-int|non-empty-array|non-empty-string|numeric-string|positive-int|resource|scalar|trait-string|value-of)\b/', $candidate) === 1;
+    }
+
+    private static function hasDescriptionText(?string $phpDocRaw, ?string $paramName): bool
+    {
+        if ($phpDocRaw === null) {
+            return false;
+        }
+
+        $raw = trim((string) preg_replace('/\s+/', ' ', $phpDocRaw));
+        if ($raw === '') {
+            return false;
+        }
+
+        if ($paramName !== null) {
+            $pattern = '/^\S+\s+\$' . preg_quote($paramName, '/') . '(?:\s+(?<description>.+))?$/';
+        } else {
+            $pattern = '/^\S+(?:\s+(?<description>.+))?$/';
+        }
+
+        if (preg_match($pattern, $raw, $match) !== 1) {
+            return false;
+        }
+
+        return trim((string) ($match['description'] ?? '')) !== '';
     }
 }

@@ -51,7 +51,7 @@ final class PhpFacts
         return $comments;
     }
 
-    /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string}> */
+    /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string,className:?string}> */
     public static function functions(string $text): array
     {
         $statements = self::parseStatements($text);
@@ -309,7 +309,7 @@ final class PhpFacts
         }
     }
 
-    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string} */
+    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string,className:?string} */
     private static function functionSummary(Stmt\ClassMethod|Stmt\Function_ $function, ?string $className, ?string $classKind): array
     {
         $name = $function->name->toString();
@@ -328,6 +328,7 @@ final class PhpFacts
             'passThroughCall' => self::passThroughCallSummary($function, $params),
             'constantReturn' => self::singleConstantReturnKind($function),
             'classKind' => $classKind,
+            'className' => $className,
         ];
     }
 

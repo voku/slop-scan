@@ -17,6 +17,7 @@ final class SlopScanApplication extends Application
 
         $this->add(new ScanCommand());
         $this->add(new DeltaCommand());
+        $this->add(new StatsCommand());
     }
 
     public function renderThrowable(\Throwable $exception, OutputInterface $output): void

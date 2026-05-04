@@ -28,7 +28,7 @@ final class TypeEscapeHotspotsRule extends BaseRule
         $castCount = (int) ($summary['castCount'] ?? 0);
         $total = $mixedCount + $castCount;
 
-        if ($total < $threshold) {
+        if ($mixedCount === 0 || $total < $threshold) {
             return [];
         }
 

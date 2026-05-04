@@ -434,6 +434,24 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testStaticAnalysisSuppressionDetectionAllowsMultipleIdentifiersWithReason(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Ignored.php', <<<'PHP'
+<?php
+
+// @phpstan-ignore argument.type,return.type (intentional adapter boundary)
+risky($input);
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.blanket-static-analysis-suppressions', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
     public function testCommentedOutCodeAndDebugOutputRulesDetectAgentLeftovers(): void
     {
         $fixture = $this->makeFixture();
@@ -601,6 +619,30 @@ PHP);
             $result->findings,
             static fn(Finding $finding): bool => $finding->ruleId === 'php.misleading-phpdoc-types' && in_array('subject=helpful', $finding->evidence, true)
         )));
+
+        $this->remove($fixture);
+    }
+
+    public function testMisleadingPhpDocTypeRuleDoesNotFlagHelpfulDescriptionsOnMatchingTypes(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/HelpfulDescriptions.php', <<<'PHP'
+<?php
+
+/**
+ * @param string $name Visible label from the external system
+ * @return string Stable export key
+ */
+function helpful_description(string $name): string
+{
+    return strtolower($name);
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.misleading-phpdoc-types', $this->ruleIds($result->findings));
 
         $this->remove($fixture);
     }
@@ -953,6 +995,30 @@ PHP);
         self::assertSame(0, $exit);
         self::assertSame(1, json_decode($output, true, 512, JSON_THROW_ON_ERROR)['summary']['added']);
         self::assertSame(1, $missingExit);
+    }
+
+    public function testCliStatsSummarizesReportFiles(): void
+    {
+        $reportFile = $this->fixtureDir . '/stats-report.json';
+        $findings = [
+            new Finding('php.todo', 'comments', 'weak', 'file', 'todo', [], 1.0, [['path' => 'src/A.php', 'line' => 1]], 'src/A.php'),
+            new Finding('php.todo', 'comments', 'weak', 'file', 'todo', [], 1.0, [['path' => 'src/B.php', 'line' => 1]], 'src/B.php'),
+            new Finding('php.clone-cluster', 'duplication', 'weak', 'repo', 'clone', [], 1.0, [['path' => 'src/C.php', 'line' => 7], ['path' => 'src/D.php', 'line' => 9]], null),
+        ];
+        file_put_contents($reportFile, Json::encode([
+            'metadata' => ['kind' => 'baseline'],
+            'summary' => ['findingCount' => 3],
+            'findings' => array_map(static fn(Finding $finding): array => $finding->toReport(), $findings),
+        ]));
+
+        [$textExit, $textOutput] = $this->runCommand(['stats', '--report', $reportFile]);
+        [$jsonExit, $jsonOutput] = $this->runCommand(['stats', '--report', $reportFile, '--json']);
+
+        self::assertSame(0, $textExit);
+        self::assertStringContainsString('slop-scan stats', $textOutput);
+        self::assertStringContainsString('php.todo: 2 findings, 2 locations', $textOutput);
+        self::assertSame(0, $jsonExit);
+        self::assertSame(3, json_decode($jsonOutput, true, 512, JSON_THROW_ON_ERROR)['summary']['findingCount']);
     }
 
     public function testCliScanBaselineReportsOnlyNewFindingsAndGithubAnnotations(): void
@@ -1643,7 +1709,50 @@ PHP);
 
         $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
 
-        self::assertNotContains('php.return-constant-stub', $this->ruleIds($result->findings));
+        self::assertSame(0, $this->countForRule($result->findings, 'php.return-constant-stub'), json_encode($this->normalizedFindingSnapshot($result->findings), JSON_THROW_ON_ERROR));
+
+        $this->remove($fixture);
+    }
+
+    public function testReturnConstantStubRuleIgnoresGeneratedMetadataAccessors(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/GeneratedRow.php', <<<'PHP'
+<?php
+
+final class GeneratedRow
+{
+    public function get_user_name_name(): string
+    {
+        return '';
+    }
+
+    public function get_user_name_info(): string
+    {
+        return '';
+    }
+
+    public function get_user_mail_name(): string
+    {
+        return '';
+    }
+
+    public function get_user_mail_info(): string
+    {
+        return '';
+    }
+
+    public function real_logic(string $input): string
+    {
+        return strtolower($input);
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(0, $this->countForRule($result->findings, 'php.return-constant-stub'), json_encode($this->normalizedFindingSnapshot($result->findings), JSON_THROW_ON_ERROR));
 
         $this->remove($fixture);
     }
@@ -1821,6 +1930,26 @@ PHP);
 function transform(string $input): string
 {
     return strtolower($input);
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.type-escape-hotspots', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testTypeEscapeHotspotsRuleIgnoresCastOnlyFiles(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/CastsOnly.php', <<<'PHP'
+<?php
+
+function cast_all($data): bool
+{
+    return (bool) (int) (string) $data;
 }
 PHP);
 
