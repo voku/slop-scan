@@ -487,6 +487,9 @@ PHP);
             'misleading phpdoc types' => ['misleading-phpdoc-types.fixture', 'src/MisleadingPhpDoc.php', 'php.misleading-phpdoc-types'],
             'placeholder comments' => ['placeholder-comments.fixture', 'src/PlaceholderComments.php', 'php.placeholder-comments'],
             'pass through wrapper' => ['pass-through-wrapper.fixture', 'src/PassThroughWrapper.php', 'php.pass-through-wrappers'],
+            'return constant stub' => ['return-constant-stub.fixture', 'src/ReturnConstantStub.php', 'php.return-constant-stub'],
+            'placeholder method body' => ['placeholder-method-body.fixture', 'src/PlaceholderMethodBody.php', 'php.placeholder-method-bodies'],
+            'type escape hotspot' => ['type-escape-hotspot.fixture', 'src/TypeEscapeHotspot.php', 'php.type-escape-hotspots'],
         ];
     }
 
@@ -1440,6 +1443,329 @@ PHP);
         );
 
         $this->remove($fixture);
+    }
+
+    public function testReturnConstantStubRuleDetectsEmptyAndFalsyConstantReturns(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Stubs.php', <<<'PHP'
+<?php
+
+function empty_string(): string
+{
+    return '';
+}
+
+function empty_array(): array
+{
+    return [];
+}
+
+function null_default(): ?string
+{
+    return null;
+}
+
+function real_logic(string $key): string
+{
+    return strtolower($key);
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(3, $this->countForRule($result->findings, 'php.return-constant-stub'));
+        self::assertSame(['empty_string', 'return=empty-string'], $this->findEvidenceForRuleAndLine($result->findings, 'php.return-constant-stub', 3));
+        self::assertSame(['empty_array', 'return=empty-array'], $this->findEvidenceForRuleAndLine($result->findings, 'php.return-constant-stub', 8));
+        self::assertSame(['null_default', 'return=null'], $this->findEvidenceForRuleAndLine($result->findings, 'php.return-constant-stub', 13));
+
+        $this->remove($fixture);
+    }
+
+    public function testReturnConstantStubRuleDoesNotFlagInterfaceOrAbstractMethods(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Contracts.php', <<<'PHP'
+<?php
+
+interface Loader
+{
+    public function load(string $key): array;
+}
+
+abstract class BaseLoader
+{
+    public function getDefault(): array
+    {
+        return [];
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.return-constant-stub', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testPlaceholderMethodBodiesRuleDetectsEmptyMethodsInConcreteClasses(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Service.php', <<<'PHP'
+<?php
+
+final class Service
+{
+    public function process(array $data): void
+    {
+    }
+
+    public function real(string $key): string
+    {
+        return strtolower($key);
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(1, $this->countForRule($result->findings, 'php.placeholder-method-bodies'));
+        self::assertSame(['process'], $this->findEvidenceForRuleAndLine($result->findings, 'php.placeholder-method-bodies', 5));
+
+        $this->remove($fixture);
+    }
+
+    public function testPlaceholderMethodBodiesRuleDoesNotFlagInterfaceOrAbstractOrTrait(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Contracts.php', <<<'PHP'
+<?php
+
+interface Processor
+{
+    public function process(array $data): void;
+}
+
+abstract class AbstractProcessor
+{
+    public function hook(): void
+    {
+    }
+}
+
+trait NullProcessorTrait
+{
+    public function process(array $data): void
+    {
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.placeholder-method-bodies', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testPlaceholderMethodBodiesRuleDoesNotFlagMagicMethods(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/ValueObject.php', <<<'PHP'
+<?php
+
+final class ValueObject
+{
+    public function __construct(
+        public readonly string $name,
+        public readonly int $value,
+    ) {
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.placeholder-method-bodies', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testCloneClusterRuleDetectsNearDuplicateFunctionBodies(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Alpha.php', <<<'PHP'
+<?php
+
+function process_alpha(string $input): string
+{
+    $trimmed = trim($input);
+    $lower = strtolower($trimmed);
+    return str_replace(' ', '_', $lower);
+}
+PHP);
+        file_put_contents($fixture . '/src/Beta.php', <<<'PHP'
+<?php
+
+function process_beta(string $input): string
+{
+    $trimmed = trim($input);
+    $lower = strtolower($trimmed);
+    return str_replace(' ', '_', $lower);
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(1, $this->countForRule($result->findings, 'php.clone-cluster'));
+        $finding = array_values(array_filter($result->findings, static fn(Finding $f): bool => $f->ruleId === 'php.clone-cluster'))[0];
+        self::assertContains('name=process_alpha', $finding->evidence);
+        self::assertContains('name=process_beta', $finding->evidence);
+        self::assertCount(2, $finding->locations);
+
+        $this->remove($fixture);
+    }
+
+    public function testCloneClusterRuleIgnoresShortOrEmptyBodies(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Tiny.php', "<?php\nfunction a(): void {}\nfunction b(): void {}\n");
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.clone-cluster', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testTypeEscapeHotspotsRuleDetectsConcentratedMixedAndCasts(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/TypeEscape.php', <<<'PHP'
+<?php
+
+function coerce(mixed $input): mixed
+{
+    return (string) $input;
+}
+
+function cast_all(mixed $data): mixed
+{
+    return (int) (array) $data;
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(1, $this->countForRule($result->findings, 'php.type-escape-hotspots'));
+        $evidence = $this->firstEvidenceForRule($result->findings, 'php.type-escape-hotspots');
+        self::assertContains('mixed-types=4', $evidence);
+        self::assertContains('casts=3', $evidence);
+
+        $this->remove($fixture);
+    }
+
+    public function testTypeEscapeHotspotsRuleRespectsBelowThreshold(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Clean.php', <<<'PHP'
+<?php
+
+function transform(string $input): string
+{
+    return strtolower($input);
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.type-escape-hotspots', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testPhpFactsTypeEscapeSummaryCountsMixedTypesAndCasts(): void
+    {
+        $php = <<<'PHP'
+<?php
+
+function f1(mixed $a, mixed $b): mixed
+{
+    return (int) (string) $a;
+}
+
+function f2(string $x): string
+{
+    return (bool) $x ? $x : '';
+}
+PHP;
+
+        $summary = PhpFacts::typeEscapeSummary($php);
+
+        self::assertSame(3, $summary['mixedTypeCount']);
+        self::assertSame(3, $summary['castCount']);
+    }
+
+    public function testPhpFactsFunctionSummariesIncludeConstantReturnAndClassKind(): void
+    {
+        $php = <<<'PHP'
+<?php
+
+function stub(): string
+{
+    return '';
+}
+
+final class Service
+{
+    public function empty_method(): void
+    {
+    }
+
+    public function real_method(string $key): string
+    {
+        return strtolower($key);
+    }
+}
+
+interface Contract
+{
+    public function method(): array;
+}
+
+abstract class Base
+{
+    public function hook(): array
+    {
+        return [];
+    }
+}
+PHP;
+
+        $functions = PhpFacts::functions($php);
+        $byName = array_column($functions, null, 'name');
+
+        self::assertSame('empty-string', $byName['stub']['constantReturn']);
+        self::assertNull($byName['stub']['classKind']);
+
+        self::assertNull($byName['empty_method']['constantReturn']);
+        self::assertSame('class', $byName['empty_method']['classKind']);
+
+        self::assertNull($byName['real_method']['constantReturn']);
+        self::assertSame('class', $byName['real_method']['classKind']);
+
+        self::assertSame('abstract-class', $byName['hook']['classKind']);
+        self::assertSame('empty-array', $byName['hook']['constantReturn']);
     }
 
     public function testPhpFactsSummarizeDefaultFallbacksAndReplacementThrows(): void

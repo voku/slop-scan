@@ -13,6 +13,7 @@ use SlopScan\Reporter\LintReporter;
 use SlopScan\Reporter\TextReporter;
 use SlopScan\Rule\BlanketStaticAnalysisSuppressionsRule;
 use SlopScan\Rule\CatchReturnsExceptionMessageRule;
+use SlopScan\Rule\CloneClusterRule;
 use SlopScan\Rule\CommentedOutCodeRule;
 use SlopScan\Rule\CatchDefaultFallbacksRule;
 use SlopScan\Rule\DebugOutputRule;
@@ -28,7 +29,10 @@ use SlopScan\Rule\MisleadingPhpDocTypesRule;
 use SlopScan\Rule\OverFragmentationRule;
 use SlopScan\Rule\PassThroughWrappersRule;
 use SlopScan\Rule\PlaceholderCommentsRule;
+use SlopScan\Rule\PlaceholderMethodBodiesRule;
+use SlopScan\Rule\ReturnConstantStubRule;
 use SlopScan\Rule\StackedStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\TypeEscapeHotspotsRule;
 
 final class DefaultRegistry
 {
@@ -58,6 +62,10 @@ final class DefaultRegistry
             new DirectoryFanoutHotspotRule(),
             new OverFragmentationRule(),
             new DuplicateFunctionSignaturesRule(),
+            new ReturnConstantStubRule(),
+            new PlaceholderMethodBodiesRule(),
+            new CloneClusterRule(),
+            new TypeEscapeHotspotsRule(),
         ] as $rule) {
             $registry->registerRule($rule);
         }

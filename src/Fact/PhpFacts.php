@@ -51,7 +51,7 @@ final class PhpFacts
         return $comments;
     }
 
-    /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>}}> */
+    /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string}> */
     public static function functions(string $text): array
     {
         $statements = self::parseStatements($text);
@@ -136,6 +136,38 @@ final class PhpFacts
         );
 
         return $entries;
+    }
+
+    /**
+     * @return array{mixedTypeCount:int,castCount:int}
+     */
+    public static function typeEscapeSummary(string $text): array
+    {
+        $statements = self::parseStatements($text);
+        if ($statements === null) {
+            return ['mixedTypeCount' => 0, 'castCount' => 0];
+        }
+
+        $finder = self::nodeFinder();
+
+        $mixedCount = 0;
+        foreach ($finder->findInstanceOf($statements, Stmt\Function_::class) as $func) {
+            $mixedCount += self::countMixedInSignature($func);
+        }
+        foreach ($finder->findInstanceOf($statements, Stmt\ClassMethod::class) as $method) {
+            $mixedCount += self::countMixedInSignature($method);
+        }
+
+        $castCount = count($finder->find($statements, static fn(Node $node): bool =>
+            $node instanceof Expr\Cast\Int_
+            || $node instanceof Expr\Cast\String_
+            || $node instanceof Expr\Cast\Array_
+            || $node instanceof Expr\Cast\Object_
+            || $node instanceof Expr\Cast\Double
+            || $node instanceof Expr\Cast\Bool_
+        ));
+
+        return ['mixedTypeCount' => $mixedCount, 'castCount' => $castCount];
     }
 
     /** @return list<array{name:string,line:int}> */
@@ -251,17 +283,18 @@ final class PhpFacts
     {
         foreach ($statements as $statement) {
             if ($statement instanceof Stmt\Function_) {
-                $functions[] = self::functionSummary($statement, null);
+                $functions[] = self::functionSummary($statement, null, null);
                 continue;
             }
 
             if ($statement instanceof Stmt\ClassLike) {
                 $nestedClassName = $statement->name instanceof Node\Identifier ? $statement->name->toString() : null;
+                $classKind = self::classKindOf($statement);
                 foreach ($statement->getMethods() as $method) {
                     if ($method->stmts === null) {
                         continue;
                     }
-                    $functions[] = self::functionSummary($method, $nestedClassName);
+                    $functions[] = self::functionSummary($method, $nestedClassName, $classKind);
                 }
 
                 foreach (self::childStatements($statement) as $childStatements) {
@@ -276,8 +309,8 @@ final class PhpFacts
         }
     }
 
-    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>}} */
-    private static function functionSummary(Stmt\ClassMethod|Stmt\Function_ $function, ?string $className): array
+    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string} */
+    private static function functionSummary(Stmt\ClassMethod|Stmt\Function_ $function, ?string $className, ?string $classKind): array
     {
         $name = $function->name->toString();
         $params = array_map(
@@ -293,6 +326,8 @@ final class PhpFacts
             'body' => self::printStatements($function->stmts ?? []),
             'params' => $params,
             'passThroughCall' => self::passThroughCallSummary($function, $params),
+            'constantReturn' => self::singleConstantReturnKind($function),
+            'classKind' => $classKind,
         ];
     }
 
@@ -532,6 +567,47 @@ final class PhpFacts
             'params' => $params,
             'return' => $return,
         ];
+    }
+
+    private static function classKindOf(Stmt\ClassLike $statement): string
+    {
+        if ($statement instanceof Stmt\Interface_) {
+            return 'interface';
+        }
+        if ($statement instanceof Stmt\Trait_) {
+            return 'trait';
+        }
+        if ($statement instanceof Stmt\Enum_) {
+            return 'enum';
+        }
+        if ($statement instanceof Stmt\Class_ && $statement->isAbstract()) {
+            return 'abstract-class';
+        }
+        return 'class';
+    }
+
+    private static function singleConstantReturnKind(Stmt\ClassMethod|Stmt\Function_ $function): ?string
+    {
+        $stmts = $function->stmts ?? [];
+        if (count($stmts) !== 1 || !$stmts[0] instanceof Stmt\Return_) {
+            return null;
+        }
+
+        return self::defaultLiteralKind($stmts[0]->expr);
+    }
+
+    private static function countMixedInSignature(Stmt\ClassMethod|Stmt\Function_ $function): int
+    {
+        $count = 0;
+        foreach ($function->params as $param) {
+            if ($param->type instanceof Identifier && strtolower($param->type->name) === 'mixed') {
+                $count++;
+            }
+        }
+        if ($function->returnType instanceof Identifier && strtolower($function->returnType->name) === 'mixed') {
+            $count++;
+        }
+        return $count;
     }
 
     /** @param list<string> $params @return null|array{callee:string,args:list<string>} */

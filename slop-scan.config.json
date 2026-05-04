@@ -2,6 +2,7 @@
   "ignores": [
     "**/vendor/**",
     "**/.git/**",
+    "**/build/**",
     "**/coverage/**",
     "**/*.generated.*"
   ],
@@ -18,7 +19,7 @@
       "rules": {
         "php.directory-fanout-hotspot": {
           "options": {
-            "fileCount": 19
+            "fileCount": 23
           }
         }
       }

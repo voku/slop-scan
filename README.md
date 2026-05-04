@@ -162,6 +162,10 @@ The PHP implementation scans:
 | `php.directory-fanout-hotspot` | Directories with unusually high PHP file counts | Large clusters of files can indicate sprawl and review-unfriendly structure. |
 | `php.over-fragmentation` | Directories with many tiny PHP files | Excessively tiny files can make simple behavior harder to follow. |
 | `php.duplicate-function-signatures` | Repeated function signatures across the repository | Repetition can point to copy-paste design and missed abstraction opportunities. |
+| `php.return-constant-stub` | Functions or methods whose only statement is `return null`, `return []`, `return ''`, `return false`, or `return 0` | Single-constant returns often indicate unimplemented or placeholder logic that was never filled in. |
+| `php.placeholder-method-bodies` | Methods in concrete (non-abstract, non-interface) classes with completely empty bodies | Empty concrete methods can signal forgotten implementations or scaffolded-but-unfinished code. |
+| `php.clone-cluster` | Functions whose bodies are identical across the repository | Identical bodies beyond the length threshold are stronger evidence of copy-paste than duplicate signatures alone. |
+| `php.type-escape-hotspots` | Files with concentrated `mixed` native types and type-cast expressions | A high density of `mixed` signatures and explicit casts signals type friction that is being suppressed rather than addressed. |
 
 The tool is intentionally heuristic: a finding is a prompt for review, not a verdict.
 
