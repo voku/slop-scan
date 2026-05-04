@@ -172,7 +172,7 @@ PHP);
 PHP);
         file_put_contents($fixture . '/slop-scan.config.json', Json::encode([
             'ignoreErrors' => [
-                ['identifier' => 'php.placeholder-comments', 'path' => 'src/Notes.php', 'count' => '1'],
+                ['identifier' => 'php.placeholder-comments', 'path' => 'src/Notes.php', 'count' => 1],
             ],
         ]));
 
