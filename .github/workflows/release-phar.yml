@@ -1,15 +1,15 @@
 name: Release PHAR
 
 on:
-  release:
-    types:
-      - published
+  push:
+    tags:
+      - '*'
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-phar-${{ github.event.release.id }}
+  group: release-phar-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
           coverage: none
           tools: composer
 
@@ -34,8 +34,11 @@ jobs:
       - name: Verify PHAR
         run: php dist/slop-scan.phar --help
 
-      - name: Upload PHAR to release
+      - name: Create GitHub release and upload PHAR
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
           files: dist/slop-scan.phar
           fail_on_unmatched_files: true
