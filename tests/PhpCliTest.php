@@ -481,6 +481,7 @@ PHP);
             'blanket suppression' => ['blanket-suppression.fixture', 'src/BlanketSuppression.php', 'php.blanket-static-analysis-suppressions'],
             'commented out code' => ['commented-out-code.fixture', 'src/CommentedOutCode.php', 'php.commented-out-code'],
             'catch default fallback' => ['catch-default-fallback.fixture', 'src/CatchDefaultFallback.php', 'php.catch-default-fallbacks'],
+            'catch returns exception message' => ['catch-returns-exception-message.fixture', 'src/CatchReturnsExceptionMessage.php', 'php.catch-returns-exception-message'],
             'debug output' => ['debug-output.fixture', 'src/DebugOutput.php', 'php.debug-output'],
             'mock heavy test without assertions' => ['mock-heavy-test-without-assertions.fixture', 'tests/OnlyMocksTest.php', 'php.mock-heavy-tests-without-assertions'],
             'misleading phpdoc types' => ['misleading-phpdoc-types.fixture', 'src/MisleadingPhpDoc.php', 'php.misleading-phpdoc-types'],
@@ -1314,6 +1315,50 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testCatchReturnsExceptionMessageRuleDetectsCaughtMessageReturnsOnly(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/CatchReturnsMessage.php', <<<'PHP'
+<?php
+
+function returns_message(Throwable $input): string
+{
+    try {
+        return load_message($input);
+    } catch (Throwable $exception) {
+        return $exception->getMessage();
+    }
+}
+
+function returns_stringified(Throwable $input): string
+{
+    try {
+        return load_message($input);
+    } catch (Throwable $exception) {
+        return (string) $exception;
+    }
+}
+
+function returns_recovery(Throwable $input): string
+{
+    try {
+        return load_message($input);
+    } catch (Throwable $exception) {
+        return recover_from_cache($exception);
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(2, $this->countForRule($result->findings, 'php.catch-returns-exception-message'));
+        self::assertSame(['return=caught-message'], $this->findEvidenceForRuleAndLine($result->findings, 'php.catch-returns-exception-message', 7));
+        self::assertSame(['return=caught-string'], $this->findEvidenceForRuleAndLine($result->findings, 'php.catch-returns-exception-message', 16));
+
+        $this->remove($fixture);
+    }
+
     public function testErrorObscuringCatchRuleFlagsGenericReplacementWithoutPrevious(): void
     {
         $fixture = $this->makeFixture();
@@ -1402,6 +1447,15 @@ PHP);
         $php = <<<'PHP'
 <?php
 
+function message_fallback(): string
+{
+    try {
+        return risky();
+    } catch (Throwable $exception) {
+        return $exception->getMessage();
+    }
+}
+
 function fallback(): mixed
 {
     try {
@@ -1432,8 +1486,17 @@ PHP;
 
         $catches = PhpFacts::tryCatches($php);
 
-        self::assertSame(['null'], $catches[0]['defaultReturnKinds']);
+        self::assertSame([], $catches[0]['defaultReturnKinds']);
+        self::assertSame(['caught-message'], $catches[0]['returnedCaughtValueKinds']);
+        self::assertSame(
+            ['null'],
+            $catches[1]['defaultReturnKinds']
+        );
+        self::assertSame([], $catches[1]['returnedCaughtValueKinds']);
+        self::assertSame([], $catches[2]['returnedCaughtValueKinds']);
+        self::assertSame([], $catches[3]['returnedCaughtValueKinds']);
         self::assertSame([], $catches[0]['thrownExceptions']);
+        self::assertSame([], $catches[1]['thrownExceptions']);
         self::assertSame(
             [[
                 'class' => 'RuntimeException',
@@ -1441,7 +1504,7 @@ PHP;
                 'preservesPrevious' => false,
                 'usesCaughtVariable' => true,
             ]],
-            $catches[1]['thrownExceptions']
+            $catches[2]['thrownExceptions']
         );
         self::assertSame(
             [[
@@ -1450,7 +1513,7 @@ PHP;
                 'preservesPrevious' => true,
                 'usesCaughtVariable' => true,
             ]],
-            $catches[2]['thrownExceptions']
+            $catches[3]['thrownExceptions']
         );
     }
 

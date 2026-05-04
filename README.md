@@ -153,6 +153,7 @@ The PHP implementation scans:
 | `php.stacked-static-analysis-suppressions` | Back-to-back suppression comments above one code site | Stacked ignores are a strong smell that one line is resisting cleanup. |
 | `php.commented-out-code` | Comments that look like disabled code | Dead code in comments adds noise and creates doubt about what is still relevant. |
 | `php.catch-default-fallbacks` | `catch` blocks that return empty literals such as `null`, `[]`, `''`, `false`, or `0` | Default fallbacks can silently turn real failures into misleading “success” values. |
+| `php.catch-returns-exception-message` | `catch` blocks that return the caught exception message or string form as a normal value | Turning failures into returned error text can blur success and failure paths and leak internal details. |
 | `php.debug-output` | Calls like `var_dump()`, `print_r()`, `dd()`, or `ray()` left in source | Debug leftovers usually should not ship in production code. |
 | `php.mock-heavy-tests-without-assertions` | Tests that mostly build mocks but do not assert behavior | These tests look busy but often do not protect behavior. |
 | `php.misleading-phpdoc-types` | PHPDoc param/return types that either disagree with or merely duplicate native types | Misleading docs undermine trust, while redundant docs add noise without extra type value. |

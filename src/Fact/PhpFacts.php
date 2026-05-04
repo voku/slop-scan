@@ -73,6 +73,7 @@ final class PhpFacts
      *     hasReturn:bool,
      *     callNames:list<string>,
      *     defaultReturnKinds:list<string>,
+     *     returnedCaughtValueKinds:list<string>,
      *     thrownExceptions:list<array{class:?string,isGeneric:bool,preservesPrevious:bool,usesCaughtVariable:bool}>
      * }>
      */
@@ -587,6 +588,7 @@ final class PhpFacts
      *     hasReturn:bool,
      *     callNames:list<string>,
      *     defaultReturnKinds:list<string>,
+     *     returnedCaughtValueKinds:list<string>,
      *     thrownExceptions:list<array{class:?string,isGeneric:bool,preservesPrevious:bool,usesCaughtVariable:bool}>
      * }
      */
@@ -629,6 +631,19 @@ final class PhpFacts
         $defaultReturnKinds = array_values(array_unique($defaultReturnKinds));
         sort($defaultReturnKinds, SORT_STRING);
 
+        $returnedCaughtValueKinds = [];
+        foreach ($finder->findInstanceOf($catch->stmts, Stmt\Return_::class) as $return) {
+            $kind = self::returnedCaughtValueKind($return->expr, $catchVariableName);
+            if ($kind === null) {
+                continue;
+            }
+
+            $returnedCaughtValueKinds[] = $kind;
+        }
+
+        $returnedCaughtValueKinds = array_values(array_unique($returnedCaughtValueKinds));
+        sort($returnedCaughtValueKinds, SORT_STRING);
+
         $thrownExceptions = [];
         foreach ($finder->findInstanceOf($catch->stmts, Expr\Throw_::class) as $throw) {
             $thrownExceptions[] = self::thrownExceptionSummary($throw, $catchVariableName);
@@ -642,6 +657,7 @@ final class PhpFacts
             'hasReturn' => $finder->findFirstInstanceOf($catch->stmts, Stmt\Return_::class) !== null,
             'callNames' => $callNames,
             'defaultReturnKinds' => $defaultReturnKinds,
+            'returnedCaughtValueKinds' => $returnedCaughtValueKinds,
             'thrownExceptions' => $thrownExceptions,
         ];
     }
@@ -672,6 +688,29 @@ final class PhpFacts
 
         if ($expr instanceof Expr\Array_ && $expr->items === []) {
             return 'empty-array';
+        }
+
+        return null;
+    }
+
+    private static function returnedCaughtValueKind(?Expr $expr, ?string $catchVariableName): ?string
+    {
+        if ($expr === null || $catchVariableName === null) {
+            return null;
+        }
+
+        if ($expr instanceof Expr\MethodCall
+            && $expr->var instanceof Expr\Variable
+            && $expr->var->name === $catchVariableName
+            && $expr->name instanceof Identifier
+            && strtolower($expr->name->toString()) === 'getmessage'
+            && $expr->getArgs() === []
+        ) {
+            return 'caught-message';
+        }
+
+        if ($expr instanceof Expr\Cast\String_ && self::expressionUsesVariable($expr->expr, $catchVariableName)) {
+            return 'caught-string';
         }
 
         return null;

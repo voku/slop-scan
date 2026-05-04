@@ -12,6 +12,7 @@ use SlopScan\Reporter\JsonReporter;
 use SlopScan\Reporter\LintReporter;
 use SlopScan\Reporter\TextReporter;
 use SlopScan\Rule\BlanketStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\CatchReturnsExceptionMessageRule;
 use SlopScan\Rule\CommentedOutCodeRule;
 use SlopScan\Rule\CatchDefaultFallbacksRule;
 use SlopScan\Rule\DebugOutputRule;
@@ -48,6 +49,7 @@ final class DefaultRegistry
             new StackedStaticAnalysisSuppressionsRule(),
             new CommentedOutCodeRule(),
             new CatchDefaultFallbacksRule(),
+            new CatchReturnsExceptionMessageRule(),
             new DebugOutputRule(),
             new MockHeavyTestsWithoutAssertionsRule(),
             new MisleadingPhpDocTypesRule(),
