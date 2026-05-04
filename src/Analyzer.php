@@ -190,7 +190,6 @@ final class Analyzer
             $scores[$finding->path]['findingCount']++;
         }
         usort($scores, static fn(array $left, array $right): int => $right['score'] <=> $left['score'] ?: strcmp($left['path'], $right['path']));
-        /** @var list<array{path:string,score:float,findingCount:int}> $scores */
         return $scores;
     }
 
@@ -207,7 +206,6 @@ final class Analyzer
             $scores[$finding->path]['findingCount']++;
         }
         usort($scores, static fn(array $left, array $right): int => $right['score'] <=> $left['score'] ?: strcmp($left['path'], $right['path']));
-        /** @var list<array{path:string,score:float,findingCount:int}> $scores */
         return $scores;
     }
 }
