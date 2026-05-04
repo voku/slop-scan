@@ -11,18 +11,51 @@ This repository started from a fork of [`modem-dev/slop-scan`](https://github.co
 - PHP 8.3+
 - Composer
 
-## Install
+## Quick start
 
-Install the latest release PHAR directly:
+1. Install the latest release PHAR:
 
 ```bash
 mkdir -p "$HOME/.local/bin"
 curl -fsSL https://github.com/voku/slop-scan/releases/latest/download/slop-scan.phar -o "$HOME/.local/bin/slop-scan"
 chmod +x "$HOME/.local/bin/slop-scan"
+```
+
+2. Scan the current repository:
+
+```bash
 "$HOME/.local/bin/slop-scan" scan .
 ```
 
-Install dependencies for local development:
+3. Pick an output format that matches your workflow:
+
+```bash
+"$HOME/.local/bin/slop-scan" scan . --lint
+"$HOME/.local/bin/slop-scan" scan . --json
+"$HOME/.local/bin/slop-scan" scan . --github
+```
+
+4. Ignore generated or irrelevant paths when needed:
+
+```bash
+"$HOME/.local/bin/slop-scan" scan . --ignore 'vendor/**' --ignore 'tests/fixtures/**'
+```
+
+The scanner targets PHP source files such as `.php`, `.phtml`, and `.inc`.
+
+## More docs
+
+- [Installation and local builds](docs/installation.md)
+- [Delta comparisons and baselines](docs/delta-comparisons.md)
+- [Supported files and built-in rules](docs/rules.md)
+- [Configuration and suppressions](docs/configuration.md)
+- [Report shape](docs/report-shape.md)
+- [Development and validation](docs/development.md)
+- [Contributing](CONTRIBUTING.md)
+
+## Local development quick start
+
+Install dependencies:
 
 ```bash
 composer install
@@ -33,234 +66,3 @@ Run the CLI from the repository checkout:
 ```bash
 php bin/slop-scan.php scan .
 ```
-
-Build a PHAR:
-
-```bash
-composer run phar:build
-php dist/slop-scan.phar scan .
-```
-
-## Quick start
-
-1. Install dependencies:
-
-```bash
-composer install
-```
-
-2. Scan the current repository:
-
-```bash
-php bin/slop-scan.php scan .
-```
-
-3. Pick an output format that matches your workflow:
-
-```bash
-php bin/slop-scan.php scan . --lint
-php bin/slop-scan.php scan . --json
-php bin/slop-scan.php scan . --github
-```
-
-4. Ignore generated or irrelevant paths when needed:
-
-```bash
-php bin/slop-scan.php scan . --ignore 'vendor/**' --ignore 'tests/fixtures/**'
-```
-
-5. Reuse the default cache across repeated local runs:
-
-```bash
-php bin/slop-scan.php scan .
-```
-
-6. Create a baseline when you want CI to fail only on newly introduced findings:
-
-```bash
-php bin/slop-scan.php scan . --baseline-file slop-baseline.json --generate-baseline
-php bin/slop-scan.php scan . --baseline-file slop-baseline.json --github
-```
-
-The generated baseline is intentionally compact: it stores only finding metadata and fingerprints needed to suppress existing findings, not the full scanned file inventory.
-
-## Delta comparisons
-
-Compare two paths directly:
-
-```bash
-php bin/slop-scan.php delta --base ../main --head . --json
-```
-
-Compare saved reports:
-
-```bash
-php bin/slop-scan.php scan ../main --json > base.json
-php bin/slop-scan.php scan . --json > head.json
-php bin/slop-scan.php delta --base-report base.json --head-report head.json --json
-```
-
-Generate a scan baseline, then fail only on findings introduced after that baseline:
-
-```bash
-php bin/slop-scan.php scan . --baseline-file slop-baseline.json --generate-baseline
-php bin/slop-scan.php scan . --baseline-file slop-baseline.json --github
-```
-
-Fail CI when selected delta statuses are present:
-
-```bash
-php bin/slop-scan.php delta --base-report base.json --head-report head.json --fail-on added
-```
-
-Supported command/options:
-
-- `scan`
-- `delta`
-- `--json`
-- `--lint`
-- `--github`
-- `--ignore`
-- `--cache-file`
-- `--baseline-file`
-- `--generate-baseline`
-- `--base`
-- `--head`
-- `--base-report`
-- `--head-report`
-- `--fail-on`
-
-## Supported files
-
-The PHP implementation scans:
-
-- `.php`
-- `.phtml`
-- `.inc`
-
-## What the built-in rules check and why
-
-`slop-scan` focuses on explainable, reviewable heuristics. These rules try to catch patterns that often show up in rushed, weakly reviewed, or partially cleaned-up code:
-
-| Rule | What it checks | Why it matters |
-| --- | --- | --- |
-| `php.empty-catch` | `catch` blocks with no statements | Exceptions disappear silently and make failures harder to debug. |
-| `php.exception-wrap-without-previous` | `catch` blocks that create a replacement exception from the caught error but do not chain it as `previous` | Message-only wrapping keeps the wording but loses the original type and stack context. |
-| `php.error-obscuring-catch` | `catch` blocks that replace the original failure with a generic exception without keeping the previous error | Replacement exceptions can erase the original type and stack context that explain what really failed. |
-| `php.error-swallowing` | `catch` blocks that log/print and continue without `throw` or `return` | Errors are acknowledged but not handled, so broken execution keeps going. |
-| `php.blanket-static-analysis-suppressions` | Broad `@phpstan-ignore`, `@psalm-suppress`, and similar comments | Blanket suppressions hide real problems and reduce trust in static analysis. |
-| `php.excessive-static-analysis-suppressions` | Files with more suppression comments than the configured threshold | A file full of suppressions often signals design debt or papered-over typing issues. |
-| `php.stacked-static-analysis-suppressions` | Back-to-back suppression comments above one code site | Stacked ignores are a strong smell that one line is resisting cleanup. |
-| `php.commented-out-code` | Comments that look like disabled code | Dead code in comments adds noise and creates doubt about what is still relevant. |
-| `php.catch-default-fallbacks` | `catch` blocks that return empty literals such as `null`, `[]`, `''`, `false`, or `0` | Default fallbacks can silently turn real failures into misleading “success” values. |
-| `php.catch-returns-exception-message` | `catch` blocks that return the caught exception message or string form as a normal value | Turning failures into returned error text can blur success and failure paths and leak internal details. |
-| `php.debug-output` | Calls like `var_dump()`, `print_r()`, `dd()`, or `ray()` left in source | Debug leftovers usually should not ship in production code. |
-| `php.mock-heavy-tests-without-assertions` | Tests that mostly build mocks but do not assert behavior | These tests look busy but often do not protect behavior. |
-| `php.misleading-phpdoc-types` | PHPDoc param/return types that either disagree with or merely duplicate native types | Misleading docs undermine trust, while redundant docs add noise without extra type value. |
-| `php.placeholder-comments` | Comments such as TODO, FIXME, HACK, placeholder, temporary | These markers often reveal unfinished or intentionally deferred work. |
-| `php.pass-through-wrappers` | Functions that mostly forward input to another function | Thin wrappers can indicate unnecessary indirection and generated-looking structure. |
-| `php.directory-fanout-hotspot` | Directories with unusually high PHP file counts | Large clusters of files can indicate sprawl and review-unfriendly structure. |
-| `php.over-fragmentation` | Directories with many tiny PHP files | Excessively tiny files can make simple behavior harder to follow. |
-| `php.duplicate-function-signatures` | Repeated function signatures across the repository | Repetition can point to copy-paste design and missed abstraction opportunities. |
-| `php.return-constant-stub` | Functions or methods whose only statement is `return null`, `return []`, `return ''`, `return false`, or `return 0` | Single-constant returns often indicate unimplemented or placeholder logic that was never filled in. |
-| `php.placeholder-method-bodies` | Methods in concrete (non-abstract, non-interface) classes with completely empty bodies | Empty concrete methods can signal forgotten implementations or scaffolded-but-unfinished code. |
-| `php.clone-cluster` | Functions whose bodies are identical across the repository | Identical bodies beyond the length threshold are stronger evidence of copy-paste than duplicate signatures alone. |
-| `php.type-escape-hotspots` | Files with concentrated `mixed` native types and type-cast expressions | A high density of `mixed` signatures and explicit casts signals type friction that is being suppressed rather than addressed. |
-
-The tool is intentionally heuristic: a finding is a prompt for review, not a verdict.
-
-## Configuration
-
-`slop-scan` reads JSON config from `slop-scan.config.json` or `repo-slop.config.json` in the scan root.
-
-Scans now reuse unchanged per-file analysis by default through `.slop-scan.cache.json` in the scan root. Use `--cache-file` to override that location.
-
-```json
-{
-  "ignores": ["**/vendor/**", "**/.git/**"],
-  "rules": {
-    "php.placeholder-comments": { "enabled": true, "weight": 0.5 },
-    "php.directory-fanout-hotspot": { "options": { "fileCount": 12 } }
-  },
-  "ignoreErrors": [
-    "#Found PHP debug-output call#",
-    { "identifier": "php.empty-catch", "path": "src/Legacy.php", "count": 1 },
-    { "ruleId": "php.placeholder-comments", "paths": ["src/Generated/**"] }
-  ],
-  "overrides": [
-    {
-      "path": "src/Generated/**",
-      "rules": {
-        "php.placeholder-comments": { "enabled": false }
-      }
-    }
-  ]
-}
-```
-
-`ignoreErrors` follows PHPStan-style matching for intentional false positives:
-
-- a string entry is treated as a regular expression matched against the finding message;
-- object entries may combine `message`/`messages`, `identifier`/`identifiers` or `ruleId`/`ruleIds`, and `path`/`paths`;
-- `path` and `paths` use the same glob matching as `ignores`;
-- `count` limits how many matching findings are suppressed, so additional matches remain visible.
-
-For file-scoped one-off suppressions, add an inline comment on the same line as the code site or directly above it:
-
-```php
-var_dump($value); // @slop-scan-ignore php.debug-output (legacy shim)
-
-/* @slop-scan-ignore php.error-obscuring-catch, php.error-swallowing (known legacy boundary) */
-catch (Throwable $e) {
-    throw new RuntimeException('hidden');
-}
-```
-
-Inline `@slop-scan-ignore` comments match only by rule identifier. They support one identifier or a comma-separated list, plus an optional parenthesized reason.
-
-## Report shape
-
-JSON scan output includes:
-
-- `metadata`
-- `rootDir`
-- `config`
-- `summary`
-- `files`
-- `directories`
-- `findings`
-- `fileScores`
-- `directoryScores`
-
-Each finding includes rule identity, severity, scope, message, evidence, score, locations, path, and `deltaIdentity` occurrence fingerprints.
-
-Baseline files are smaller than full JSON scan reports. They contain:
-
-- `metadata`
-- `summary.findingCount`
-- `findings`
-
-That keeps baseline adoption practical for existing repositories: commit the current findings once, then let CI fail only on newly introduced fingerprints.
-
-## Development
-
-Run local validation:
-
-```bash
-composer validate --strict
-composer run lint
-composer run analyse
-composer run test
-composer run scan:self
-composer run phar:build
-```
-
-Run mutation testing with Infection and PHPStan-backed escaped-mutant checks:
-
-```bash
-composer run mutate
-```
-
-The repository dogfoods `slop-scan` in CI by scanning the whole checkout directly, without a committed baseline file, so pull requests must keep the repository clean enough to pass the same heuristics it ships.
-
-The implementation lives in PSR-4 class files under `src/`, organized by responsibility (for example `Contract/`, `Fact/`, `Model/`, `Reporter/`, `Rule/`, `Runtime/`, and `Support/`); tests live in `tests/`.

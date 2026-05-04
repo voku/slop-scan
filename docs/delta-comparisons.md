@@ -1,0 +1,47 @@
+# Delta comparisons
+
+## Compare two paths directly
+
+```bash
+php bin/slop-scan.php delta --base ../main --head . --json
+```
+
+## Compare saved reports
+
+```bash
+php bin/slop-scan.php scan ../main --json > base.json
+php bin/slop-scan.php scan . --json > head.json
+php bin/slop-scan.php delta --base-report base.json --head-report head.json --json
+```
+
+## Generate and use a baseline
+
+```bash
+php bin/slop-scan.php scan . --baseline-file slop-baseline.json --generate-baseline
+php bin/slop-scan.php scan . --baseline-file slop-baseline.json --github
+```
+
+The generated baseline is intentionally compact: it stores only finding metadata and fingerprints needed to suppress existing findings, not the full scanned file inventory.
+
+## Fail on selected delta statuses
+
+```bash
+php bin/slop-scan.php delta --base-report base.json --head-report head.json --fail-on added
+```
+
+## Supported command options
+
+- `scan`
+- `delta`
+- `--json`
+- `--lint`
+- `--github`
+- `--ignore`
+- `--cache-file`
+- `--baseline-file`
+- `--generate-baseline`
+- `--base`
+- `--head`
+- `--base-report`
+- `--head-report`
+- `--fail-on`
