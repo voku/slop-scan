@@ -199,6 +199,20 @@ PHP);
         (new Analyzer())->analyze($this->fixtureDir, Config::load($this->fixtureDir), DefaultRegistry::create());
     }
 
+    public function testConfigIgnoreErrorsInvalidCountFailsClearly(): void
+    {
+        file_put_contents($this->fixtureDir . '/slop-scan.config.json', Json::encode([
+            'ignoreErrors' => [
+                ['identifier' => 'php.empty-catch', 'count' => 'many'],
+            ],
+        ]));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid ignoreErrors count');
+
+        (new Analyzer())->analyze($this->fixtureDir, Config::load($this->fixtureDir), DefaultRegistry::create());
+    }
+
     public function testConfigFallsBackToRepoConfigAndInvalidJsonFails(): void
     {
         $fixture = $this->makeFixture();

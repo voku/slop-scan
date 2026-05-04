@@ -145,7 +145,7 @@ final class FindingIgnorer
 
     private static function regexMatches(string $pattern, string $message): bool
     {
-        set_error_handler(static fn (int $severity, string $message): bool => true);
+        set_error_handler(static fn (int $errorSeverity, string $errorMessage): bool => true);
         try {
             $result = preg_match($pattern, $message);
         } finally {
@@ -227,6 +227,14 @@ final class FindingIgnorer
             return max(0, $value);
         }
 
-        return is_string($value) && ctype_digit($value) ? max(0, (int) $value) : null;
+        if (is_string($value)) {
+            if (ctype_digit($value)) {
+                return max(0, (int) $value);
+            }
+
+            throw new \InvalidArgumentException('Invalid ignoreErrors count: expected a non-negative integer.');
+        }
+
+        return null;
     }
 }
