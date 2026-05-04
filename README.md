@@ -13,6 +13,15 @@ This repository started from a fork of [`modem-dev/slop-scan`](https://github.co
 
 ## Install
 
+Install the latest release PHAR directly:
+
+```bash
+mkdir -p "$HOME/.local/bin"
+curl -fsSL https://github.com/voku/slop-scan/releases/latest/download/slop-scan.phar -o "$HOME/.local/bin/slop-scan"
+chmod +x "$HOME/.local/bin/slop-scan"
+"$HOME/.local/bin/slop-scan" scan .
+```
+
 Install dependencies for local development:
 
 ```bash
@@ -200,9 +209,16 @@ Run local validation:
 ```bash
 composer validate --strict
 composer run lint
+composer run analyse
 composer run test
 composer run scan:self
 composer run phar:build
+```
+
+Run mutation testing with Infection and PHPStan-backed escaped-mutant checks:
+
+```bash
+composer run mutate
 ```
 
 The repository dogfoods `slop-scan` in CI by scanning the whole checkout directly, without a committed baseline file, so pull requests must keep the repository clean enough to pass the same heuristics it ships.

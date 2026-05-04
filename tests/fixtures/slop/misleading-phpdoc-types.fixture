@@ -1,0 +1,9 @@
+<?php
+
+/**
+ * @param string $count
+ */
+function wrong_param(int $count): int
+{
+    return $count;
+}

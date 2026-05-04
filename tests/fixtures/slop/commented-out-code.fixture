@@ -1,0 +1,8 @@
+<?php
+
+function keep_value(int $value): int
+{
+    return $value + 1;
+}
+
+// return transform($value);

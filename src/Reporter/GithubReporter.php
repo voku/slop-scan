@@ -27,12 +27,12 @@ final class GithubReporter implements ReporterPlugin
         foreach ($findings as $finding) {
             foreach (self::locationsFor($finding) as $location) {
                 $properties = [];
-                $path = (string) ($location['path'] ?? '');
+                $path = $location['path'];
                 if ($path !== '') {
                     $properties[] = 'file=' . self::escape($path);
                 }
-                $properties[] = 'line=' . self::escape((string) ($location['line'] ?? self::DEFAULT_LINE));
-                $properties[] = 'col=' . self::escape((string) ($location['column'] ?? self::DEFAULT_COLUMN));
+                $properties[] = 'line=' . self::escape((string) $location['line']);
+                $properties[] = 'col=' . self::escape((string) $location['column']);
                 $lines[] = '::error ' . implode(',', $properties) . '::' . self::escape($finding->message . ' (' . $finding->ruleId . ')');
             }
         }

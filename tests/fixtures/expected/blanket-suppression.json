@@ -1,0 +1,28 @@
+[
+    {
+        "ruleId": "php.blanket-static-analysis-suppressions",
+        "path": "src/BlanketSuppression.php",
+        "severity": "weak",
+        "evidence": [
+            "// @phpstan-ignore-next-line"
+        ],
+        "locations": [
+            {
+                "path": "src/BlanketSuppression.php",
+                "line": 3,
+                "column": 1
+            }
+        ],
+        "deltaIdentity": {
+            "fingerprintVersion": 1,
+            "occurrences": [
+                {
+                    "fingerprint": "d7ad1b969682973ce4d3972dba567570ffdddf05f25b0ba6698abea4296ee1d6",
+                    "path": "src/BlanketSuppression.php",
+                    "line": 3,
+                    "column": 1
+                }
+            ]
+        }
+    }
+]

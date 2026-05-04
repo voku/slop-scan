@@ -1,0 +1,10 @@
+<?php
+
+function swallow_error(): void
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        error_log($exception->getMessage());
+    }
+}

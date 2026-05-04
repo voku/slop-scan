@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SlopScan\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
@@ -42,6 +43,8 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class PhpCliTest extends TestCase
 {
+    private const JSON_MAX_DEPTH = 512;
+
     private string $fixtureDir;
 
     protected function setUp(): void
@@ -452,6 +455,86 @@ PHP);
         )));
 
         $this->remove($fixture);
+    }
+
+    /**
+     * @return array<string, array{0:string, 1:string, 2:string}>
+     */
+    public static function positiveFixtureProvider(): array
+    {
+        return [
+            'empty catch' => ['empty-catch.fixture', 'src/EmptyCatch.php', 'php.empty-catch'],
+            'error swallowing' => ['error-swallowing.fixture', 'src/ErrorSwallowing.php', 'php.error-swallowing'],
+            'blanket suppression' => ['blanket-suppression.fixture', 'src/BlanketSuppression.php', 'php.blanket-static-analysis-suppressions'],
+            'commented out code' => ['commented-out-code.fixture', 'src/CommentedOutCode.php', 'php.commented-out-code'],
+            'debug output' => ['debug-output.fixture', 'src/DebugOutput.php', 'php.debug-output'],
+            'mock heavy test without assertions' => ['mock-heavy-test-without-assertions.fixture', 'tests/OnlyMocksTest.php', 'php.mock-heavy-tests-without-assertions'],
+            'misleading phpdoc types' => ['misleading-phpdoc-types.fixture', 'src/MisleadingPhpDoc.php', 'php.misleading-phpdoc-types'],
+            'placeholder comments' => ['placeholder-comments.fixture', 'src/PlaceholderComments.php', 'php.placeholder-comments'],
+            'pass through wrapper' => ['pass-through-wrapper.fixture', 'src/PassThroughWrapper.php', 'php.pass-through-wrappers'],
+        ];
+    }
+
+    #[DataProvider('positiveFixtureProvider')]
+    public function testPositiveFixturesProduceSingleExpectedFinding(string $fixtureName, string $relativePath, string $expectedRuleId): void
+    {
+        $result = $this->scanStoredFixture('slop', $fixtureName, $relativePath);
+
+        self::assertSame([$expectedRuleId], $this->ruleIds($result->findings));
+        self::assertCount(1, $result->findings);
+        self::assertSame($expectedRuleId, $result->findings[0]->ruleId);
+        self::assertSame($relativePath, $result->findings[0]->path);
+        self::assertSame($relativePath, $result->findings[0]->locations[0]['path'] ?? null);
+        self::assertNotSame([], $result->findings[0]->evidence);
+        self::assertSame(1, $result->findings[0]->deltaIdentity['fingerprintVersion']);
+        self::assertSame($relativePath, $result->findings[0]->deltaIdentity['occurrences'][0]['path'] ?? null);
+    }
+
+    /**
+     * @return array<string, array{0:string, 1:string}>
+     */
+    public static function cleanFixtureProvider(): array
+    {
+        return [
+            'handled catch with return' => ['handled-catch-return.fixture', 'src/HandledCatch.php'],
+            'test with mocks and assertions' => ['test-with-mocks-and-real-assertions.fixture', 'tests/MockAssertionsTest.php'],
+            'helpful phpdoc types' => ['helpful-phpdoc-types.fixture', 'src/HelpfulPhpDoc.php'],
+        ];
+    }
+
+    #[DataProvider('cleanFixtureProvider')]
+    public function testCleanFixturesStayQuiet(string $fixtureName, string $relativePath): void
+    {
+        $result = $this->scanStoredFixture('clean', $fixtureName, $relativePath);
+
+        self::assertSame([], $result->findings);
+        self::assertSame([], $this->ruleIds($result->findings));
+        self::assertSame(0, $result->summary['findingCount']);
+    }
+
+    /**
+     * @return array<string, array{0:string, 1:string, 2:string}>
+     */
+    public static function expectedSnapshotProvider(): array
+    {
+        return [
+            'empty catch snapshot' => ['empty-catch.fixture', 'src/EmptyCatch.php', 'empty-catch.json'],
+            'blanket suppression snapshot' => ['blanket-suppression.fixture', 'src/BlanketSuppression.php', 'blanket-suppression.json'],
+        ];
+    }
+
+    #[DataProvider('expectedSnapshotProvider')]
+    public function testSelectedFixturesMatchStableJsonSnapshots(string $fixtureName, string $relativePath, string $expectedSnapshot): void
+    {
+        $result = $this->scanStoredFixture('slop', $fixtureName, $relativePath);
+        $expected = json_decode(
+            (string) file_get_contents(__DIR__ . '/fixtures/expected/' . $expectedSnapshot),
+            true,
+            self::JSON_MAX_DEPTH,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame($expected, $this->normalizedFindingSnapshot($result->findings));
     }
 
     public function testStackedStaticAnalysisSuppressionsRuleDetectsClusteredSuppressions(): void
@@ -1347,6 +1430,45 @@ PHP);
         return $path;
     }
 
+    private function scanStoredFixture(string $group, string $fixtureName, string $relativePath): AnalysisResult
+    {
+        $fixture = $this->makeFixture();
+        $sourcePath = __DIR__ . "/fixtures/{$group}/{$fixtureName}";
+        $destinationPath = $fixture . '/' . $relativePath;
+        mkdir(dirname($destinationPath), 0777, true);
+        copy($sourcePath, $destinationPath);
+
+        try {
+            return (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
+    /**
+     * @param list<Finding> $findings findings to normalize
+     * @return list<array{ruleId:string,path:?string,severity:string,evidence:list<string>,locations:list<array{path:string,line:int,column?:int}>,deltaIdentity:array<string,mixed>}>
+     */
+    private function normalizedFindingSnapshot(array $findings): array
+    {
+        return array_map($this->findingToNormalizedArray(...), $findings);
+    }
+
+    /**
+     * @return array{ruleId:string,path:?string,severity:string,evidence:list<string>,locations:list<array{path:string,line:int,column?:int}>,deltaIdentity:array<string,mixed>}
+     */
+    private function findingToNormalizedArray(Finding $finding): array
+    {
+        return [
+            'ruleId' => $finding->ruleId,
+            'path' => $finding->path,
+            'severity' => $finding->severity,
+            'evidence' => $finding->evidence,
+            'locations' => $finding->locations,
+            'deltaIdentity' => $finding->deltaIdentity,
+        ];
+    }
+
     /**
      * @param list<Finding> $findings findings to inspect
      */
@@ -1463,7 +1585,7 @@ final class ParserStub implements Parser
     public static array $statements = [];
     public static ?string $exceptionMessage = null;
 
-    public function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler = null): ?array
+    public function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler = null): array
     {
         if (self::$exceptionMessage !== null) {
             throw new \RuntimeException(self::$exceptionMessage);

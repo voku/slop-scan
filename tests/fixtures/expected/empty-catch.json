@@ -1,0 +1,28 @@
+[
+    {
+        "ruleId": "php.empty-catch",
+        "path": "src/EmptyCatch.php",
+        "severity": "medium",
+        "evidence": [
+            "catch block has no statements"
+        ],
+        "locations": [
+            {
+                "path": "src/EmptyCatch.php",
+                "line": 7,
+                "column": 1
+            }
+        ],
+        "deltaIdentity": {
+            "fingerprintVersion": 1,
+            "occurrences": [
+                {
+                    "fingerprint": "b49dcf759303fa669bed307614a6910133c2e49388d1e551a9e59af7cfa7489d",
+                    "path": "src/EmptyCatch.php",
+                    "line": 7,
+                    "column": 1
+                }
+            ]
+        }
+    }
+]

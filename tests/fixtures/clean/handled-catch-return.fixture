@@ -1,0 +1,10 @@
+<?php
+
+function handled_catch(): mixed
+{
+    try {
+        return risky();
+    } catch (Throwable $exception) {
+        return fallback($exception);
+    }
+}

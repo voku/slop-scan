@@ -1,0 +1,9 @@
+<?php
+
+function run_empty_catch(): void
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+    }
+}

@@ -18,6 +18,7 @@ use SlopScan\Support\ScanCache;
 
 final class Analyzer
 {
+    /** @param array<string,mixed> $config */
     public function analyze(string $rootDir, array $config, Registry $registry, ?string $cacheFile = null): AnalysisResult
     {
         $root = realpath($rootDir) ?: $rootDir;
@@ -79,9 +80,6 @@ final class Analyzer
             }
 
             $facts = $provider->run($context);
-            if ($facts instanceof \Traversable) {
-                $facts = iterator_to_array($facts);
-            }
             foreach ($facts as $fact => $value) {
                 if ($context->scope === 'file' && $context->file !== null) {
                     $store->setFileFact($context->file->path, $fact, $value);
@@ -192,7 +190,7 @@ final class Analyzer
             $scores[$finding->path]['findingCount']++;
         }
         usort($scores, static fn(array $left, array $right): int => $right['score'] <=> $left['score'] ?: strcmp($left['path'], $right['path']));
-        return array_values($scores);
+        return $scores;
     }
 
     /** @param list<DirectoryRecord> $directories @param list<Finding> $findings @return list<array{path:string,score:float,findingCount:int}> */
@@ -208,6 +206,6 @@ final class Analyzer
             $scores[$finding->path]['findingCount']++;
         }
         usort($scores, static fn(array $left, array $right): int => $right['score'] <=> $left['score'] ?: strcmp($left['path'], $right['path']));
-        return array_values($scores);
+        return $scores;
     }
 }

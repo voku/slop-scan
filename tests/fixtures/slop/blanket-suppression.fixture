@@ -1,0 +1,4 @@
+<?php
+
+// @phpstan-ignore-next-line
+risky($input);

@@ -30,6 +30,7 @@ Run the standard validation suite before opening a PR:
 ```bash
 composer validate --strict
 composer run lint
+composer run analyse
 composer run test
 composer run scan:self
 ```
