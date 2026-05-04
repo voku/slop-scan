@@ -88,11 +88,11 @@ final class FindingIgnorer
     }
 
     /**
-     * @param list<array{messages:list<string>,paths:list<string>,ruleIds:list<string>,remaining:?int}> $rules
+     * @param list<array{messages:list<string>,paths:list<string>,ruleIds:list<string>,remaining:?int}> $rulesWithCounters
      */
-    private static function isIgnored(Finding $finding, array &$rules): bool
+    private static function isIgnored(Finding $finding, array &$rulesWithCounters): bool
     {
-        foreach ($rules as &$rule) {
+        foreach ($rulesWithCounters as &$rule) {
             if (!self::matches($finding, $rule)) {
                 continue;
             }
@@ -145,7 +145,7 @@ final class FindingIgnorer
 
     private static function regexMatches(string $pattern, string $message): bool
     {
-        set_error_handler(static fn (int $_errorSeverity, string $_errorMessage): bool => true);
+        set_error_handler(static fn (int $_errorSeverity, string $_errorMessage): bool => $_errorSeverity === E_WARNING && str_contains($_errorMessage, 'preg_match'));
         try {
             $result = preg_match($pattern, $message);
         } finally {
