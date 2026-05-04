@@ -220,7 +220,7 @@ PHP);
         file_put_contents($fixture . '/src/Example.php', <<<'PHP'
 <?php
 
-var_dump($value); // @slop-scan-ignore php.debug-output (legacy test shim)
+var_dump($value); // @slop-scan-ignore php.debug-output (intentional debug in test harness)
 PHP);
 
         try {
@@ -242,7 +242,7 @@ PHP);
 try {
     risky();
 }
-/* @slop-scan-ignore php.error-obscuring-catch, php.error-swallowing (legacy test shim) */
+/* @slop-scan-ignore php.error-obscuring-catch, php.error-swallowing (intentional legacy adapter boundary) */
 catch (Throwable $e) {
     throw new RuntimeException('hidden');
 }

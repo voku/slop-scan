@@ -7,6 +7,7 @@ namespace SlopScan\Support;
 final class InlineFindingSuppressions
 {
     private const DIRECTIVE_PATTERN = '/@slop-scan-ignore\b(?<tail>[^\r\n]*)/i';
+    // Match one or more dot-or-hyphen separated rule identifiers with an optional trailing "(reason)" note.
     private const IDENTIFIER_LIST_PATTERN = '/^(?<ids>[a-z0-9_]+(?:[.-][a-z0-9_]+)*(?:\s*,\s*[a-z0-9_]+(?:[.-][a-z0-9_]+)*)*)(?:\s*\([^()\r\n]+\))?$/i';
 
     /**
