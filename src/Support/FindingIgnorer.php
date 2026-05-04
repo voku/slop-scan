@@ -78,9 +78,9 @@ final class FindingIgnorer
 
             $countValue = $entry['count'] ?? null;
             $rules[] = [
-                'messages' => array_values(array_unique($messages)),
-                'paths' => array_values(array_unique($paths)),
-                'ruleIds' => array_values(array_unique($ruleIds)),
+                'messages' => self::uniqueStrings($messages),
+                'paths' => self::uniqueStrings($paths),
+                'ruleIds' => self::uniqueStrings($ruleIds),
                 'remaining' => is_int($countValue) || is_string($countValue) ? self::countLimit($countValue) : null,
             ];
         }
@@ -136,12 +136,28 @@ final class FindingIgnorer
         }
 
         foreach ($patterns as $pattern) {
-            if (@preg_match($pattern, $finding->message) === 1) {
+            if (self::regexMatches($pattern, $finding->message)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private static function regexMatches(string $pattern, string $message): bool
+    {
+        set_error_handler(static fn (): bool => true);
+        try {
+            $result = preg_match($pattern, $message);
+        } finally {
+            restore_error_handler();
+        }
+
+        if ($result === false) {
+            throw new \InvalidArgumentException("Invalid ignoreErrors message regex: {$pattern}");
+        }
+
+        return $result === 1;
     }
 
     /** @param list<string> $patterns */
@@ -193,6 +209,15 @@ final class FindingIgnorer
         }
 
         return $strings;
+    }
+
+    /**
+     * @param list<string> $strings
+     * @return list<string>
+     */
+    private static function uniqueStrings(array $strings): array
+    {
+        return array_values(array_unique($strings));
     }
 
     private static function countLimit(int|string $value): ?int

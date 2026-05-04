@@ -187,6 +187,18 @@ PHP);
         }
     }
 
+    public function testConfigIgnoreErrorsInvalidRegexFailsClearly(): void
+    {
+        file_put_contents($this->fixtureDir . '/slop-scan.config.json', Json::encode([
+            'ignoreErrors' => ['#unterminated'],
+        ]));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid ignoreErrors message regex');
+
+        (new Analyzer())->analyze($this->fixtureDir, Config::load($this->fixtureDir), DefaultRegistry::create());
+    }
+
     public function testConfigFallsBackToRepoConfigAndInvalidJsonFails(): void
     {
         $fixture = $this->makeFixture();
