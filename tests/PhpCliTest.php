@@ -213,6 +213,71 @@ PHP);
         (new Analyzer())->analyze($this->fixtureDir, Config::load($this->fixtureDir), DefaultRegistry::create());
     }
 
+    public function testInlineIgnoreDirectiveSuppressesSameLineFindingByIdentifier(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Example.php', <<<'PHP'
+<?php
+
+var_dump($value); // @slop-scan-ignore php.debug-output (legacy test shim)
+PHP);
+
+        try {
+            $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+            self::assertSame([], $this->ruleIds($result->findings));
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
+    public function testInlineIgnoreDirectiveSuppressesNextLineFindingForListedIdentifiers(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Example.php', <<<'PHP'
+<?php
+
+try {
+    risky();
+}
+/* @slop-scan-ignore php.error-obscuring-catch, php.error-swallowing (legacy test shim) */
+catch (Throwable $e) {
+    throw new RuntimeException('hidden');
+}
+PHP);
+
+        try {
+            $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+            self::assertSame([], $this->ruleIds($result->findings));
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
+    public function testInlineIgnoreDirectiveDoesNotSuppressDifferentIdentifierOrDistantLine(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Example.php', <<<'PHP'
+<?php
+
+// @slop-scan-ignore php.empty-catch
+
+var_dump($value);
+PHP);
+
+        try {
+            $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+            self::assertSame(['php.debug-output'], $this->ruleIds($result->findings));
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
     public function testConfigFallsBackToRepoConfigAndInvalidJsonFails(): void
     {
         $fixture = $this->makeFixture();

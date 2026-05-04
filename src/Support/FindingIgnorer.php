@@ -13,17 +13,14 @@ final class FindingIgnorer
      * @param array<string,mixed> $config
      * @return list<Finding>
      */
-    public static function filter(array $findings, array $config): array
+    public static function filter(array $findings, array $config, string $rootDir): array
     {
         $ignoreErrors = $config['ignoreErrors'] ?? [];
         $rules = is_array($ignoreErrors) ? self::rules($ignoreErrors) : [];
-        if ($rules === []) {
-            return $findings;
-        }
-
         $kept = [];
+        $inlineDirectives = [];
         foreach ($findings as $finding) {
-            if (!self::isIgnored($finding, $rules)) {
+            if (!self::isIgnored($finding, $rules) && !self::isInlineIgnored($finding, $rootDir, $inlineDirectives)) {
                 $kept[] = $finding;
             }
         }
@@ -112,6 +109,36 @@ final class FindingIgnorer
     }
 
     /**
+     * @param array<string,list<array{ruleIds:list<string>,startLine:int,endLine:int}>> $inlineDirectives
+     */
+    private static function isInlineIgnored(Finding $finding, string $rootDir, array &$inlineDirectives): bool
+    {
+        if ($finding->scope !== 'file') {
+            return false;
+        }
+
+        foreach ($finding->locations as $location) {
+            $path = $location['path'];
+            $line = $location['line'];
+            if ($path === '' || $line <= 0) {
+                continue;
+            }
+
+            foreach (self::inlineDirectivesForPath($path, $rootDir, $inlineDirectives) as $directive) {
+                if (!in_array($finding->ruleId, $directive['ruleIds'], true)) {
+                    continue;
+                }
+
+                if (self::directiveTargetsLine($directive, $line)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param array{messages:list<string>,paths:list<string>,ruleIds:list<string>,remaining:?int} $rule
      */
     private static function matches(Finding $finding, array $rule): bool
@@ -192,6 +219,50 @@ final class FindingIgnorer
         }
 
         return array_values(array_unique($paths));
+    }
+
+    /**
+     * @param array{ruleIds:list<string>,startLine:int,endLine:int} $directive
+     */
+    private static function directiveTargetsLine(array $directive, int $line): bool
+    {
+        return ($line >= $directive['startLine'] && $line <= $directive['endLine'])
+            || $line === $directive['endLine'] + 1;
+    }
+
+    /**
+     * @param array<string,list<array{ruleIds:list<string>,startLine:int,endLine:int}>> $inlineDirectives
+     * @return list<array{ruleIds:list<string>,startLine:int,endLine:int}>
+     */
+    private static function inlineDirectivesForPath(string $path, string $rootDir, array &$inlineDirectives): array
+    {
+        if (isset($inlineDirectives[$path])) {
+            return $inlineDirectives[$path];
+        }
+
+        $absolutePath = self::absolutePath($path, $rootDir);
+        if ($absolutePath === null) {
+            return $inlineDirectives[$path] = [];
+        }
+
+        $text = file_get_contents($absolutePath);
+
+        return $inlineDirectives[$path] = is_string($text) ? InlineFindingSuppressions::directives($text) : [];
+    }
+
+    private static function absolutePath(string $path, string $rootDir): ?string
+    {
+        if ($path === '') {
+            return null;
+        }
+
+        if (str_starts_with($path, '/')) {
+            return is_file($path) ? $path : null;
+        }
+
+        $absolutePath = rtrim($rootDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
+
+        return is_file($absolutePath) ? $absolutePath : null;
     }
 
     /**

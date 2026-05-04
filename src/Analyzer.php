@@ -59,7 +59,7 @@ final class Analyzer
         $repoContext = new ProviderContext('repo', $runtime);
         $this->runProviders($providers, $repoContext, $store, $cache);
         $findings = array_merge($findings, $this->runRules($registry->rules(), $repoContext, $config));
-        $findings = FindingIgnorer::filter($findings, $config);
+        $findings = FindingIgnorer::filter($findings, $config, $root);
         usort($findings, static fn(Finding $left, Finding $right): int => strcmp($left->ruleId . ($left->path ?? ''), $right->ruleId . ($right->path ?? '')));
         $cache->persist();
 

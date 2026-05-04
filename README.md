@@ -205,6 +205,19 @@ Scans now reuse unchanged per-file analysis by default through `.slop-scan.cache
 - `path` and `paths` use the same glob matching as `ignores`;
 - `count` limits how many matching findings are suppressed, so additional matches remain visible.
 
+For file-scoped one-off suppressions, add an inline comment on the same line as the code site or directly above it:
+
+```php
+var_dump($value); // @slop-scan-ignore php.debug-output (legacy shim)
+
+/* @slop-scan-ignore php.error-obscuring-catch, php.error-swallowing (known legacy boundary) */
+catch (Throwable $e) {
+    throw new RuntimeException('hidden');
+}
+```
+
+Inline `@slop-scan-ignore` comments match only by rule identifier. They support one identifier or a comma-separated list, plus an optional parenthesized reason.
+
 ## Report shape
 
 JSON scan output includes:
