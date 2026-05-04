@@ -13,6 +13,7 @@ use SlopScan\Reporter\LintReporter;
 use SlopScan\Reporter\TextReporter;
 use SlopScan\Rule\BlanketStaticAnalysisSuppressionsRule;
 use SlopScan\Rule\CommentedOutCodeRule;
+use SlopScan\Rule\CatchDefaultFallbacksRule;
 use SlopScan\Rule\DebugOutputRule;
 use SlopScan\Rule\DirectoryFanoutHotspotRule;
 use SlopScan\Rule\DuplicateFunctionSignaturesRule;
@@ -42,6 +43,7 @@ final class DefaultRegistry
             new ExcessiveStaticAnalysisSuppressionsRule(),
             new StackedStaticAnalysisSuppressionsRule(),
             new CommentedOutCodeRule(),
+            new CatchDefaultFallbacksRule(),
             new DebugOutputRule(),
             new MockHeavyTestsWithoutAssertionsRule(),
             new MisleadingPhpDocTypesRule(),

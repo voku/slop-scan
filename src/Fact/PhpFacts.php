@@ -49,7 +49,18 @@ final class PhpFacts
         return $functions;
     }
 
-    /** @return list<array{line:int,body:string,statementCount:int,hasThrow:bool,hasReturn:bool,callNames:list<string>}> */
+    /**
+     * @return list<array{
+     *     line:int,
+     *     body:string,
+     *     statementCount:int,
+     *     hasThrow:bool,
+     *     hasReturn:bool,
+     *     callNames:list<string>,
+     *     defaultReturnKinds:list<string>,
+     *     thrownExceptions:list<array{class:?string,isGeneric:bool,preservesPrevious:bool,usesCaughtVariable:bool}>
+     * }>
+     */
     public static function tryCatches(string $text): array
     {
         $statements = self::parseStatements($text);
@@ -552,10 +563,22 @@ final class PhpFacts
         return '$' . $arg->value->name;
     }
 
-    /** @return array{line:int,body:string,statementCount:int,hasThrow:bool,hasReturn:bool,callNames:list<string>} */
+    /**
+     * @return array{
+     *     line:int,
+     *     body:string,
+     *     statementCount:int,
+     *     hasThrow:bool,
+     *     hasReturn:bool,
+     *     callNames:list<string>,
+     *     defaultReturnKinds:list<string>,
+     *     thrownExceptions:list<array{class:?string,isGeneric:bool,preservesPrevious:bool,usesCaughtVariable:bool}>
+     * }
+     */
     private static function catchSummary(Stmt\Catch_ $catch): array
     {
         $finder = self::nodeFinder();
+        $catchVariableName = is_string($catch->var?->name) ? $catch->var->name : null;
         $callNames = [];
         foreach ($finder->find($catch->stmts, static function (Node $node): bool {
             return $node instanceof Expr\FuncCall || $node instanceof Expr\Print_ || $node instanceof Stmt\Echo_;
@@ -578,6 +601,24 @@ final class PhpFacts
         $callNames = array_values(array_unique($callNames));
         sort($callNames, SORT_STRING);
 
+        $defaultReturnKinds = [];
+        foreach ($finder->findInstanceOf($catch->stmts, Stmt\Return_::class) as $return) {
+            $kind = self::defaultLiteralKind($return->expr);
+            if ($kind === null) {
+                continue;
+            }
+
+            $defaultReturnKinds[] = $kind;
+        }
+
+        $defaultReturnKinds = array_values(array_unique($defaultReturnKinds));
+        sort($defaultReturnKinds, SORT_STRING);
+
+        $thrownExceptions = [];
+        foreach ($finder->findInstanceOf($catch->stmts, Expr\Throw_::class) as $throw) {
+            $thrownExceptions[] = self::thrownExceptionSummary($throw, $catchVariableName);
+        }
+
         return [
             'line' => $catch->getStartLine(),
             'body' => self::printStatements($catch->stmts),
@@ -585,6 +626,126 @@ final class PhpFacts
             'hasThrow' => $finder->findFirst($catch->stmts, static fn(Node $node): bool => $node instanceof Expr\Throw_) !== null,
             'hasReturn' => $finder->findFirstInstanceOf($catch->stmts, Stmt\Return_::class) !== null,
             'callNames' => $callNames,
+            'defaultReturnKinds' => $defaultReturnKinds,
+            'thrownExceptions' => $thrownExceptions,
         ];
+    }
+
+    private static function defaultLiteralKind(?Expr $expr): ?string
+    {
+        if ($expr instanceof Expr\ConstFetch) {
+            $name = strtolower($expr->name->toString());
+
+            return match ($name) {
+                'null' => 'null',
+                'false' => 'false',
+                default => null,
+            };
+        }
+
+        if (($expr instanceof Node\Scalar\LNumber || $expr instanceof Node\Scalar\DNumber) && (float) $expr->value === 0.0) {
+            return 'zero';
+        }
+
+        if ($expr instanceof Node\Scalar\String_ && $expr->value === '') {
+            return 'empty-string';
+        }
+
+        if ($expr instanceof Expr\Array_ && $expr->items === []) {
+            return 'empty-array';
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{class:?string,isGeneric:bool,preservesPrevious:bool,usesCaughtVariable:bool}
+     */
+    private static function thrownExceptionSummary(Expr\Throw_ $throw, ?string $catchVariableName): array
+    {
+        if (!$throw->expr instanceof Expr\New_) {
+            return [
+                'class' => null,
+                'isGeneric' => false,
+                'preservesPrevious' => false,
+                'usesCaughtVariable' => false,
+            ];
+        }
+
+        $class = $throw->expr->class instanceof Name
+            ? ltrim($throw->expr->class->toString(), '\\')
+            : null;
+        $usesCaughtVariable = $catchVariableName !== null && self::callUsesVariable($throw->expr->getArgs(), $catchVariableName);
+
+        return [
+            'class' => $class,
+            'isGeneric' => self::isGenericExceptionClass($class),
+            'preservesPrevious' => $catchVariableName !== null && self::newExceptionPreservesPrevious($throw->expr, $catchVariableName),
+            'usesCaughtVariable' => $usesCaughtVariable,
+        ];
+    }
+
+    /**
+     * @param list<Arg> $args
+     */
+    private static function callUsesVariable(array $args, string $variableName): bool
+    {
+        foreach ($args as $arg) {
+            if (self::expressionUsesVariable($arg->value, $variableName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function expressionUsesVariable(Expr $expr, string $variableName): bool
+    {
+        return self::nodeFinder()->findFirst(
+            [$expr],
+            static fn(Node $node): bool => $node instanceof Expr\Variable && $node->name === $variableName
+        ) !== null;
+    }
+
+    private static function newExceptionPreservesPrevious(Expr\New_ $new, string $catchVariableName): bool
+    {
+        foreach ($new->getArgs() as $index => $arg) {
+            if (!self::expressionUsesVariable($arg->value, $catchVariableName)) {
+                continue;
+            }
+
+            $argumentName = strtolower($arg->name?->toString() ?? '');
+            if ($argumentName === 'previous' || ($arg->name === null && $index === 2)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function isGenericExceptionClass(?string $class): bool
+    {
+        if ($class === null) {
+            return false;
+        }
+
+        return in_array(
+            strtolower($class),
+            [
+                'exception',
+                'errorexception',
+                'logicexception',
+                'runtimeexception',
+                'domainexception',
+                'invalidargumentexception',
+                'lengthexception',
+                'outofrangeexception',
+                'overflowexception',
+                'rangeexception',
+                'underflowexception',
+                'unexpectedvalueexception',
+            ],
+            true
+        );
     }
 }

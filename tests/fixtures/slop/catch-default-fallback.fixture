@@ -1,0 +1,10 @@
+<?php
+
+function cache_lookup(string $key): mixed
+{
+    try {
+        return fetch_value($key);
+    } catch (Throwable $exception) {
+        return [];
+    }
+}

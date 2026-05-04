@@ -467,6 +467,7 @@ PHP);
             'error swallowing' => ['error-swallowing.fixture', 'src/ErrorSwallowing.php', 'php.error-swallowing'],
             'blanket suppression' => ['blanket-suppression.fixture', 'src/BlanketSuppression.php', 'php.blanket-static-analysis-suppressions'],
             'commented out code' => ['commented-out-code.fixture', 'src/CommentedOutCode.php', 'php.commented-out-code'],
+            'catch default fallback' => ['catch-default-fallback.fixture', 'src/CatchDefaultFallback.php', 'php.catch-default-fallbacks'],
             'debug output' => ['debug-output.fixture', 'src/DebugOutput.php', 'php.debug-output'],
             'mock heavy test without assertions' => ['mock-heavy-test-without-assertions.fixture', 'tests/OnlyMocksTest.php', 'php.mock-heavy-tests-without-assertions'],
             'misleading phpdoc types' => ['misleading-phpdoc-types.fixture', 'src/MisleadingPhpDoc.php', 'php.misleading-phpdoc-types'],
@@ -1210,6 +1211,8 @@ PHP;
         self::assertFalse($catches[0]['hasThrow']);
         self::assertFalse($catches[0]['hasReturn']);
         self::assertSame([], $catches[0]['callNames']);
+        self::assertSame([], $catches[0]['defaultReturnKinds']);
+        self::assertSame([], $catches[0]['thrownExceptions']);
         self::assertArrayHasKey('available', $summary);
         self::assertArrayHasKey('classCount', $summary);
         self::assertArrayHasKey('functionCount', $summary);
@@ -1248,7 +1251,52 @@ PHP;
         self::assertSame(1, count($catches));
         self::assertSame(['callee' => 'keep', 'args' => ['$value']], $functions[0]['passThroughCall']);
         self::assertTrue($catches[0]['hasReturn']);
+        self::assertSame([], $catches[0]['defaultReturnKinds']);
         self::assertStringContainsString('return fallback', $catches[0]['body']);
+    }
+
+    public function testCatchDefaultFallbackRuleDetectsLiteralFallbacksOnly(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Fallbacks.php', <<<'PHP'
+<?php
+
+function fallback_array(string $key): array
+{
+    try {
+        return load_array($key);
+    } catch (Throwable $exception) {
+        return [];
+    }
+}
+
+function fallback_null(string $key): mixed
+{
+    try {
+        return load_value($key);
+    } catch (Throwable $exception) {
+        return null;
+    }
+}
+
+function delegated_fallback(string $key): mixed
+{
+    try {
+        return load_value($key);
+    } catch (Throwable $exception) {
+        return recover_from_cache($exception);
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(2, $this->countForRule($result->findings, 'php.catch-default-fallbacks'));
+        self::assertSame(['return=empty-array'], $this->findEvidenceForRuleAndLine($result->findings, 'php.catch-default-fallbacks', 7));
+        self::assertSame(['return=null'], $this->findEvidenceForRuleAndLine($result->findings, 'php.catch-default-fallbacks', 16));
+
+        $this->remove($fixture);
     }
 
     public function testPhpFactsCollectDebugCallsFromAstOnly(): void
