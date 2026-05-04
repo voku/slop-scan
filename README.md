@@ -6,6 +6,8 @@ Deterministic PHP CLI for finding explainable slop patterns in PHP repositories.
 
 This repository started from a fork of [`modem-dev/slop-scan`](https://github.com/modem-dev/slop-scan) and was rewritten in PHP with Codex so it fits PHP tooling, packaging, and CI workflows directly.
 
+It ships with AST-backed PHP heuristics, deterministic delta identities, compact baselines, reusable scan caching, and configurable suppressions for real-world repository adoption.
+
 ## Requirements
 
 - PHP 8.3+
@@ -33,6 +35,8 @@ chmod +x "$HOME/.local/bin/slop-scan"
 "$HOME/.local/bin/slop-scan" scan . --lint
 "$HOME/.local/bin/slop-scan" scan . --json
 "$HOME/.local/bin/slop-scan" scan . --github
+"$HOME/.local/bin/slop-scan" scan . --toon
+"$HOME/.local/bin/slop-scan" scan . --ndjson
 ```
 
 4. Ignore generated or irrelevant paths when needed:
@@ -42,6 +46,14 @@ chmod +x "$HOME/.local/bin/slop-scan"
 ```
 
 The scanner targets PHP source files such as `.php`, `.phtml`, and `.inc`.
+
+## What it ships with
+
+- Deterministic findings with stable occurrence fingerprints for review, delta comparisons, and baseline workflows.
+- Built-in PHP heuristics for patterns such as empty catches, error swallowing, blanket suppressions, placeholder bodies, clone clusters, and type-escape hotspots.
+- Multiple output targets including text, lint, JSON, GitHub annotations, TOON, and NDJSON.
+- Repo-friendly controls including path ignores, per-rule overrides, PHPStan-style `ignoreErrors`, and inline `@slop-scan-ignore` directives.
+- Reusable per-file scan caching via `.slop-scan.cache.json` and a `stats` command for repository-level summaries.
 
 ## More docs
 
