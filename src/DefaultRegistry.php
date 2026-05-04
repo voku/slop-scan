@@ -18,6 +18,7 @@ use SlopScan\Rule\DebugOutputRule;
 use SlopScan\Rule\DirectoryFanoutHotspotRule;
 use SlopScan\Rule\DuplicateFunctionSignaturesRule;
 use SlopScan\Rule\EmptyCatchRule;
+use SlopScan\Rule\ExceptionWrapWithoutPreviousRule;
 use SlopScan\Rule\ErrorObscuringCatchRule;
 use SlopScan\Rule\ErrorSwallowingRule;
 use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
@@ -39,6 +40,7 @@ final class DefaultRegistry
         $registry->registerFactProvider(new FunctionDuplicationFactProvider());
         foreach ([
             new EmptyCatchRule(),
+            new ExceptionWrapWithoutPreviousRule(),
             new ErrorObscuringCatchRule(),
             new ErrorSwallowingRule(),
             new BlanketStaticAnalysisSuppressionsRule(),

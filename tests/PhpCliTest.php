@@ -114,7 +114,13 @@ PHP);
                 'php.placeholder-comments' => ['weight' => 2.0],
             ],
             'thresholds' => ['unused' => 1],
-            'overrides' => [['path' => 'src/Example.php']],
+            'overrides' => [[
+                'path' => 'src/Example.php',
+                'rules' => [
+                    'php.placeholder-comments' => ['enabled' => false],
+                    'php.debug-output' => ['weight' => 3.0],
+                ],
+            ]],
         ]));
         file_put_contents($this->fixtureDir . '/src/Ignore.php', "<?php\n// TODO ignored\n");
 
@@ -123,11 +129,16 @@ PHP);
 
         self::assertSame(['src/Ignore.php'], $config['ignores']);
         self::assertSame(1, $config['thresholds']['unused']);
-        self::assertSame([['path' => 'src/Example.php']], $config['overrides']);
-        self::assertSame(['php.debug-output', 'php.pass-through-wrappers', 'php.placeholder-comments'], $this->ruleIds($result->findings));
-        self::assertSame(1.25, $this->scoreForRule($result->findings, 'php.debug-output'));
+        self::assertSame([[
+            'path' => 'src/Example.php',
+            'rules' => [
+                'php.placeholder-comments' => ['enabled' => false],
+                'php.debug-output' => ['weight' => 3],
+            ],
+        ]], $config['overrides']);
+        self::assertSame(['php.debug-output', 'php.pass-through-wrappers'], $this->ruleIds($result->findings));
+        self::assertSame(3.75, $this->scoreForRule($result->findings, 'php.debug-output'));
         self::assertSame(1.0, $this->scoreForRule($result->findings, 'php.pass-through-wrappers'));
-        self::assertSame(1.0, $this->scoreForRule($result->findings, 'php.placeholder-comments'));
     }
 
     public function testConfigFallsBackToRepoConfigAndInvalidJsonFails(): void
@@ -464,6 +475,7 @@ PHP);
     {
         return [
             'empty catch' => ['empty-catch.fixture', 'src/EmptyCatch.php', 'php.empty-catch'],
+            'exception wrap without previous' => ['exception-wrap-without-previous.fixture', 'src/ExceptionWrapWithoutPrevious.php', 'php.exception-wrap-without-previous'],
             'error obscuring catch' => ['error-obscuring-catch.fixture', 'src/ErrorObscuringCatch.php', 'php.error-obscuring-catch'],
             'error swallowing' => ['error-swallowing.fixture', 'src/ErrorSwallowing.php', 'php.error-swallowing'],
             'blanket suppression' => ['blanket-suppression.fixture', 'src/BlanketSuppression.php', 'php.blanket-static-analysis-suppressions'],
@@ -499,6 +511,7 @@ PHP);
     {
         return [
             'handled catch with return' => ['handled-catch-return.fixture', 'src/HandledCatch.php'],
+            'exception wrap with previous' => ['exception-wrap-with-previous.fixture', 'src/ExceptionWrapWithPrevious.php'],
             'error wrapping with previous' => ['error-wrapping-with-previous.fixture', 'src/ErrorWrappingWithPrevious.php'],
             'test with mocks and assertions' => ['test-with-mocks-and-real-assertions.fixture', 'tests/MockAssertionsTest.php'],
             'helpful phpdoc types' => ['helpful-phpdoc-types.fixture', 'src/HelpfulPhpDoc.php'],
@@ -1342,6 +1355,43 @@ PHP);
         self::assertSame(
             ['class=RuntimeException', 'reason=generic-replacement-without-previous'],
             $this->findEvidenceForRuleAndLine($result->findings, 'php.error-obscuring-catch', 7)
+        );
+
+        $this->remove($fixture);
+    }
+
+    public function testExceptionWrapWithoutPreviousRuleFlagsCustomReplacementThatDropsPrevious(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/ExceptionWrap.php', <<<'PHP'
+<?php
+
+function hides_previous(Throwable $input): never
+{
+    try {
+        risky($input);
+    } catch (Throwable $exception) {
+        throw new ProjectFailure($exception->getMessage());
+    }
+}
+
+function keeps_previous(Throwable $input): never
+{
+    try {
+        risky($input);
+    } catch (Throwable $exception) {
+        throw new ProjectFailure($exception->getMessage(), previous: $exception);
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(1, $this->countForRule($result->findings, 'php.exception-wrap-without-previous'));
+        self::assertSame(
+            ['class=ProjectFailure', 'reason=wraps-caught-exception-without-previous'],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.exception-wrap-without-previous', 7)
         );
 
         $this->remove($fixture);

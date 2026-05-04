@@ -14,6 +14,7 @@ use SlopScan\Model\Finding;
 use SlopScan\Runtime\AnalyzerRuntime;
 use SlopScan\Runtime\ProviderContext;
 use SlopScan\Support\Lines;
+use SlopScan\Support\PatternMatcher;
 use SlopScan\Support\ScanCache;
 
 final class Analyzer
@@ -121,7 +122,7 @@ final class Analyzer
             if ($rule->scope() !== $context->scope) {
                 continue;
             }
-            $ruleConfig = $this->ruleConfig($config, $rule->id());
+            $ruleConfig = $this->ruleConfig($config, $rule->id(), $context);
             $context->ruleConfig = $ruleConfig;
             if (!$ruleConfig['enabled'] || !$rule->supports($context)) {
                 continue;
@@ -135,10 +136,70 @@ final class Analyzer
     }
 
     /** @param array<string,mixed> $config @return array{enabled:bool,weight:float,options:mixed} */
-    private function ruleConfig(array $config, string $ruleId): array
+    private function ruleConfig(array $config, string $ruleId, ProviderContext $context): array
     {
         $rule = is_array($config['rules'][$ruleId] ?? null) ? $config['rules'][$ruleId] : [];
+        foreach ($this->matchingOverrides($config, $context) as $override) {
+            $overrideRule = $override['rules'][$ruleId] ?? null;
+            if (!is_array($overrideRule)) {
+                continue;
+            }
+
+            $rule = array_replace_recursive($rule, $overrideRule);
+        }
+
         return ['enabled' => (bool) ($rule['enabled'] ?? true), 'weight' => (float) ($rule['weight'] ?? 1.0), 'options' => $rule['options'] ?? null];
+    }
+
+    /**
+     * @param array<string,mixed> $config
+     * @return list<array<string,mixed>>
+     */
+    private function matchingOverrides(array $config, ProviderContext $context): array
+    {
+        $path = $this->overridePath($context);
+        if ($path === null) {
+            return [];
+        }
+
+        $matches = [];
+        foreach ($config['overrides'] ?? [] as $override) {
+            if (!is_array($override) || !is_array($override['rules'] ?? null)) {
+                continue;
+            }
+
+            $patterns = [];
+            if (is_string($override['path'] ?? null) && $override['path'] !== '') {
+                $patterns[] = $override['path'];
+            }
+            foreach (($override['paths'] ?? []) as $pattern) {
+                if (is_string($pattern) && $pattern !== '') {
+                    $patterns[] = $pattern;
+                }
+            }
+
+            if ($patterns === []) {
+                continue;
+            }
+
+            foreach ($patterns as $pattern) {
+                if (PatternMatcher::matches($path, $pattern)) {
+                    $matches[] = $override;
+                    break;
+                }
+            }
+        }
+
+        return $matches;
+    }
+
+    private function overridePath(ProviderContext $context): ?string
+    {
+        return match ($context->scope) {
+            'file' => $context->file?->path,
+            'directory' => $context->directory?->path,
+            default => null,
+        };
     }
 
     /** @param list<FileRecord> $files @param list<DirectoryRecord> $directories @param list<Finding> $findings */

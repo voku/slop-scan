@@ -145,6 +145,7 @@ The PHP implementation scans:
 | Rule | What it checks | Why it matters |
 | --- | --- | --- |
 | `php.empty-catch` | `catch` blocks with no statements | Exceptions disappear silently and make failures harder to debug. |
+| `php.exception-wrap-without-previous` | `catch` blocks that create a replacement exception from the caught error but do not chain it as `previous` | Message-only wrapping keeps the wording but loses the original type and stack context. |
 | `php.error-obscuring-catch` | `catch` blocks that replace the original failure with a generic exception without keeping the previous error | Replacement exceptions can erase the original type and stack context that explain what really failed. |
 | `php.error-swallowing` | `catch` blocks that log/print and continue without `throw` or `return` | Errors are acknowledged but not handled, so broken execution keeps going. |
 | `php.blanket-static-analysis-suppressions` | Broad `@phpstan-ignore`, `@psalm-suppress`, and similar comments | Blanket suppressions hide real problems and reduce trust in static analysis. |
@@ -176,7 +177,14 @@ Scans now reuse unchanged per-file analysis by default through `.slop-scan.cache
     "php.placeholder-comments": { "enabled": true, "weight": 0.5 },
     "php.directory-fanout-hotspot": { "options": { "fileCount": 12 } }
   },
-  "overrides": []
+  "overrides": [
+    {
+      "path": "src/Generated/**",
+      "rules": {
+        "php.placeholder-comments": { "enabled": false }
+      }
+    }
+  ]
 }
 ```
 

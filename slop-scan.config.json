@@ -12,5 +12,24 @@
       }
     }
   },
-  "overrides": []
+  "overrides": [
+    {
+      "path": "src/Rule",
+      "rules": {
+        "php.directory-fanout-hotspot": {
+          "options": {
+            "fileCount": 18
+          }
+        }
+      }
+    },
+    {
+      "path": "src/Fact/PhpFacts.php",
+      "rules": {
+        "php.catch-default-fallbacks": {
+          "enabled": false
+        }
+      }
+    }
+  ]
 }
