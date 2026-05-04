@@ -20,6 +20,20 @@ use voku\SimplePhpParser\Parsers\PhpCodeParser;
 final class PhpFacts
 {
     private const RECOGNIZED_DEBUG_FUNCTIONS = ['dd', 'print_r', 'ray', 'var_dump'];
+    private const GENERIC_EXCEPTION_CLASSES = [
+        'exception',
+        'errorexception',
+        'logicexception',
+        'runtimeexception',
+        'domainexception',
+        'invalidargumentexception',
+        'lengthexception',
+        'outofrangeexception',
+        'overflowexception',
+        'rangeexception',
+        'underflowexception',
+        'unexpectedvalueexception',
+    ];
 
     /** @var null|callable():Parser */
     private static $parserFactory = null;
@@ -729,23 +743,6 @@ final class PhpFacts
             return false;
         }
 
-        return in_array(
-            strtolower($class),
-            [
-                'exception',
-                'errorexception',
-                'logicexception',
-                'runtimeexception',
-                'domainexception',
-                'invalidargumentexception',
-                'lengthexception',
-                'outofrangeexception',
-                'overflowexception',
-                'rangeexception',
-                'underflowexception',
-                'unexpectedvalueexception',
-            ],
-            true
-        );
+        return in_array(strtolower($class), self::GENERIC_EXCEPTION_CLASSES, true);
     }
 }
