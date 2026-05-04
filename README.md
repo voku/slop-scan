@@ -1,6 +1,12 @@
+[![CI](https://github.com/voku/slop-scan/actions/workflows/ci.yml/badge.svg)](https://github.com/voku/slop-scan/actions/workflows/ci.yml)
+[![Latest Stable Version](https://poser.pugx.org/voku/slop-scan/v/stable)](https://packagist.org/packages/voku/slop-scan) 
+[![License](https://poser.pugx.org/voku/slop-scan/license)](https://packagist.org/packages/voku/slop-scan)
+[![Donate to this project using Paypal](https://img.shields.io/badge/paypal-donate-yellow.svg)](https://www.paypal.me/moelleken)
+[![Donate to this project using Patreon](https://img.shields.io/badge/patreon-donate-yellow.svg)](https://www.patreon.com/voku)
+
 # 💩 slop-scan
 
-Deterministic PHP CLI for finding explainable slop patterns in PHP repositories.
+slop-scan: Deterministic PHP CLI for finding explainable slop patterns in PHP repositories.
 
 `slop-scan` is a static-analysis style heuristic scanner. It is **not** an authorship detector. It reports concrete findings with rule IDs, evidence, scores, and stable occurrence fingerprints so results can be reviewed, compared, and tracked over time.
 
