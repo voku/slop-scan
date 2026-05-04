@@ -145,10 +145,32 @@ final class Analyzer
                 continue;
             }
 
-            $rule = array_replace_recursive($rule, $overrideRule);
+            $rule = $this->mergeRuleConfig($rule, $overrideRule);
         }
 
         return ['enabled' => (bool) ($rule['enabled'] ?? true), 'weight' => (float) ($rule['weight'] ?? 1.0), 'options' => $rule['options'] ?? null];
+    }
+
+    /**
+     * @param array<string,mixed> $base
+     * @param array<string,mixed> $override
+     * @return array<string,mixed>
+     */
+    private function mergeRuleConfig(array $base, array $override): array
+    {
+        if (array_key_exists('enabled', $override)) {
+            $base['enabled'] = $override['enabled'];
+        }
+        if (array_key_exists('weight', $override)) {
+            $base['weight'] = $override['weight'];
+        }
+        if (array_key_exists('options', $override)) {
+            $base['options'] = is_array($base['options'] ?? null) && is_array($override['options'])
+                ? array_replace($base['options'], $override['options'])
+                : $override['options'];
+        }
+
+        return $base;
     }
 
     /**

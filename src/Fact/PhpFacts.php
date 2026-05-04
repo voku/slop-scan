@@ -657,7 +657,7 @@ final class PhpFacts
             };
         }
 
-        if (($expr instanceof Node\Scalar\LNumber || $expr instanceof Node\Scalar\DNumber) && (float) $expr->value === 0.0) {
+        if (($expr instanceof Node\Scalar\LNumber || $expr instanceof Node\Scalar\DNumber) && $expr->value == 0.0) {
             return 'zero';
         }
 
