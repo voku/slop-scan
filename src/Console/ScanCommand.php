@@ -10,7 +10,9 @@ use SlopScan\Config;
 use SlopScan\DefaultRegistry;
 use SlopScan\Delta;
 use SlopScan\Reporter\GithubReporter;
+use SlopScan\Reporter\NdjsonReporter;
 use SlopScan\Support\Json;
+use SlopScan\Support\ReportCodec;
 use SlopScan\Support\ScanCache;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -28,9 +30,15 @@ final class ScanCommand extends Command
             ->setDescription('Scan a repository and report slop findings.')
             ->addArgument('path', InputArgument::OPTIONAL, 'Path to scan.', '.')
             ->addOption('json', null, InputOption::VALUE_NONE, 'Emit JSON output.')
+            ->addOption('toon', null, InputOption::VALUE_NONE, 'Emit TOON output.')
+            ->addOption('ndjson', null, InputOption::VALUE_NONE, 'Emit newline-delimited JSON output.')
             ->addOption('lint', null, InputOption::VALUE_NONE, 'Emit lint output.')
             ->addOption('github', null, InputOption::VALUE_NONE, 'Emit GitHub annotations.')
             ->addOption('ignore', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Ignore path pattern.')
+            ->addOption('rule', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Only include findings for these rule identifiers.')
+            ->addOption('path-filter', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Only include findings whose path matches these glob patterns.')
+            ->addOption('max-findings', null, InputOption::VALUE_REQUIRED, 'Limit the number of findings after filtering.')
+            ->addOption('min-score', null, InputOption::VALUE_REQUIRED, 'Only include findings at or above this score.')
             ->addOption('cache-file', null, InputOption::VALUE_REQUIRED, 'Read and write a scan cache file.')
             ->addOption('baseline-file', null, InputOption::VALUE_REQUIRED, 'Read or write a baseline report file.')
             ->addOption('generate-baseline', null, InputOption::VALUE_NONE, 'Write the current scan as a baseline.');
@@ -43,7 +51,10 @@ final class ScanCommand extends Command
             $ignore = $this->stringListOption($input, 'ignore');
             $config = Config::load($target);
             $config['ignores'] = array_values(array_merge($config['ignores'], $ignore));
-            $result = (new Analyzer())->analyze($target, $config, DefaultRegistry::create(), $this->cacheFile($target, $input));
+            $selection = $this->selection($input);
+            $rawResult = (new Analyzer())->analyze($target, $config, DefaultRegistry::create(), $this->cacheFile($target, $input));
+            $originalFindingCount = (int) $rawResult->summary['findingCount'];
+            $result = CommandSupport::filteredResult($rawResult, $selection);
             $baselineFile = $this->stringOption($input, 'baseline-file');
 
             if ((bool) $input->getOption('generate-baseline')) {
@@ -51,20 +62,29 @@ final class ScanCommand extends Command
                     throw new \InvalidArgumentException('Missing --baseline-file for --generate-baseline.');
                 }
 
-                Baseline::writeReport($baselineFile, Baseline::fromReport($result->toReport()));
+                Baseline::writeReport($baselineFile, Baseline::fromReport(
+                    CommandSupport::reportFromResult($result, $selection, $originalFindingCount)
+                ));
                 $output->writeln("slop-scan baseline written to {$baselineFile}");
 
                 return Command::SUCCESS;
             }
 
             if ($baselineFile !== null && $baselineFile !== '') {
-                $currentReport = $result->toReport();
+                $currentReport = CommandSupport::reportFromResult($result, $selection, $originalFindingCount);
                 $baselineReport = Baseline::readReport($baselineFile);
                 $delta = Delta::diff($baselineReport, $currentReport);
                 $newFindings = Baseline::addedFindings($result->findings, $delta);
 
                 if ((bool) $input->getOption('json')) {
                     $output->writeln(Json::encode(Baseline::reportWithDelta($currentReport, $delta), true));
+                } elseif ((bool) $input->getOption('toon')) {
+                    $output->writeln(ReportCodec::encodeReport(Baseline::reportWithDelta($currentReport, $delta), 'toon'));
+                } elseif ((bool) $input->getOption('ndjson')) {
+                    $output->writeln(NdjsonReporter::renderFindings($newFindings, [
+                        'label' => 'new findings',
+                        'delta' => $delta['summary'],
+                    ]));
                 } elseif ((bool) $input->getOption('github')) {
                     $output->writeln(GithubReporter::renderFindings($newFindings));
                 } elseif ((bool) $input->getOption('lint')) {
@@ -76,8 +96,33 @@ final class ScanCommand extends Command
                 return ($delta['summary']['added'] ?? 0) > 0 ? Command::FAILURE : Command::SUCCESS;
             }
 
+            if ((bool) $input->getOption('json')) {
+                $output->writeln(Json::encode(CommandSupport::reportFromResult($result, $selection, $originalFindingCount), true));
+
+                return Command::SUCCESS;
+            }
+
+            if ((bool) $input->getOption('toon')) {
+                $output->writeln(ReportCodec::encodeReport(
+                    CommandSupport::reportFromResult($result, $selection, $originalFindingCount),
+                    'toon'
+                ));
+
+                return Command::SUCCESS;
+            }
+
+            if ((bool) $input->getOption('ndjson')) {
+                $output->writeln(NdjsonReporter::renderReport(
+                    CommandSupport::reportFromResult($result, $selection, $originalFindingCount)
+                ));
+
+                return Command::SUCCESS;
+            }
+
             $reporter = DefaultRegistry::create()->reporter(CommandSupport::scanReporterId(
-                (bool) $input->getOption('json'),
+                false,
+                false,
+                false,
                 (bool) $input->getOption('github'),
                 (bool) $input->getOption('lint'),
             ));
@@ -97,6 +142,22 @@ final class ScanCommand extends Command
         $value = $input->getOption($name);
 
         return is_string($value) ? $value : null;
+    }
+
+    /**
+     * @return array{rules:list<string>,paths:list<string>,maxFindings:?int,minScore:?float}
+     */
+    private function selection(InputInterface $input): array
+    {
+        $maxFindings = $this->stringOption($input, 'max-findings');
+        $minScore = $this->stringOption($input, 'min-score');
+
+        return [
+            'rules' => $this->stringListOption($input, 'rule'),
+            'paths' => $this->stringListOption($input, 'path-filter'),
+            'maxFindings' => $maxFindings !== null && $maxFindings !== '' ? max(0, (int) $maxFindings) : null,
+            'minScore' => $minScore !== null && $minScore !== '' ? (float) $minScore : null,
+        ];
     }
 
     private function cacheFile(string $target, InputInterface $input): string

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace SlopScan;
 
 use SlopScan\Model\Finding;
-use SlopScan\Support\Json;
+use SlopScan\Support\ReportCodec;
 
 final class Baseline
 {
@@ -34,9 +34,9 @@ final class Baseline
         if (!is_file($path)) {
             throw new \InvalidArgumentException("Baseline file does not exist: {$path}");
         }
-        $decoded = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
-        if (!is_array($decoded) || !isset($decoded['findings']) || !is_array($decoded['findings'])) {
-            throw new \InvalidArgumentException("Baseline file is not a slop-scan JSON report: {$path}");
+        $decoded = ReportCodec::readReport($path);
+        if (!isset($decoded['findings']) || !is_array($decoded['findings'])) {
+            throw new \InvalidArgumentException("Baseline file is not a slop-scan report: {$path}");
         }
         return $decoded;
     }
@@ -47,9 +47,7 @@ final class Baseline
         if (!is_dir($directory)) {
             throw new \InvalidArgumentException("Baseline directory does not exist: {$directory}");
         }
-        if (file_put_contents($path, Json::encode($report, true) . "\n") === false) {
-            throw new \RuntimeException("Unable to write baseline file: {$path}");
-        }
+        ReportCodec::writeReport($path, $report, true);
     }
 
     /**

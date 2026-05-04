@@ -41,7 +41,12 @@ final class FunctionDuplicationFactProvider implements FactProvider
                 $body = $function['body'] ?? '';
                 if ($body !== '' && strlen($body) >= 40) {
                     $normalized = (string) preg_replace('/\s+/', ' ', strtolower(trim($body)));
-                    $bodyGroups[$normalized][] = ['path' => $file->path, 'line' => $function['line'], 'name' => $function['name']];
+                    $bodyGroups[$normalized][] = [
+                        'path' => $file->path,
+                        'line' => $function['line'],
+                        'name' => $function['name'],
+                        'namespaceName' => $function['namespaceName'] ?? null,
+                    ];
                 }
             }
         }

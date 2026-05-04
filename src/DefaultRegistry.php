@@ -10,6 +10,8 @@ use SlopScan\Fact\PhpStructureFactProvider;
 use SlopScan\Reporter\GithubReporter;
 use SlopScan\Reporter\JsonReporter;
 use SlopScan\Reporter\LintReporter;
+use SlopScan\Reporter\NdjsonReporter;
+use SlopScan\Reporter\ToonReporter;
 use SlopScan\Reporter\TextReporter;
 use SlopScan\Rule\BlanketStaticAnalysisSuppressionsRule;
 use SlopScan\Rule\CatchReturnsExceptionMessageRule;
@@ -71,6 +73,8 @@ final class DefaultRegistry
         }
         $registry->registerReporter(new TextReporter());
         $registry->registerReporter(new JsonReporter());
+        $registry->registerReporter(new ToonReporter());
+        $registry->registerReporter(new NdjsonReporter());
         $registry->registerReporter(new LintReporter());
         $registry->registerReporter(new GithubReporter());
         return $registry;

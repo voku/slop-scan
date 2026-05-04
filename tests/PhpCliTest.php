@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SlopScan\Tests;
 
+use HelgeSverre\Toon\Toon;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use PhpParser\Parser;
@@ -857,6 +858,27 @@ PHP);
         self::assertSame([], $delta['changes']);
     }
 
+    public function testFindingReportsIncludeAgentFacingMetadata(): void
+    {
+        $finding = new Finding(
+            'php.debug-output',
+            'debugging',
+            'medium',
+            'file',
+            'Found PHP debug-output call left in source',
+            ['var_dump'],
+            1.25,
+            [['path' => 'src/Debug.php', 'line' => 3, 'column' => 1]],
+            'src/Debug.php'
+        );
+
+        $report = $finding->toReport();
+
+        self::assertSame('Leftover debug output is usually accidental and can leak internal state.', $report['why']);
+        self::assertSame('Remove the debug call or replace it with deliberate logging or a test assertion.', $report['suggestedAction']);
+        self::assertSame('high', $report['confidence']);
+    }
+
     public function testCliScanDeltaAndHelp(): void
     {
         $base = $this->makeFixture();
@@ -997,6 +1019,101 @@ PHP);
         self::assertSame(1, $missingExit);
     }
 
+    public function testCliScanJsonSupportsRulePathMaxFindingAndMinScoreFilters(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO keep note
+var_dump($value);
+PHP);
+        file_put_contents($fixture . '/src/B.php', <<<'PHP'
+<?php
+print_r($value);
+PHP);
+
+        [$exit, $output] = $this->runCommand([
+            'scan',
+            $fixture,
+            '--json',
+            '--rule', 'php.debug-output',
+            '--path-filter', 'src/A.php',
+            '--max-findings', '1',
+            '--min-score', '1.2',
+        ]);
+
+        $decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(0, $exit);
+        self::assertSame(1, $decoded['summary']['findingCount']);
+        self::assertSame(3, $decoded['summary']['findingCountBeforeFilters']);
+        self::assertSame(['php.debug-output'], array_values(array_unique(array_column($decoded['findings'], 'ruleId'))));
+        self::assertSame('src/A.php', $decoded['findings'][0]['path']);
+        self::assertSame(['rules' => ['php.debug-output'], 'paths' => ['src/A.php'], 'maxFindings' => 1, 'minScore' => 1.2], $decoded['metadata']['appliedFilters']);
+
+        $this->remove($fixture);
+    }
+
+    public function testCliScanNdjsonEmitsSummaryAndFindingObjects(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+var_dump($value);
+PHP);
+
+        [$exit, $output] = $this->runCommand([
+            'scan',
+            $fixture,
+            '--ndjson',
+            '--rule', 'php.debug-output',
+            '--min-score', '1.2',
+        ]);
+
+        $lines = array_values(array_filter(explode("\n", trim($output)), static fn(string $line): bool => $line !== ''));
+        $summary = json_decode($lines[0], true, 512, JSON_THROW_ON_ERROR);
+        $finding = json_decode($lines[1], true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(0, $exit);
+        self::assertSame('summary', $summary['type']);
+        self::assertSame(1, $summary['summary']['findingCount']);
+        self::assertSame('finding', $finding['type']);
+        self::assertSame('php.debug-output', $finding['finding']['ruleId']);
+        self::assertSame('high', $finding['finding']['confidence']);
+        self::assertSame('Remove the debug call or replace it with deliberate logging or a test assertion.', $finding['finding']['suggestedAction']);
+
+        $this->remove($fixture);
+    }
+
+    public function testCliScanToonEmitsCompactReportShape(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+var_dump($value);
+PHP);
+
+        [$exit, $output] = $this->runCommand([
+            'scan',
+            $fixture,
+            '--toon',
+            '--rule', 'php.debug-output',
+            '--min-score', '1.2',
+        ]);
+
+        $decoded = Toon::decode($output);
+
+        self::assertSame(0, $exit);
+        self::assertSame(1, $decoded['summary']['findingCount']);
+        self::assertSame(['php.debug-output'], array_values(array_unique(array_column($decoded['findings'], 'ruleId'))));
+        self::assertSame('high', $decoded['findings'][0]['confidence']);
+
+        $this->remove($fixture);
+    }
+
     public function testCliStatsSummarizesReportFiles(): void
     {
         $reportFile = $this->fixtureDir . '/stats-report.json';
@@ -1071,6 +1188,47 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testCliScanToonBaselineReadsAndWritesToonFiles(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO baseline
+function proxy($value) {
+    return transform($value);
+}
+PHP);
+        $baselineFile = $fixture . '/slop-baseline.toon';
+
+        [$generateExit, $generateOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--generate-baseline']);
+        $baselineDecoded = Toon::decode((string) file_get_contents($baselineFile));
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO baseline
+function proxy($value) {
+    return transform($value);
+}
+try {
+    risky();
+} catch (Throwable $e) {
+}
+PHP);
+        [$toonExit, $toonOutput] = $this->runCommand(['scan', $fixture, '--baseline-file', $baselineFile, '--toon']);
+        $decoded = Toon::decode($toonOutput);
+
+        self::assertSame(0, $generateExit);
+        self::assertStringContainsString('baseline written', $generateOutput);
+        self::assertFileExists($baselineFile);
+        self::assertSame('baseline', $baselineDecoded['metadata']['kind']);
+        self::assertSame(count($baselineDecoded['findings']), $baselineDecoded['summary']['findingCount']);
+        self::assertSame(1, $toonExit);
+        self::assertSame(1, $decoded['baseline']['summary']['added']);
+        self::assertSame('php.empty-catch', $decoded['newFindings'][0]['ruleId']);
+
+        $this->remove($fixture);
+    }
+
     public function testGithubReporterEscapesValuesAndDefaultsMissingLocations(): void
     {
         $findingWithLocation = new Finding(
@@ -1136,10 +1294,18 @@ PHP);
         self::assertSame(1, CommandSupport::reportInput($baselinePath, null, [])['summary']['findingCount']);
         self::assertSame('0 new findings', CommandSupport::formatFindings([]));
         self::assertStringContainsString('added php.added', CommandSupport::formatDelta($delta));
-        self::assertSame('json', CommandSupport::scanReporterId(true, false, false));
-        self::assertSame('github', CommandSupport::scanReporterId(false, true, false));
-        self::assertSame('lint', CommandSupport::scanReporterId(false, false, true));
-        self::assertSame('text', CommandSupport::scanReporterId(false, false, false));
+        $toonBaselinePath = $this->fixtureDir . '/baseline.toon';
+        Baseline::writeReport($toonBaselinePath, $baseline);
+        $toonDecoded = Baseline::readReport($toonBaselinePath);
+
+        self::assertSame(1, $toonDecoded['summary']['findingCount']);
+        self::assertSame('baseline', CommandSupport::reportInput($toonBaselinePath, null, [])['metadata']['kind']);
+        self::assertSame('json', CommandSupport::scanReporterId(true, false, false, false, false));
+        self::assertSame('toon', CommandSupport::scanReporterId(false, true, false, false, false));
+        self::assertSame('ndjson', CommandSupport::scanReporterId(false, false, true, false, false));
+        self::assertSame('github', CommandSupport::scanReporterId(false, false, false, true, false));
+        self::assertSame('lint', CommandSupport::scanReporterId(false, false, false, false, true));
+        self::assertSame('text', CommandSupport::scanReporterId(false, false, false, false, false));
         self::assertTrue(CommandSupport::shouldFail($delta, 'resolved,added'));
         self::assertFalse(CommandSupport::shouldFail($delta, null));
         self::assertFalse(CommandSupport::shouldFail($delta, ''));
@@ -1156,7 +1322,7 @@ PHP);
             Baseline::readReport($this->fixtureDir . '/invalid.json');
             self::fail('Expected invalid baseline JSON report to throw.');
         } catch (\InvalidArgumentException $exception) {
-            self::assertStringContainsString('not a slop-scan JSON report', $exception->getMessage());
+            self::assertStringContainsString('not a slop-scan report', $exception->getMessage());
         }
 
         try {
@@ -1852,8 +2018,9 @@ PHP);
     public function testCloneClusterRuleDetectsNearDuplicateFunctionBodies(): void
     {
         $fixture = $this->makeFixture();
-        mkdir($fixture . '/src', 0777, true);
-        file_put_contents($fixture . '/src/Alpha.php', <<<'PHP'
+        mkdir($fixture . '/src/PublicApi', 0777, true);
+        mkdir($fixture . '/modules/Legacy', 0777, true);
+        file_put_contents($fixture . '/src/PublicApi/Alpha.php', <<<'PHP'
 <?php
 
 function process_alpha(string $input): string
@@ -1863,7 +2030,7 @@ function process_alpha(string $input): string
     return str_replace(' ', '_', $lower);
 }
 PHP);
-        file_put_contents($fixture . '/src/Beta.php', <<<'PHP'
+        file_put_contents($fixture . '/modules/Legacy/Beta.php', <<<'PHP'
 <?php
 
 function process_beta(string $input): string
@@ -1890,6 +2057,42 @@ PHP);
         $fixture = $this->makeFixture();
         mkdir($fixture . '/src', 0777, true);
         file_put_contents($fixture . '/src/Tiny.php', "<?php\nfunction a(): void {}\nfunction b(): void {}\n");
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.clone-cluster', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testCloneClusterRuleIgnoresDuplicatesInSameDeepAreaOrNamespace(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src/Feature/Task/Flow', 0777, true);
+        file_put_contents($fixture . '/src/Feature/Task/Flow/Alpha.php', <<<'PHP'
+<?php
+
+namespace App\Feature\Task\Flow;
+
+function process_alpha(string $input): string
+{
+    $trimmed = trim($input);
+    $lower = strtolower($trimmed);
+    return str_replace(' ', '_', $lower);
+}
+PHP);
+        file_put_contents($fixture . '/src/Feature/Task/Flow/Beta.php', <<<'PHP'
+<?php
+
+namespace App\Feature\Task\Flow;
+
+function process_beta(string $input): string
+{
+    $trimmed = trim($input);
+    $lower = strtolower($trimmed);
+    return str_replace(' ', '_', $lower);
+}
+PHP);
 
         $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
 

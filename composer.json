@@ -6,7 +6,8 @@
         "nikic/php-parser": "^5.7",
         "php": "^8.3",
         "symfony/console": "^7.4",
-        "voku/simple-php-code-parser": "^0.21.0"
+        "voku/simple-php-code-parser": "^0.21.0",
+        "helgesverre/toon": "^3.1"
     },
     "require-dev": {
         "infection/infection": "^0.32.7",

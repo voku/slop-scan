@@ -51,7 +51,7 @@ final class PhpFacts
         return $comments;
     }
 
-    /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string,className:?string}> */
+    /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string,className:?string,namespaceName:?string}> */
     public static function functions(string $text): array
     {
         $statements = self::parseStatements($text);
@@ -60,7 +60,7 @@ final class PhpFacts
         }
 
         $functions = [];
-        self::collectFunctions($statements, null, $functions);
+        self::collectFunctions($statements, null, null, $functions);
         return $functions;
     }
 
@@ -279,11 +279,21 @@ final class PhpFacts
     }
 
     /** @param list<Stmt> $statements */
-    private static function collectFunctions(array $statements, ?string $className, array &$functions): void
+    private static function collectFunctions(array $statements, ?string $className, ?string $namespaceName, array &$functions): void
     {
         foreach ($statements as $statement) {
+            if ($statement instanceof Stmt\Namespace_) {
+                self::collectFunctions(
+                    $statement->stmts,
+                    $className,
+                    $statement->name instanceof Name ? $statement->name->toString() : null,
+                    $functions
+                );
+                continue;
+            }
+
             if ($statement instanceof Stmt\Function_) {
-                $functions[] = self::functionSummary($statement, null, null);
+                $functions[] = self::functionSummary($statement, null, null, $namespaceName);
                 continue;
             }
 
@@ -294,23 +304,23 @@ final class PhpFacts
                     if ($method->stmts === null) {
                         continue;
                     }
-                    $functions[] = self::functionSummary($method, $nestedClassName, $classKind);
+                    $functions[] = self::functionSummary($method, $nestedClassName, $classKind, $namespaceName);
                 }
 
                 foreach (self::childStatements($statement) as $childStatements) {
-                    self::collectFunctions($childStatements, $nestedClassName ?? $className, $functions);
+                    self::collectFunctions($childStatements, $nestedClassName ?? $className, $namespaceName, $functions);
                 }
                 continue;
             }
 
             foreach (self::childStatements($statement) as $childStatements) {
-                self::collectFunctions($childStatements, $className, $functions);
+                self::collectFunctions($childStatements, $className, $namespaceName, $functions);
             }
         }
     }
 
-    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string,className:?string} */
-    private static function functionSummary(Stmt\ClassMethod|Stmt\Function_ $function, ?string $className, ?string $classKind): array
+    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string,className:?string,namespaceName:?string} */
+    private static function functionSummary(Stmt\ClassMethod|Stmt\Function_ $function, ?string $className, ?string $classKind, ?string $namespaceName): array
     {
         $name = $function->name->toString();
         $params = array_map(
@@ -329,6 +339,7 @@ final class PhpFacts
             'constantReturn' => self::singleConstantReturnKind($function),
             'classKind' => $classKind,
             'className' => $className,
+            'namespaceName' => $namespaceName,
         ];
     }
 
