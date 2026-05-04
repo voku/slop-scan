@@ -14,6 +14,7 @@ use SlopScan\Model\Finding;
 use SlopScan\Runtime\AnalyzerRuntime;
 use SlopScan\Runtime\ProviderContext;
 use SlopScan\Support\Lines;
+use SlopScan\Support\FindingIgnorer;
 use SlopScan\Support\PatternMatcher;
 use SlopScan\Support\ScanCache;
 
@@ -58,6 +59,7 @@ final class Analyzer
         $repoContext = new ProviderContext('repo', $runtime);
         $this->runProviders($providers, $repoContext, $store, $cache);
         $findings = array_merge($findings, $this->runRules($registry->rules(), $repoContext, $config));
+        $findings = FindingIgnorer::filter($findings, $config, $root);
         usort($findings, static fn(Finding $left, Finding $right): int => strcmp($left->ruleId . ($left->path ?? ''), $right->ruleId . ($right->path ?? '')));
         $cache->persist();
 
