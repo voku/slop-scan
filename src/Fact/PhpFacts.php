@@ -20,6 +20,7 @@ use voku\SimplePhpParser\Parsers\PhpCodeParser;
 final class PhpFacts
 {
     private const RECOGNIZED_DEBUG_FUNCTIONS = ['dd', 'print_r', 'ray', 'var_dump'];
+    private const EXCEPTION_PREVIOUS_ARGUMENT_INDEX = 2;
     private const GENERIC_EXCEPTION_CLASSES = [
         'exception',
         'errorexception',
@@ -657,7 +658,11 @@ final class PhpFacts
             };
         }
 
-        if (($expr instanceof Node\Scalar\LNumber || $expr instanceof Node\Scalar\DNumber) && $expr->value == 0.0) {
+        if ($expr instanceof Node\Scalar\LNumber && $expr->value === 0) {
+            return 'zero';
+        }
+
+        if ($expr instanceof Node\Scalar\DNumber && $expr->value === 0.0) {
             return 'zero';
         }
 
@@ -729,7 +734,7 @@ final class PhpFacts
             }
 
             $argumentName = strtolower($arg->name?->toString() ?? '');
-            if ($argumentName === 'previous' || ($arg->name === null && $index === 2)) {
+            if ($argumentName === 'previous' || ($arg->name === null && $index === self::EXCEPTION_PREVIOUS_ARGUMENT_INDEX)) {
                 return true;
             }
         }
