@@ -145,7 +145,7 @@ final class FindingIgnorer
 
     private static function regexMatches(string $pattern, string $message): bool
     {
-        set_error_handler(static fn (int $errorSeverity, string $errorMessage): bool => true);
+        set_error_handler(static fn (int $_errorSeverity, string $_errorMessage): bool => true);
         try {
             $result = preg_match($pattern, $message);
         } finally {
