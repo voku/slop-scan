@@ -12,11 +12,16 @@ use SlopScan\Reporter\JsonReporter;
 use SlopScan\Reporter\LintReporter;
 use SlopScan\Reporter\TextReporter;
 use SlopScan\Rule\BlanketStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\CatchReturnsExceptionMessageRule;
+use SlopScan\Rule\CloneClusterRule;
 use SlopScan\Rule\CommentedOutCodeRule;
+use SlopScan\Rule\CatchDefaultFallbacksRule;
 use SlopScan\Rule\DebugOutputRule;
 use SlopScan\Rule\DirectoryFanoutHotspotRule;
 use SlopScan\Rule\DuplicateFunctionSignaturesRule;
 use SlopScan\Rule\EmptyCatchRule;
+use SlopScan\Rule\ExceptionWrapWithoutPreviousRule;
+use SlopScan\Rule\ErrorObscuringCatchRule;
 use SlopScan\Rule\ErrorSwallowingRule;
 use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
 use SlopScan\Rule\MockHeavyTestsWithoutAssertionsRule;
@@ -24,7 +29,10 @@ use SlopScan\Rule\MisleadingPhpDocTypesRule;
 use SlopScan\Rule\OverFragmentationRule;
 use SlopScan\Rule\PassThroughWrappersRule;
 use SlopScan\Rule\PlaceholderCommentsRule;
+use SlopScan\Rule\PlaceholderMethodBodiesRule;
+use SlopScan\Rule\ReturnConstantStubRule;
 use SlopScan\Rule\StackedStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\TypeEscapeHotspotsRule;
 
 final class DefaultRegistry
 {
@@ -37,11 +45,15 @@ final class DefaultRegistry
         $registry->registerFactProvider(new FunctionDuplicationFactProvider());
         foreach ([
             new EmptyCatchRule(),
+            new ExceptionWrapWithoutPreviousRule(),
+            new ErrorObscuringCatchRule(),
             new ErrorSwallowingRule(),
             new BlanketStaticAnalysisSuppressionsRule(),
             new ExcessiveStaticAnalysisSuppressionsRule(),
             new StackedStaticAnalysisSuppressionsRule(),
             new CommentedOutCodeRule(),
+            new CatchDefaultFallbacksRule(),
+            new CatchReturnsExceptionMessageRule(),
             new DebugOutputRule(),
             new MockHeavyTestsWithoutAssertionsRule(),
             new MisleadingPhpDocTypesRule(),
@@ -50,6 +62,10 @@ final class DefaultRegistry
             new DirectoryFanoutHotspotRule(),
             new OverFragmentationRule(),
             new DuplicateFunctionSignaturesRule(),
+            new ReturnConstantStubRule(),
+            new PlaceholderMethodBodiesRule(),
+            new CloneClusterRule(),
+            new TypeEscapeHotspotsRule(),
         ] as $rule) {
             $registry->registerRule($rule);
         }

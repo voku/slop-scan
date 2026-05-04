@@ -1,0 +1,10 @@
+<?php
+
+function fallback_message(): string
+{
+    try {
+        return load_message();
+    } catch (Throwable $exception) {
+        return $exception->getMessage();
+    }
+}

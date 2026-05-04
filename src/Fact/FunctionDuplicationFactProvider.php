@@ -12,19 +12,35 @@ final class FunctionDuplicationFactProvider implements FactProvider
     public function id(): string { return 'repo.functionDuplication'; }
     public function scope(): string { return 'repo'; }
     public function requires(): array { return ['repo.files', 'file.functionSummaries']; }
-    public function provides(): array { return ['repo.duplicateFunctionSignatures']; }
+    public function provides(): array { return ['repo.duplicateFunctionSignatures', 'repo.cloneFunctionBodies']; }
     public function supports(ProviderContext $context): bool { return true; }
 
     public function run(ProviderContext $context): array
     {
-        $groups = [];
+        $signatureGroups = [];
+        $bodyGroups = [];
+
         foreach ($context->runtime->files as $file) {
             foreach ($context->runtime->store->getFileFact($file->path, 'file.functionSummaries') ?? [] as $function) {
-                $groups[$function['signature']][] = ['path' => $file->path, 'line' => $function['line'], 'name' => $function['name']];
+                $signatureGroups[$function['signature']][] = ['path' => $file->path, 'line' => $function['line'], 'name' => $function['name']];
+
+                $body = $function['body'] ?? '';
+                if ($body !== '' && strlen($body) >= 40) {
+                    $normalized = (string) preg_replace('/\s+/', ' ', strtolower(trim($body)));
+                    $bodyGroups[$normalized][] = ['path' => $file->path, 'line' => $function['line'], 'name' => $function['name']];
+                }
             }
         }
-        $duplicates = array_filter($groups, static fn(array $group): bool => count($group) > 1);
-        ksort($duplicates, SORT_STRING);
-        return ['repo.duplicateFunctionSignatures' => $duplicates];
+
+        $duplicateSignatures = array_filter($signatureGroups, static fn(array $group): bool => count($group) > 1);
+        ksort($duplicateSignatures, SORT_STRING);
+
+        $cloneBodies = array_filter($bodyGroups, static fn(array $group): bool => count($group) > 1);
+        ksort($cloneBodies, SORT_STRING);
+
+        return [
+            'repo.duplicateFunctionSignatures' => $duplicateSignatures,
+            'repo.cloneFunctionBodies' => $cloneBodies,
+        ];
     }
 }

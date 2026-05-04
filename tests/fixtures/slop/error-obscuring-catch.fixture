@@ -1,0 +1,10 @@
+<?php
+
+function wrap_failure(): never
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        throw new RuntimeException('Request failed.');
+    }
+}

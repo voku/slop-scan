@@ -1,0 +1,6 @@
+<?php
+
+function stub_result(string $key): string
+{
+    return '';
+}

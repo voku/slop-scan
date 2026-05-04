@@ -1,0 +1,16 @@
+<?php
+
+function coerce(mixed $input): mixed
+{
+    return (string) $input;
+}
+
+function cast_all(mixed $data): mixed
+{
+    return (int) (array) $data;
+}
+
+function escape(mixed $raw): mixed
+{
+    return (bool) $raw;
+}

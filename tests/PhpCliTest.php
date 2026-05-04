@@ -114,7 +114,13 @@ PHP);
                 'php.placeholder-comments' => ['weight' => 2.0],
             ],
             'thresholds' => ['unused' => 1],
-            'overrides' => [['path' => 'src/Example.php']],
+            'overrides' => [[
+                'path' => 'src/Example.php',
+                'rules' => [
+                    'php.placeholder-comments' => ['enabled' => false],
+                    'php.debug-output' => ['weight' => 3.0],
+                ],
+            ]],
         ]));
         file_put_contents($this->fixtureDir . '/src/Ignore.php', "<?php\n// TODO ignored\n");
 
@@ -123,11 +129,16 @@ PHP);
 
         self::assertSame(['src/Ignore.php'], $config['ignores']);
         self::assertSame(1, $config['thresholds']['unused']);
-        self::assertSame([['path' => 'src/Example.php']], $config['overrides']);
-        self::assertSame(['php.debug-output', 'php.pass-through-wrappers', 'php.placeholder-comments'], $this->ruleIds($result->findings));
-        self::assertSame(1.25, $this->scoreForRule($result->findings, 'php.debug-output'));
+        self::assertSame([[
+            'path' => 'src/Example.php',
+            'rules' => [
+                'php.placeholder-comments' => ['enabled' => false],
+                'php.debug-output' => ['weight' => 3],
+            ],
+        ]], $config['overrides']);
+        self::assertSame(['php.debug-output', 'php.pass-through-wrappers'], $this->ruleIds($result->findings));
+        self::assertSame(3.75, $this->scoreForRule($result->findings, 'php.debug-output'));
         self::assertSame(1.0, $this->scoreForRule($result->findings, 'php.pass-through-wrappers'));
-        self::assertSame(1.0, $this->scoreForRule($result->findings, 'php.placeholder-comments'));
     }
 
     public function testConfigFallsBackToRepoConfigAndInvalidJsonFails(): void
@@ -464,14 +475,21 @@ PHP);
     {
         return [
             'empty catch' => ['empty-catch.fixture', 'src/EmptyCatch.php', 'php.empty-catch'],
+            'exception wrap without previous' => ['exception-wrap-without-previous.fixture', 'src/ExceptionWrapWithoutPrevious.php', 'php.exception-wrap-without-previous'],
+            'error obscuring catch' => ['error-obscuring-catch.fixture', 'src/ErrorObscuringCatch.php', 'php.error-obscuring-catch'],
             'error swallowing' => ['error-swallowing.fixture', 'src/ErrorSwallowing.php', 'php.error-swallowing'],
             'blanket suppression' => ['blanket-suppression.fixture', 'src/BlanketSuppression.php', 'php.blanket-static-analysis-suppressions'],
             'commented out code' => ['commented-out-code.fixture', 'src/CommentedOutCode.php', 'php.commented-out-code'],
+            'catch default fallback' => ['catch-default-fallback.fixture', 'src/CatchDefaultFallback.php', 'php.catch-default-fallbacks'],
+            'catch returns exception message' => ['catch-returns-exception-message.fixture', 'src/CatchReturnsExceptionMessage.php', 'php.catch-returns-exception-message'],
             'debug output' => ['debug-output.fixture', 'src/DebugOutput.php', 'php.debug-output'],
             'mock heavy test without assertions' => ['mock-heavy-test-without-assertions.fixture', 'tests/OnlyMocksTest.php', 'php.mock-heavy-tests-without-assertions'],
             'misleading phpdoc types' => ['misleading-phpdoc-types.fixture', 'src/MisleadingPhpDoc.php', 'php.misleading-phpdoc-types'],
             'placeholder comments' => ['placeholder-comments.fixture', 'src/PlaceholderComments.php', 'php.placeholder-comments'],
             'pass through wrapper' => ['pass-through-wrapper.fixture', 'src/PassThroughWrapper.php', 'php.pass-through-wrappers'],
+            'return constant stub' => ['return-constant-stub.fixture', 'src/ReturnConstantStub.php', 'php.return-constant-stub'],
+            'placeholder method body' => ['placeholder-method-body.fixture', 'src/PlaceholderMethodBody.php', 'php.placeholder-method-bodies'],
+            'type escape hotspot' => ['type-escape-hotspot.fixture', 'src/TypeEscapeHotspot.php', 'php.type-escape-hotspots'],
         ];
     }
 
@@ -497,6 +515,8 @@ PHP);
     {
         return [
             'handled catch with return' => ['handled-catch-return.fixture', 'src/HandledCatch.php'],
+            'exception wrap with previous' => ['exception-wrap-with-previous.fixture', 'src/ExceptionWrapWithPrevious.php'],
+            'error wrapping with previous' => ['error-wrapping-with-previous.fixture', 'src/ErrorWrappingWithPrevious.php'],
             'test with mocks and assertions' => ['test-with-mocks-and-real-assertions.fixture', 'tests/MockAssertionsTest.php'],
             'helpful phpdoc types' => ['helpful-phpdoc-types.fixture', 'src/HelpfulPhpDoc.php'],
         ];
@@ -1210,6 +1230,8 @@ PHP;
         self::assertFalse($catches[0]['hasThrow']);
         self::assertFalse($catches[0]['hasReturn']);
         self::assertSame([], $catches[0]['callNames']);
+        self::assertSame([], $catches[0]['defaultReturnKinds']);
+        self::assertSame([], $catches[0]['thrownExceptions']);
         self::assertArrayHasKey('available', $summary);
         self::assertArrayHasKey('classCount', $summary);
         self::assertArrayHasKey('functionCount', $summary);
@@ -1248,7 +1270,577 @@ PHP;
         self::assertSame(1, count($catches));
         self::assertSame(['callee' => 'keep', 'args' => ['$value']], $functions[0]['passThroughCall']);
         self::assertTrue($catches[0]['hasReturn']);
+        self::assertSame([], $catches[0]['defaultReturnKinds']);
         self::assertStringContainsString('return fallback', $catches[0]['body']);
+    }
+
+    public function testCatchDefaultFallbackRuleDetectsLiteralFallbacksOnly(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Fallbacks.php', <<<'PHP'
+<?php
+
+function fallback_array(string $key): array
+{
+    try {
+        return load_array($key);
+    } catch (Throwable $exception) {
+        return [];
+    }
+}
+
+function fallback_null(string $key): mixed
+{
+    try {
+        return load_value($key);
+    } catch (Throwable $exception) {
+        return null;
+    }
+}
+
+function delegated_fallback(string $key): mixed
+{
+    try {
+        return load_value($key);
+    } catch (Throwable $exception) {
+        return recover_from_cache($exception);
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(2, $this->countForRule($result->findings, 'php.catch-default-fallbacks'));
+        self::assertSame(['return=empty-array'], $this->findEvidenceForRuleAndLine($result->findings, 'php.catch-default-fallbacks', 7));
+        self::assertSame(['return=null'], $this->findEvidenceForRuleAndLine($result->findings, 'php.catch-default-fallbacks', 16));
+
+        $this->remove($fixture);
+    }
+
+    public function testCatchReturnsExceptionMessageRuleDetectsCaughtMessageReturnsOnly(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/CatchReturnsMessage.php', <<<'PHP'
+<?php
+
+function returns_message(Throwable $input): string
+{
+    try {
+        return load_message($input);
+    } catch (Throwable $exception) {
+        return $exception->getMessage();
+    }
+}
+
+function returns_stringified(Throwable $input): string
+{
+    try {
+        return load_message($input);
+    } catch (Throwable $exception) {
+        return (string) $exception;
+    }
+}
+
+function returns_recovery(Throwable $input): string
+{
+    try {
+        return load_message($input);
+    } catch (Throwable $exception) {
+        return recover_from_cache($exception);
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(2, $this->countForRule($result->findings, 'php.catch-returns-exception-message'));
+        self::assertSame(['return=caught-message'], $this->findEvidenceForRuleAndLine($result->findings, 'php.catch-returns-exception-message', 7));
+        self::assertSame(['return=caught-string'], $this->findEvidenceForRuleAndLine($result->findings, 'php.catch-returns-exception-message', 16));
+
+        $this->remove($fixture);
+    }
+
+    public function testErrorObscuringCatchRuleFlagsGenericReplacementWithoutPrevious(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/ErrorWrap.php', <<<'PHP'
+<?php
+
+function hides_original(Throwable $input): never
+{
+    try {
+        risky($input);
+    } catch (Throwable $exception) {
+        throw new RuntimeException($exception->getMessage());
+    }
+}
+
+function keeps_previous(Throwable $input): never
+{
+    try {
+        risky($input);
+    } catch (Throwable $exception) {
+        throw new RuntimeException('failed', 0, $exception);
+    }
+}
+
+function throws_domain_exception(Throwable $input): never
+{
+    try {
+        risky($input);
+    } catch (Throwable $exception) {
+        throw new ProjectFailure('failed', previous: $exception);
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(1, $this->countForRule($result->findings, 'php.error-obscuring-catch'));
+        self::assertSame(
+            ['class=RuntimeException', 'reason=generic-replacement-without-previous'],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.error-obscuring-catch', 7)
+        );
+
+        $this->remove($fixture);
+    }
+
+    public function testExceptionWrapWithoutPreviousRuleFlagsCustomReplacementThatDropsPrevious(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/ExceptionWrap.php', <<<'PHP'
+<?php
+
+function hides_previous(Throwable $input): never
+{
+    try {
+        risky($input);
+    } catch (Throwable $exception) {
+        throw new ProjectFailure($exception->getMessage());
+    }
+}
+
+function keeps_previous(Throwable $input): never
+{
+    try {
+        risky($input);
+    } catch (Throwable $exception) {
+        throw new ProjectFailure($exception->getMessage(), previous: $exception);
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(1, $this->countForRule($result->findings, 'php.exception-wrap-without-previous'));
+        self::assertSame(
+            ['class=ProjectFailure', 'reason=wraps-caught-exception-without-previous'],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.exception-wrap-without-previous', 7)
+        );
+
+        $this->remove($fixture);
+    }
+
+    public function testReturnConstantStubRuleDetectsEmptyAndFalsyConstantReturns(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Stubs.php', <<<'PHP'
+<?php
+
+function empty_string(): string
+{
+    return '';
+}
+
+function empty_array(): array
+{
+    return [];
+}
+
+function null_default(): ?string
+{
+    return null;
+}
+
+function real_logic(string $key): string
+{
+    return strtolower($key);
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(3, $this->countForRule($result->findings, 'php.return-constant-stub'));
+        self::assertSame(['empty_string', 'return=empty-string'], $this->findEvidenceForRuleAndLine($result->findings, 'php.return-constant-stub', 3));
+        self::assertSame(['empty_array', 'return=empty-array'], $this->findEvidenceForRuleAndLine($result->findings, 'php.return-constant-stub', 8));
+        self::assertSame(['null_default', 'return=null'], $this->findEvidenceForRuleAndLine($result->findings, 'php.return-constant-stub', 13));
+
+        $this->remove($fixture);
+    }
+
+    public function testReturnConstantStubRuleDoesNotFlagInterfaceOrAbstractMethods(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Contracts.php', <<<'PHP'
+<?php
+
+interface Loader
+{
+    public function load(string $key): array;
+}
+
+abstract class BaseLoader
+{
+    public function getDefault(): array
+    {
+        return [];
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.return-constant-stub', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testPlaceholderMethodBodiesRuleDetectsEmptyMethodsInConcreteClasses(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Service.php', <<<'PHP'
+<?php
+
+final class Service
+{
+    public function process(array $data): void
+    {
+    }
+
+    public function real(string $key): string
+    {
+        return strtolower($key);
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(1, $this->countForRule($result->findings, 'php.placeholder-method-bodies'));
+        self::assertSame(['process'], $this->findEvidenceForRuleAndLine($result->findings, 'php.placeholder-method-bodies', 5));
+
+        $this->remove($fixture);
+    }
+
+    public function testPlaceholderMethodBodiesRuleDoesNotFlagInterfaceOrAbstractOrTrait(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Contracts.php', <<<'PHP'
+<?php
+
+interface Processor
+{
+    public function process(array $data): void;
+}
+
+abstract class AbstractProcessor
+{
+    public function hook(): void
+    {
+    }
+}
+
+trait NullProcessorTrait
+{
+    public function process(array $data): void
+    {
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.placeholder-method-bodies', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testPlaceholderMethodBodiesRuleDoesNotFlagMagicMethods(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/ValueObject.php', <<<'PHP'
+<?php
+
+final class ValueObject
+{
+    public function __construct(
+        public readonly string $name,
+        public readonly int $value,
+    ) {
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.placeholder-method-bodies', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testCloneClusterRuleDetectsNearDuplicateFunctionBodies(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Alpha.php', <<<'PHP'
+<?php
+
+function process_alpha(string $input): string
+{
+    $trimmed = trim($input);
+    $lower = strtolower($trimmed);
+    return str_replace(' ', '_', $lower);
+}
+PHP);
+        file_put_contents($fixture . '/src/Beta.php', <<<'PHP'
+<?php
+
+function process_beta(string $input): string
+{
+    $trimmed = trim($input);
+    $lower = strtolower($trimmed);
+    return str_replace(' ', '_', $lower);
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(1, $this->countForRule($result->findings, 'php.clone-cluster'));
+        $finding = array_values(array_filter($result->findings, static fn(Finding $f): bool => $f->ruleId === 'php.clone-cluster'))[0];
+        self::assertContains('name=process_alpha', $finding->evidence);
+        self::assertContains('name=process_beta', $finding->evidence);
+        self::assertCount(2, $finding->locations);
+
+        $this->remove($fixture);
+    }
+
+    public function testCloneClusterRuleIgnoresShortOrEmptyBodies(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Tiny.php', "<?php\nfunction a(): void {}\nfunction b(): void {}\n");
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.clone-cluster', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testTypeEscapeHotspotsRuleDetectsConcentratedMixedAndCasts(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/TypeEscape.php', <<<'PHP'
+<?php
+
+function coerce(mixed $input): mixed
+{
+    return (string) $input;
+}
+
+function cast_all(mixed $data): mixed
+{
+    return (int) (array) $data;
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(1, $this->countForRule($result->findings, 'php.type-escape-hotspots'));
+        $evidence = $this->firstEvidenceForRule($result->findings, 'php.type-escape-hotspots');
+        self::assertContains('mixed-types=4', $evidence);
+        self::assertContains('casts=3', $evidence);
+
+        $this->remove($fixture);
+    }
+
+    public function testTypeEscapeHotspotsRuleRespectsBelowThreshold(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Clean.php', <<<'PHP'
+<?php
+
+function transform(string $input): string
+{
+    return strtolower($input);
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.type-escape-hotspots', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testPhpFactsTypeEscapeSummaryCountsMixedTypesAndCasts(): void
+    {
+        $php = <<<'PHP'
+<?php
+
+function f1(mixed $a, mixed $b): mixed
+{
+    return (int) (string) $a;
+}
+
+function f2(string $x): string
+{
+    return (bool) $x ? $x : '';
+}
+PHP;
+
+        $summary = PhpFacts::typeEscapeSummary($php);
+
+        self::assertSame(3, $summary['mixedTypeCount']);
+        self::assertSame(3, $summary['castCount']);
+    }
+
+    public function testPhpFactsFunctionSummariesIncludeConstantReturnAndClassKind(): void
+    {
+        $php = <<<'PHP'
+<?php
+
+function stub(): string
+{
+    return '';
+}
+
+final class Service
+{
+    public function empty_method(): void
+    {
+    }
+
+    public function real_method(string $key): string
+    {
+        return strtolower($key);
+    }
+}
+
+interface Contract
+{
+    public function method(): array;
+}
+
+abstract class Base
+{
+    public function hook(): array
+    {
+        return [];
+    }
+}
+PHP;
+
+        $functions = PhpFacts::functions($php);
+        $byName = array_column($functions, null, 'name');
+
+        self::assertSame('empty-string', $byName['stub']['constantReturn']);
+        self::assertNull($byName['stub']['classKind']);
+
+        self::assertNull($byName['empty_method']['constantReturn']);
+        self::assertSame('class', $byName['empty_method']['classKind']);
+
+        self::assertNull($byName['real_method']['constantReturn']);
+        self::assertSame('class', $byName['real_method']['classKind']);
+
+        self::assertSame('abstract-class', $byName['hook']['classKind']);
+        self::assertSame('empty-array', $byName['hook']['constantReturn']);
+    }
+
+    public function testPhpFactsSummarizeDefaultFallbacksAndReplacementThrows(): void
+    {
+        $php = <<<'PHP'
+<?php
+
+function message_fallback(): string
+{
+    try {
+        return risky();
+    } catch (Throwable $exception) {
+        return $exception->getMessage();
+    }
+}
+
+function fallback(): mixed
+{
+    try {
+        return risky();
+    } catch (Throwable $exception) {
+        return null;
+    }
+}
+
+function wrapped(): never
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        throw new RuntimeException($exception->getMessage());
+    }
+}
+
+function preserved(): never
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        throw new RuntimeException('failed', previous: $exception);
+    }
+}
+PHP;
+
+        $catches = PhpFacts::tryCatches($php);
+
+        self::assertSame([], $catches[0]['defaultReturnKinds']);
+        self::assertSame(['caught-message'], $catches[0]['returnedCaughtValueKinds']);
+        self::assertSame(
+            ['null'],
+            $catches[1]['defaultReturnKinds']
+        );
+        self::assertSame([], $catches[1]['returnedCaughtValueKinds']);
+        self::assertSame([], $catches[2]['returnedCaughtValueKinds']);
+        self::assertSame([], $catches[3]['returnedCaughtValueKinds']);
+        self::assertSame([], $catches[0]['thrownExceptions']);
+        self::assertSame([], $catches[1]['thrownExceptions']);
+        self::assertSame(
+            [[
+                'class' => 'RuntimeException',
+                'isGeneric' => true,
+                'preservesPrevious' => false,
+                'usesCaughtVariable' => true,
+            ]],
+            $catches[2]['thrownExceptions']
+        );
+        self::assertSame(
+            [[
+                'class' => 'RuntimeException',
+                'isGeneric' => true,
+                'preservesPrevious' => true,
+                'usesCaughtVariable' => true,
+            ]],
+            $catches[3]['thrownExceptions']
+        );
     }
 
     public function testPhpFactsCollectDebugCallsFromAstOnly(): void
