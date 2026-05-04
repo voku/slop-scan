@@ -1,4 +1,4 @@
-# slop-scan
+# 💩 slop-scan
 
 Deterministic PHP CLI for finding explainable slop patterns in PHP repositories.
 
