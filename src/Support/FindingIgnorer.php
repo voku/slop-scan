@@ -76,12 +76,11 @@ final class FindingIgnorer
                 continue;
             }
 
-            $countValue = $entry['count'] ?? null;
             $rules[] = [
                 'messages' => self::uniqueStrings($messages),
                 'paths' => self::uniqueStrings($paths),
                 'ruleIds' => self::uniqueStrings($ruleIds),
-                'remaining' => is_int($countValue) || is_string($countValue) ? self::countLimit($countValue) : null,
+                'remaining' => self::countLimitFrom($entry),
             ];
         }
 
@@ -146,7 +145,7 @@ final class FindingIgnorer
 
     private static function regexMatches(string $pattern, string $message): bool
     {
-        set_error_handler(static fn (): bool => true);
+        set_error_handler(static fn (int $severity, string $message): bool => true);
         try {
             $result = preg_match($pattern, $message);
         } finally {
@@ -220,12 +219,14 @@ final class FindingIgnorer
         return array_values(array_unique($strings));
     }
 
-    private static function countLimit(int|string $value): ?int
+    /** @param array<array-key,mixed> $entry */
+    private static function countLimitFrom(array $entry): ?int
     {
+        $value = $entry['count'] ?? null;
         if (is_int($value)) {
             return max(0, $value);
         }
 
-        return ctype_digit($value) ? max(0, (int) $value) : null;
+        return is_string($value) && ctype_digit($value) ? max(0, (int) $value) : null;
     }
 }
