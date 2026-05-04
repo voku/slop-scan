@@ -145,6 +145,7 @@ The PHP implementation scans:
 | Rule | What it checks | Why it matters |
 | --- | --- | --- |
 | `php.empty-catch` | `catch` blocks with no statements | Exceptions disappear silently and make failures harder to debug. |
+| `php.error-obscuring-catch` | `catch` blocks that replace the original failure with a generic exception without keeping the previous error | Replacement exceptions can erase the original type and stack context that explain what really failed. |
 | `php.error-swallowing` | `catch` blocks that log/print and continue without `throw` or `return` | Errors are acknowledged but not handled, so broken execution keeps going. |
 | `php.blanket-static-analysis-suppressions` | Broad `@phpstan-ignore`, `@psalm-suppress`, and similar comments | Blanket suppressions hide real problems and reduce trust in static analysis. |
 | `php.excessive-static-analysis-suppressions` | Files with more suppression comments than the configured threshold | A file full of suppressions often signals design debt or papered-over typing issues. |

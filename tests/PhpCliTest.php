@@ -464,6 +464,7 @@ PHP);
     {
         return [
             'empty catch' => ['empty-catch.fixture', 'src/EmptyCatch.php', 'php.empty-catch'],
+            'error obscuring catch' => ['error-obscuring-catch.fixture', 'src/ErrorObscuringCatch.php', 'php.error-obscuring-catch'],
             'error swallowing' => ['error-swallowing.fixture', 'src/ErrorSwallowing.php', 'php.error-swallowing'],
             'blanket suppression' => ['blanket-suppression.fixture', 'src/BlanketSuppression.php', 'php.blanket-static-analysis-suppressions'],
             'commented out code' => ['commented-out-code.fixture', 'src/CommentedOutCode.php', 'php.commented-out-code'],
@@ -498,6 +499,7 @@ PHP);
     {
         return [
             'handled catch with return' => ['handled-catch-return.fixture', 'src/HandledCatch.php'],
+            'error wrapping with previous' => ['error-wrapping-with-previous.fixture', 'src/ErrorWrappingWithPrevious.php'],
             'test with mocks and assertions' => ['test-with-mocks-and-real-assertions.fixture', 'tests/MockAssertionsTest.php'],
             'helpful phpdoc types' => ['helpful-phpdoc-types.fixture', 'src/HelpfulPhpDoc.php'],
         ];
@@ -1297,6 +1299,109 @@ PHP);
         self::assertSame(['return=null'], $this->findEvidenceForRuleAndLine($result->findings, 'php.catch-default-fallbacks', 16));
 
         $this->remove($fixture);
+    }
+
+    public function testErrorObscuringCatchRuleFlagsGenericReplacementWithoutPrevious(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/ErrorWrap.php', <<<'PHP'
+<?php
+
+function hides_original(Throwable $input): never
+{
+    try {
+        risky($input);
+    } catch (Throwable $exception) {
+        throw new RuntimeException($exception->getMessage());
+    }
+}
+
+function keeps_previous(Throwable $input): never
+{
+    try {
+        risky($input);
+    } catch (Throwable $exception) {
+        throw new RuntimeException('failed', 0, $exception);
+    }
+}
+
+function throws_domain_exception(Throwable $input): never
+{
+    try {
+        risky($input);
+    } catch (Throwable $exception) {
+        throw new ProjectFailure('failed', previous: $exception);
+    }
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(1, $this->countForRule($result->findings, 'php.error-obscuring-catch'));
+        self::assertSame(
+            ['class=RuntimeException', 'reason=generic-replacement-without-previous'],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.error-obscuring-catch', 7)
+        );
+
+        $this->remove($fixture);
+    }
+
+    public function testPhpFactsSummarizeDefaultFallbacksAndReplacementThrows(): void
+    {
+        $php = <<<'PHP'
+<?php
+
+function fallback(): mixed
+{
+    try {
+        return risky();
+    } catch (Throwable $exception) {
+        return null;
+    }
+}
+
+function wrapped(): never
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        throw new RuntimeException($exception->getMessage());
+    }
+}
+
+function preserved(): never
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        throw new RuntimeException('failed', previous: $exception);
+    }
+}
+PHP;
+
+        $catches = PhpFacts::tryCatches($php);
+
+        self::assertSame(['null'], $catches[0]['defaultReturnKinds']);
+        self::assertSame([], $catches[0]['thrownExceptions']);
+        self::assertSame(
+            [[
+                'class' => 'RuntimeException',
+                'isGeneric' => true,
+                'preservesPrevious' => false,
+                'usesCaughtVariable' => true,
+            ]],
+            $catches[1]['thrownExceptions']
+        );
+        self::assertSame(
+            [[
+                'class' => 'RuntimeException',
+                'isGeneric' => true,
+                'preservesPrevious' => true,
+                'usesCaughtVariable' => true,
+            ]],
+            $catches[2]['thrownExceptions']
+        );
     }
 
     public function testPhpFactsCollectDebugCallsFromAstOnly(): void
