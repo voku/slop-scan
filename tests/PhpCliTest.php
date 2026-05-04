@@ -109,6 +109,7 @@ PHP);
     {
         file_put_contents($this->fixtureDir . '/slop-scan.config.json', Json::encode([
             'ignores' => ['src/Ignore.php'],
+            'ignoreErrors' => [],
             'rules' => [
                 'php.empty-catch' => ['enabled' => false],
                 'php.placeholder-comments' => ['weight' => 2.0],
@@ -129,6 +130,7 @@ PHP);
 
         self::assertSame(['src/Ignore.php'], $config['ignores']);
         self::assertSame(1, $config['thresholds']['unused']);
+        self::assertSame([], $config['ignoreErrors']);
         self::assertSame([[
             'path' => 'src/Example.php',
             'rules' => [
@@ -139,6 +141,50 @@ PHP);
         self::assertSame(['php.debug-output', 'php.pass-through-wrappers'], $this->ruleIds($result->findings));
         self::assertSame(3.75, $this->scoreForRule($result->findings, 'php.debug-output'));
         self::assertSame(1.0, $this->scoreForRule($result->findings, 'php.pass-through-wrappers'));
+    }
+
+    public function testConfigIgnoreErrorsFiltersFindingsLikePhpstan(): void
+    {
+        file_put_contents($this->fixtureDir . '/slop-scan.config.json', Json::encode([
+            'ignoreErrors' => [
+                '#Found PHP debug-output call#',
+                ['identifier' => 'php.empty-catch', 'path' => 'src/Example.php'],
+                ['ruleId' => 'php.placeholder-comments', 'paths' => ['src/*.php'], 'count' => 1],
+            ],
+        ]));
+
+        $config = Config::load($this->fixtureDir);
+        $result = (new Analyzer())->analyze($this->fixtureDir, $config, DefaultRegistry::create());
+
+        self::assertSame(['php.pass-through-wrappers'], $this->ruleIds($result->findings));
+        self::assertSame(1, $result->summary['findingCount']);
+        self::assertSame(1.0, $result->repoScore);
+    }
+
+    public function testConfigIgnoreErrorsCountLeavesAdditionalMatchesVisible(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Notes.php', <<<'PHP'
+<?php
+// TODO one
+// TODO two
+PHP);
+        file_put_contents($fixture . '/slop-scan.config.json', Json::encode([
+            'ignoreErrors' => [
+                ['identifier' => 'php.placeholder-comments', 'path' => 'src/Notes.php', 'count' => 1],
+            ],
+        ]));
+
+        try {
+            $result = (new Analyzer())->analyze($fixture, Config::load($fixture), DefaultRegistry::create());
+
+            self::assertSame(['php.placeholder-comments'], $this->ruleIds($result->findings));
+            self::assertSame(1, $result->summary['findingCount']);
+            self::assertSame(['// TODO two'], $result->findings[0]->evidence);
+        } finally {
+            $this->remove($fixture);
+        }
     }
 
     public function testConfigFallsBackToRepoConfigAndInvalidJsonFails(): void

@@ -182,6 +182,11 @@ Scans now reuse unchanged per-file analysis by default through `.slop-scan.cache
     "php.placeholder-comments": { "enabled": true, "weight": 0.5 },
     "php.directory-fanout-hotspot": { "options": { "fileCount": 12 } }
   },
+  "ignoreErrors": [
+    "#Found debug output call#",
+    { "identifier": "php.empty-catch", "path": "src/Legacy.php", "count": 1 },
+    { "ruleId": "php.placeholder-comments", "paths": ["src/Generated/**"] }
+  ],
   "overrides": [
     {
       "path": "src/Generated/**",
@@ -192,6 +197,13 @@ Scans now reuse unchanged per-file analysis by default through `.slop-scan.cache
   ]
 }
 ```
+
+`ignoreErrors` follows PHPStan-style matching for intentional false positives:
+
+- a string entry is treated as a regular expression matched against the finding message;
+- object entries may combine `message`/`messages`, `identifier`/`identifiers` or `ruleId`/`ruleIds`, and `path`/`paths`;
+- `path` and `paths` use the same glob matching as `ignores`;
+- `count` limits how many matching findings are suppressed, so additional matches remain visible.
 
 ## Report shape
 

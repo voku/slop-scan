@@ -14,6 +14,7 @@ final class Config
             'rules' => [],
             'thresholds' => [],
             'overrides' => [],
+            'ignoreErrors' => [],
         ];
     }
 
@@ -43,6 +44,7 @@ final class Config
             'rules' => array_replace_recursive($base['rules'] ?? [], is_array($next['rules'] ?? null) ? $next['rules'] : []),
             'thresholds' => array_replace($base['thresholds'] ?? [], is_array($next['thresholds'] ?? null) ? $next['thresholds'] : []),
             'overrides' => is_array($next['overrides'] ?? null) ? $next['overrides'] : ($base['overrides'] ?? []),
+            'ignoreErrors' => is_array($next['ignoreErrors'] ?? null) ? $next['ignoreErrors'] : ($base['ignoreErrors'] ?? []),
         ];
     }
 }
