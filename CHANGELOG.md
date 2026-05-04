@@ -2,10 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-## 0.2.0 - 2026-05-04
-
-- Added explicit config path support for scans via `--config-file`, plus matching config file options for `stats` and `delta` comparisons.
-
 ## 0.1.0 - 2026-05-04
 
 - Forked the original idea from [`modem-dev/slop-scan`](https://github.com/modem-dev/slop-scan).
