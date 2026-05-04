@@ -6,6 +6,17 @@
 php bin/slop-scan.php delta --base ../main --head . --json
 ```
 
+If either tree keeps its config outside the scan root, point each side at it explicitly:
+
+```bash
+php bin/slop-scan.php delta \
+  --base ../main \
+  --head . \
+  --base-config-file infra/githooks/slop-scan.config.json \
+  --head-config-file infra/githooks/slop-scan.config.json \
+  --json
+```
+
 ## Compare saved reports
 
 ```bash
@@ -37,11 +48,14 @@ php bin/slop-scan.php delta --base-report base.json --head-report head.json --fa
 - `--lint`
 - `--github`
 - `--ignore`
+- `--config-file`
 - `--cache-file`
 - `--baseline-file`
 - `--generate-baseline`
 - `--base`
 - `--head`
+- `--base-config-file`
+- `--head-config-file`
 - `--base-report`
 - `--head-report`
 - `--fail-on`

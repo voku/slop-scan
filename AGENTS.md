@@ -7,7 +7,7 @@
 - `README.md` for product behavior and CLI expectations.
 - `src/` for the PHP implementation, organized into focused directories for contracts, facts, models, reporters, rules, runtime state, and shared support code.
 - `tests/PhpCliTest.php` for behavioral expectations.
-- `slop-scan.config.json` for the repository self-scan config.
+- `infra/githooks/slop-scan.config.json` for the repository self-scan config.
 
 ## Mental model
 
@@ -28,5 +28,9 @@
 
 - `composer validate --strict`
 - `composer run lint`
+- `composer run analyse`
 - `composer run test`
 - `composer run scan:self`
+- `composer run phar:build`
+
+Run the validation suite in a PHP 8.4-compatible environment. If the host PHP is older than the vendor platform requirement, use the project container or another PHP 8.4+ container.

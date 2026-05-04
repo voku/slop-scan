@@ -39,6 +39,7 @@ final class ScanCommand extends Command
             ->addOption('path-filter', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Only include findings whose path matches these glob patterns.')
             ->addOption('max-findings', null, InputOption::VALUE_REQUIRED, 'Limit the number of findings after filtering.')
             ->addOption('min-score', null, InputOption::VALUE_REQUIRED, 'Only include findings at or above this score.')
+            ->addOption('config-file', null, InputOption::VALUE_REQUIRED, 'Read JSON config from this file (absolute or relative to the scan path).')
             ->addOption('cache-file', null, InputOption::VALUE_REQUIRED, 'Read and write a scan cache file.')
             ->addOption('baseline-file', null, InputOption::VALUE_REQUIRED, 'Read or write a baseline report file.')
             ->addOption('generate-baseline', null, InputOption::VALUE_NONE, 'Write the current scan as a baseline.');
@@ -49,7 +50,7 @@ final class ScanCommand extends Command
         try {
             $target = (string) $input->getArgument('path');
             $ignore = $this->stringListOption($input, 'ignore');
-            $config = Config::load($target);
+            $config = Config::load($target, $this->stringOption($input, 'config-file'));
             $config['ignores'] = array_values(array_merge($config['ignores'], $ignore));
             $selection = $this->selection($input);
             $rawResult = (new Analyzer())->analyze($target, $config, DefaultRegistry::create(), $this->cacheFile($target, $input));

@@ -47,6 +47,12 @@ chmod +x "$HOME/.local/bin/slop-scan"
 
 The scanner targets PHP source files such as `.php`, `.phtml`, and `.inc`.
 
+If your repository keeps its config outside the scan root, point the scan at it explicitly:
+
+```bash
+"$HOME/.local/bin/slop-scan" scan . --config-file infra/githooks/slop-scan.config.json
+```
+
 ## What it ships with
 
 - Deterministic findings with stable occurrence fingerprints for review, delta comparisons, and baseline workflows.

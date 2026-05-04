@@ -22,6 +22,7 @@ final class StatsCommand extends Command
             ->addArgument('path', InputArgument::OPTIONAL, 'Path to scan when no report is provided.', '.')
             ->addOption('report', null, InputOption::VALUE_REQUIRED, 'Existing JSON report or baseline file.')
             ->addOption('json', null, InputOption::VALUE_NONE, 'Emit JSON output.')
+            ->addOption('config-file', null, InputOption::VALUE_REQUIRED, 'Read JSON config from this file (absolute or relative to the scan path).')
             ->addOption('ignore', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Ignore path pattern.')
             ->addOption('top-rules', null, InputOption::VALUE_REQUIRED, 'How many rules to show.', '10')
             ->addOption('top-files', null, InputOption::VALUE_REQUIRED, 'How many files to show.', '10');
@@ -32,7 +33,12 @@ final class StatsCommand extends Command
         try {
             $path = $this->stringArgument($input, 'path') ?? '.';
             $ignore = $this->stringListOption($input, 'ignore');
-            $report = CommandSupport::reportInput($this->stringOption($input, 'report'), $path, $ignore);
+            $report = CommandSupport::reportInput(
+                $this->stringOption($input, 'report'),
+                $path,
+                $ignore,
+                $this->stringOption($input, 'config-file')
+            );
             $stats = self::buildStats(
                 $report,
                 max(1, (int) ($this->stringOption($input, 'top-rules') ?? '10')),

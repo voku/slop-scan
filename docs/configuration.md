@@ -1,6 +1,6 @@
 # Configuration
 
-`slop-scan` reads JSON config from `slop-scan.config.json` or `repo-slop.config.json` in the scan root.
+`slop-scan` reads JSON config from `slop-scan.config.json` or `repo-slop.config.json` in the scan root by default. Use `--config-file` to load a config from another location; relative paths are resolved from the scan root.
 
 Scans now reuse unchanged per-file analysis by default through `.slop-scan.cache.json` in the scan root. Use `--cache-file` to override that location.
 

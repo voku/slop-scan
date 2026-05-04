@@ -3,8 +3,8 @@
     "description": "Deterministic PHP CLI for explainable slop heuristics in PHP repositories.",
     "type": "project",
     "require": {
-        "nikic/php-parser": "^5.7",
         "php": "^8.3",
+        "nikic/php-parser": "^5.7",
         "symfony/console": "^7.4",
         "voku/simple-php-code-parser": "^0.21.0",
         "helgesverre/toon": "^3.1"
@@ -17,8 +17,8 @@
     "license": "MIT",
     "authors": [
         {
-            "name": "voku",
-            "email": "opensource@voku.dev"
+            "name": "Lars Moelleken",
+            "email": "lars@moelleken.org"
         }
     ],
     "autoload": {

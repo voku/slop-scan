@@ -304,6 +304,32 @@ PHP);
         }
     }
 
+    public function testConfigCanLoadExplicitFileRelativeToScanRootAndMissingFilesFailClearly(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/infra/githooks', 0777, true);
+        file_put_contents($fixture . '/infra/githooks/slop-scan.config.json', Json::encode([
+            'ignores' => ['src/generated.php'],
+            'rules' => ['php.empty-catch' => ['enabled' => false]],
+        ]));
+
+        try {
+            $config = Config::load($fixture, 'infra/githooks/slop-scan.config.json');
+
+            self::assertSame(['src/generated.php'], $config['ignores']);
+            self::assertFalse($config['rules']['php.empty-catch']['enabled']);
+
+            try {
+                Config::load($fixture, 'infra/githooks/missing.config.json');
+                self::fail('Expected missing explicit config file to fail config loading.');
+            } catch (\InvalidArgumentException $exception) {
+                self::assertStringContainsString('Config file does not exist', $exception->getMessage());
+            }
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
     public function testAnalyzerFindsDirectoryAndRepoRegressions(): void
     {
         $fixture = $this->makeFixture();
@@ -1055,6 +1081,39 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testCliScanUsesExplicitConfigFileRelativeToScanRoot(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/infra/githooks', 0777, true);
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+var_dump($value);
+try {
+    risky();
+} catch (Throwable $e) {
+}
+PHP);
+        file_put_contents($fixture . '/infra/githooks/slop-scan.config.json', Json::encode([
+            'rules' => [
+                'php.empty-catch' => ['enabled' => false],
+            ],
+        ]));
+
+        [$exit, $output] = $this->runCommand([
+            'scan',
+            $fixture,
+            '--json',
+            '--config-file', 'infra/githooks/slop-scan.config.json',
+        ]);
+        $decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(0, $exit);
+        self::assertSame(['php.debug-output'], array_values(array_unique(array_column($decoded['findings'], 'ruleId'))));
+
+        $this->remove($fixture);
+    }
+
     public function testCliScanNdjsonEmitsSummaryAndFindingObjects(): void
     {
         $fixture = $this->makeFixture();
@@ -1136,6 +1195,32 @@ PHP);
         self::assertStringContainsString('php.todo: 2 findings, 2 locations', $textOutput);
         self::assertSame(0, $jsonExit);
         self::assertSame(3, json_decode($jsonOutput, true, 512, JSON_THROW_ON_ERROR)['summary']['findingCount']);
+    }
+
+    public function testCliStatsUsesExplicitConfigFileWhenScanningPath(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/infra/githooks', 0777, true);
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', "<?php\nvar_dump(\$value);\n");
+        file_put_contents($fixture . '/infra/githooks/slop-scan.config.json', Json::encode([
+            'rules' => [
+                'php.debug-output' => ['enabled' => false],
+            ],
+        ]));
+
+        [$exit, $output] = $this->runCommand([
+            'stats',
+            $fixture,
+            '--json',
+            '--config-file', 'infra/githooks/slop-scan.config.json',
+        ]);
+        $decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(0, $exit);
+        self::assertSame(0, $decoded['summary']['findingCount']);
+
+        $this->remove($fixture);
     }
 
     public function testCliScanBaselineReportsOnlyNewFindingsAndGithubAnnotations(): void
@@ -1227,6 +1312,41 @@ PHP);
         self::assertSame('php.empty-catch', $decoded['newFindings'][0]['ruleId']);
 
         $this->remove($fixture);
+    }
+
+    public function testCliDeltaUsesExplicitBaseAndHeadConfigFiles(): void
+    {
+        $base = $this->makeFixture();
+        $head = $this->makeFixture();
+        mkdir($base . '/infra/githooks', 0777, true);
+        mkdir($head . '/infra/githooks', 0777, true);
+        mkdir($base . '/src', 0777, true);
+        mkdir($head . '/src', 0777, true);
+        file_put_contents($base . '/src/A.php', "<?php\nvar_dump(\$value);\n");
+        file_put_contents($head . '/src/A.php', "<?php\nvar_dump(\$value);\n");
+        file_put_contents($base . '/infra/githooks/slop-scan.config.json', Json::encode([]));
+        file_put_contents($head . '/infra/githooks/slop-scan.config.json', Json::encode([
+            'rules' => [
+                'php.debug-output' => ['enabled' => false],
+            ],
+        ]));
+
+        [$exit, $output] = $this->runCommand([
+            'delta',
+            '--base', $base,
+            '--head', $head,
+            '--base-config-file', 'infra/githooks/slop-scan.config.json',
+            '--head-config-file', 'infra/githooks/slop-scan.config.json',
+            '--json',
+        ]);
+        $decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(0, $exit);
+        self::assertSame(0, $decoded['summary']['added']);
+        self::assertSame(1, $decoded['summary']['resolved']);
+
+        $this->remove($base);
+        $this->remove($head);
     }
 
     public function testGithubReporterEscapesValuesAndDefaultsMissingLocations(): void

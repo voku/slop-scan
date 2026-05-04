@@ -26,6 +26,8 @@ final class DeltaCommand extends Command
             ->addOption('ignore', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Ignore path pattern.')
             ->addOption('base', null, InputOption::VALUE_REQUIRED, 'Base path to compare.')
             ->addOption('head', null, InputOption::VALUE_REQUIRED, 'Head path to compare.')
+            ->addOption('base-config-file', null, InputOption::VALUE_REQUIRED, 'Read base JSON config from this file (absolute or relative to the base path).')
+            ->addOption('head-config-file', null, InputOption::VALUE_REQUIRED, 'Read head JSON config from this file (absolute or relative to the head path).')
             ->addOption('base-report', null, InputOption::VALUE_REQUIRED, 'Existing base report file.')
             ->addOption('head-report', null, InputOption::VALUE_REQUIRED, 'Existing head report file.')
             ->addOption('fail-on', null, InputOption::VALUE_REQUIRED, 'Comma-separated delta statuses that should fail.');
@@ -38,8 +40,18 @@ final class DeltaCommand extends Command
             $base = $this->stringOption($input, 'base') ?? $this->stringArgument($input, 'base-path');
             $head = $this->stringOption($input, 'head') ?? $this->stringArgument($input, 'head-path') ?? '.';
             $delta = Delta::diff(
-                CommandSupport::reportInput($this->stringOption($input, 'base-report'), $base, $ignore),
-                CommandSupport::reportInput($this->stringOption($input, 'head-report'), $head, $ignore),
+                CommandSupport::reportInput(
+                    $this->stringOption($input, 'base-report'),
+                    $base,
+                    $ignore,
+                    $this->stringOption($input, 'base-config-file')
+                ),
+                CommandSupport::reportInput(
+                    $this->stringOption($input, 'head-report'),
+                    $head,
+                    $ignore,
+                    $this->stringOption($input, 'head-config-file')
+                ),
             );
 
             $output->writeln(

@@ -21,7 +21,7 @@ final class CommandSupport
      * @param list<string> $ignore
      * @return array<string,mixed>
      */
-    public static function reportInput(?string $reportPath, ?string $targetPath, array $ignore): array
+    public static function reportInput(?string $reportPath, ?string $targetPath, array $ignore, ?string $configFile = null): array
     {
         if ($reportPath !== null && $reportPath !== '') {
             return ReportCodec::readReport($reportPath);
@@ -31,7 +31,7 @@ final class CommandSupport
             throw new \InvalidArgumentException('Missing delta input.');
         }
 
-        $config = Config::load($targetPath);
+        $config = Config::load($targetPath, $configFile);
         $config['ignores'] = array_values(array_merge($config['ignores'], $ignore));
 
         return (new Analyzer())->analyze($targetPath, $config, DefaultRegistry::create(), ScanCache::defaultPath($targetPath))->toReport();
@@ -212,7 +212,6 @@ final class CommandSupport
     }
 
     /**
-     * @param null|string $path
      * @param list<array{path:string,line:int,column?:int}> $locations
      * @return list<string>
      */
