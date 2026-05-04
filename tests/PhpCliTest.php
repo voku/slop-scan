@@ -1648,7 +1648,7 @@ PHP);
         $this->remove($fixture);
     }
 
-    public function testReturnConstantStubRuleDetectsEmptyAndFalsyConstantReturns(): void
+    public function testReturnConstantStubRuleDetectsStringPlaceholdersButAllowsNullAndArrays(): void
     {
         $fixture = $this->makeFixture();
         mkdir($fixture . '/src', 0777, true);
@@ -1678,10 +1678,16 @@ PHP);
 
         $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
 
-        self::assertSame(3, $this->countForRule($result->findings, 'php.return-constant-stub'));
+        self::assertSame(1, $this->countForRule($result->findings, 'php.return-constant-stub'));
         self::assertSame(['empty_string', 'return=empty-string'], $this->findEvidenceForRuleAndLine($result->findings, 'php.return-constant-stub', 3));
-        self::assertSame(['empty_array', 'return=empty-array'], $this->findEvidenceForRuleAndLine($result->findings, 'php.return-constant-stub', 8));
-        self::assertSame(['null_default', 'return=null'], $this->findEvidenceForRuleAndLine($result->findings, 'php.return-constant-stub', 13));
+        self::assertSame(0, count(array_filter(
+            $result->findings,
+            static fn(Finding $finding): bool => $finding->ruleId === 'php.return-constant-stub' && in_array('return=empty-array', $finding->evidence, true)
+        )));
+        self::assertSame(0, count(array_filter(
+            $result->findings,
+            static fn(Finding $finding): bool => $finding->ruleId === 'php.return-constant-stub' && in_array('return=null', $finding->evidence, true)
+        )));
 
         $this->remove($fixture);
     }

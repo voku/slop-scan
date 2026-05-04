@@ -9,6 +9,7 @@ use SlopScan\Runtime\ProviderContext;
 
 final class ReturnConstantStubRule extends BaseRule
 {
+    private const ALLOWED_DUMMY_RETURNS = ['empty-array', 'null'];
     private const METADATA_ACCESSOR_PATTERN = '/^get_[a-z0-9_]+_(?:name|info)$/i';
     private const PREDICATE_METHOD_PATTERN = '/^(?:is|has|can|supports|should|needs|allows|must|may|was|were)[A-Z0-9_]/';
     private const TEST_DOUBLE_CLASS_PATTERN = '/(?:dummy|stub|fake|mock|test)\b/i';
@@ -31,6 +32,9 @@ final class ReturnConstantStubRule extends BaseRule
         foreach ($functions as $function) {
             $constantReturn = $function['constantReturn'] ?? null;
             if ($constantReturn === null) {
+                continue;
+            }
+            if (in_array($constantReturn, self::ALLOWED_DUMMY_RETURNS, true)) {
                 continue;
             }
 
