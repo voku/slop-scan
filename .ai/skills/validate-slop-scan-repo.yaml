@@ -1,37 +1,42 @@
 name: validate-slop-scan-repo
-purpose: Run the standard validation suite for this repository in a stable order.
+purpose: Validate that a target PHP repository is ready for a useful slop-scan run.
 triggers:
-  - validate the slop-scan repository
-  - run the local validation suite
-  - check whether this branch is ready for review
+  - validate this repo for slop-scan
+  - check whether slop-scan will work on this project
+  - troubleshoot a slop-scan run
 requiredEnvironment:
   workingDirectory: repository root
   runtime:
-    - PHP 8.4-compatible environment for the full suite
-    - Composer
+    - PHP 8.3+
+  tools:
+    - php
   prerequisites:
-    - Install dependencies with composer install before relying on analyse or test commands.
+    - Use a built slop-scan PHAR or run the CLI from a slop-scan checkout.
 inputs:
-  required: []
+  required:
+    - scanPath: Relative path to the repository or subdirectory to scan. Default "."
   optional:
-    - includePharBuild: Boolean flag. Default true
+    - configFile: Relative config path. Omit it when the target repo does not use a config file
+    - outputMode: Preferred output format. Default "json" for agents and "lint" for human review
 commands:
-  - description: Validate composer metadata
-    run: composer validate --strict
-  - description: Lint PHP files
-    run: composer run lint
-  - description: Run static analysis
-    run: composer run analyse
-  - description: Run the PHPUnit suite
-    run: composer run test
-  - description: Dogfood slop-scan on this repository
-    run: composer run scan:self
-  - description: Build the release PHAR
-    run: composer run phar:build
+  - description: Preferred smoke test for agents
+    template: php bin/slop-scan.php scan <scanPath> --json
+    defaults:
+      scanPath: .
+  - description: Preferred smoke test when a config file is present
+    template: php bin/slop-scan.php scan <scanPath> --config-file <configFile> --json
+    defaults:
+      scanPath: .
+      configFile: slop-scan.config.json
+  - description: Human-readable follow-up scan
+    template: php bin/slop-scan.php scan <scanPath> --lint
+    defaults:
+      scanPath: .
 expectedOutputs:
-  - Successful completion of each command in the listed order.
-  - Actionable command failures that identify missing dependencies, incompatible PHP versions, or repository regressions.
+  - A successful scan, either with zero findings or a deterministic list of findings.
+  - Clear command failures that point to missing PHP support, a bad scan path, or an invalid config file path.
 failureHandling:
-  - If phpstan, phpunit, or other Composer-managed tools are unavailable, run composer install and retry.
-  - If the host PHP version is below the project requirement for the full suite, rerun validation in a PHP 8.4-compatible environment.
-  - Stop on the first failing command and report the failing step verbatim.
+  - If the scan reports no matching PHP files, verify that the scan path points at PHP sources such as .php, .phtml, or .inc files.
+  - If the config file path is wrong, retry without --config-file or point it at the correct file.
+  - If JSON output is too verbose for review, rerun the same scan with --lint for line-oriented output.
+  - If the scan succeeds and code changes are still in progress, rerun the scan after each meaningful edit before finishing.

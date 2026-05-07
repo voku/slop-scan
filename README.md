@@ -100,5 +100,5 @@ Those files are the repo-owned source of truth for coding agents such as Copilot
 Current portable skills:
 
 - `scan-php-slop` for deterministic PHP repository scans
-- `validate-slop-scan-repo` for the local validation suite
+- `validate-slop-scan-repo` for scan-readiness checks and slop-scan troubleshooting on a target PHP repository
 - `interpret-slop-scan-json` for machine-readable report review

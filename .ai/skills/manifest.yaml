@@ -20,7 +20,7 @@ skills:
     summary: Scan a PHP repository with slop-scan and collect deterministic findings.
   - id: validate-slop-scan-repo
     file: .ai/skills/validate-slop-scan-repo.yaml
-    summary: Run the repository validation suite used for local development and CI.
+    summary: Validate that a target PHP repository is scan-ready and troubleshoot a slop-scan run.
   - id: interpret-slop-scan-json
     file: .ai/skills/interpret-slop-scan-json.yaml
     summary: Read slop-scan JSON output and turn it into actionable review guidance.
