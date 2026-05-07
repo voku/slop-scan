@@ -1,0 +1,26 @@
+schemaVersion: 1
+description: Vendor-neutral skill manifest for coding agents working in this repository.
+skillSchema:
+  requiredFields:
+    - name
+    - purpose
+    - triggers
+    - requiredEnvironment
+    - inputs
+    - commands
+    - expectedOutputs
+    - failureHandling
+  executionNotes:
+    - Execute commands from the repository root unless a skill says otherwise.
+    - Resolve paths relative to the repository root.
+    - Prefer deterministic, machine-readable output when a skill offers multiple output modes.
+skills:
+  - id: scan-php-slop
+    file: .ai/skills/scan-php-slop.yaml
+    summary: Scan a PHP repository with slop-scan and collect deterministic findings.
+  - id: validate-slop-scan-repo
+    file: .ai/skills/validate-slop-scan-repo.yaml
+    summary: Run the repository validation suite used for local development and CI.
+  - id: interpret-slop-scan-json
+    file: .ai/skills/interpret-slop-scan-json.yaml
+    summary: Read slop-scan JSON output and turn it into actionable review guidance.

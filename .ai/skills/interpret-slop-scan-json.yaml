@@ -1,0 +1,28 @@
+name: interpret-slop-scan-json
+purpose: Turn slop-scan JSON output into prioritized, explainable review guidance.
+triggers:
+  - interpret slop-scan json
+  - summarize scan findings
+  - review a slop-scan report
+requiredEnvironment:
+  workingDirectory: repository root
+  runtime:
+    - PHP 8.3+ when the report must be regenerated
+inputs:
+  required:
+    - reportSource: Existing JSON report content or a path to a JSON report file
+  optional:
+    - scanPath: Relative path to scan when a report must be regenerated. Default "."
+    - configFile: Relative config path when a report must be regenerated. Default "slop-scan.config.json"
+commands:
+  - description: Regenerate machine-readable findings when no JSON report is available
+    template: php bin/slop-scan.php scan <scanPath> --config-file <configFile> --json
+    defaults:
+      scanPath: .
+      configFile: slop-scan.config.json
+expectedOutputs:
+  - Findings grouped and prioritized by severity, ruleId, path, and repeated deltaIdentity values.
+  - Summaries that keep evidence text and locations intact so humans can verify every conclusion.
+failureHandling:
+  - If the available report is not JSON, regenerate the report with --json before interpreting it.
+  - If the report cannot be parsed, surface the parse failure instead of guessing at missing fields.

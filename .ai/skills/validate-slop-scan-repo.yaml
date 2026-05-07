@@ -1,0 +1,37 @@
+name: validate-slop-scan-repo
+purpose: Run the standard validation suite for this repository in a stable order.
+triggers:
+  - validate the slop-scan repository
+  - run the local validation suite
+  - check whether this branch is ready for review
+requiredEnvironment:
+  workingDirectory: repository root
+  runtime:
+    - PHP 8.4-compatible environment for the full suite
+    - Composer
+  prerequisites:
+    - Install dependencies with composer install before relying on analyse or test commands.
+inputs:
+  required: []
+  optional:
+    - includePharBuild: Boolean flag. Default true
+commands:
+  - description: Validate composer metadata
+    run: composer validate --strict
+  - description: Lint PHP files
+    run: composer run lint
+  - description: Run static analysis
+    run: composer run analyse
+  - description: Run the PHPUnit suite
+    run: composer run test
+  - description: Dogfood slop-scan on this repository
+    run: composer run scan:self
+  - description: Build the release PHAR
+    run: composer run phar:build
+expectedOutputs:
+  - Successful completion of each command in the listed order.
+  - Actionable command failures that identify missing dependencies, incompatible PHP versions, or repository regressions.
+failureHandling:
+  - If phpstan, phpunit, or other Composer-managed tools are unavailable, run composer install and retry.
+  - If the host PHP version is below the project requirement for the full suite, rerun validation in a PHP 8.4-compatible environment.
+  - Stop on the first failing command and report the failing step verbatim.
