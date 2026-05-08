@@ -90,3 +90,15 @@ Run the CLI from the repository checkout:
 ```bash
 php bin/slop-scan.php scan .
 ```
+
+## Portable agent skills
+
+This repository keeps vendor-neutral agent skills in [`.ai/skills/manifest.yaml`](.ai/skills/manifest.yaml).
+
+Those files are the repo-owned source of truth for coding agents such as Copilot, Codex, Gemini, or similar tools. Each skill is plain YAML that defines when to use it, which repository command to run, what inputs it expects, what output to prefer, and how to handle common failures.
+
+Current portable skills:
+
+- `scan-php-slop` for deterministic PHP repository scans
+- `validate-slop-scan-repo` for scan-readiness checks and slop-scan troubleshooting on a target PHP repository
+- `interpret-slop-scan-json` for machine-readable report review

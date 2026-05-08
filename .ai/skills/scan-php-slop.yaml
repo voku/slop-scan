@@ -1,0 +1,40 @@
+name: scan-php-slop
+purpose: Run slop-scan against a PHP checkout and capture deterministic findings for agent review.
+triggers:
+  - scan this PHP repository for slop
+  - run slop-scan
+  - check this project with slop-scan
+requiredEnvironment:
+  workingDirectory: repository root
+  runtime:
+    - PHP 8.3+
+  tools:
+    - php
+  prerequisites:
+    - Use the repository config at slop-scan.config.json when scanning this checkout.
+inputs:
+  required:
+    - scanPath: Relative path to scan. Default "."
+  optional:
+    - configFile: Relative config path. Default "slop-scan.config.json"
+    - outputMode: Preferred output format. Default "json" for agent consumption
+commands:
+  - description: Preferred machine-readable scan for agents
+    template: php bin/slop-scan.php scan <scanPath> --config-file <configFile> --json
+    defaults:
+      scanPath: .
+      configFile: slop-scan.config.json
+  - description: Follow-up lint-style scan for line-oriented review output
+    template: php bin/slop-scan.php scan <scanPath> --config-file <configFile> --lint
+    defaults:
+      scanPath: .
+      configFile: slop-scan.config.json
+expectedOutputs:
+  - JSON findings that include ruleId, severity, score, evidence, locations, and deltaIdentity.
+  - A lint-style report suitable for terminal review when line-oriented output is easier to inspect.
+failureHandling:
+  - If the source checkout command fails because dependencies are missing, run composer install and retry.
+  - If agents need annotation-oriented output for CI or review tools, rerun the scan with --github.
+  - If a repository does not have a config file, omit --config-file instead of guessing another location.
+validationFollowUp:
+  - When scan output changes after code edits in this repository, rerun composer run scan:self before finishing.

@@ -1,0 +1,42 @@
+name: validate-slop-scan-repo
+purpose: Validate that a target PHP repository is ready for a useful slop-scan run.
+triggers:
+  - validate this repo for slop-scan
+  - check whether slop-scan will work on this project
+  - troubleshoot a slop-scan run
+requiredEnvironment:
+  workingDirectory: repository root
+  runtime:
+    - PHP 8.3+
+  tools:
+    - php
+  prerequisites:
+    - Use a built slop-scan PHAR or run the CLI from a slop-scan checkout.
+inputs:
+  required:
+    - scanPath: Relative path to the repository or subdirectory to scan. Default "."
+  optional:
+    - configFile: Relative config path. Omit it when the target repo does not use a config file
+    - outputMode: Preferred output format. Default "json" for agents and "lint" for human review
+commands:
+  - description: Preferred smoke test for agents
+    template: php bin/slop-scan.php scan <scanPath> --json
+    defaults:
+      scanPath: .
+  - description: Preferred smoke test when a config file is present
+    template: php bin/slop-scan.php scan <scanPath> --config-file <configFile> --json
+    defaults:
+      scanPath: .
+      configFile: slop-scan.config.json
+  - description: Human-readable follow-up scan
+    template: php bin/slop-scan.php scan <scanPath> --lint
+    defaults:
+      scanPath: .
+expectedOutputs:
+  - A successful scan, either with zero findings or a deterministic list of findings.
+  - Clear command failures that point to missing PHP support, a bad scan path, or an invalid config file path.
+failureHandling:
+  - If the scan reports no matching PHP files, verify that the scan path points at PHP sources such as .php, .phtml, or .inc files.
+  - If the config file path is wrong, retry without --config-file or point it at the correct file.
+  - If JSON output is too verbose for review, rerun the same scan with --lint for line-oriented output.
+  - If the scan succeeds and code changes are still in progress, rerun the scan after each meaningful edit before finishing.

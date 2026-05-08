@@ -5,9 +5,12 @@
 ## Start here
 
 - `README.md` for product behavior and CLI expectations.
+- `.ai/skills/manifest.yaml` for vendor-neutral, repo-owned agent skills shared across Copilot, Codex, Gemini, and similar tools.
 - `src/` for the PHP implementation, organized into focused directories for contracts, facts, models, reporters, rules, runtime state, and shared support code.
 - `tests/PhpCliTest.php` for behavioral expectations.
 - `slop-scan.config.json` for the repository self-scan config.
+
+Use `AGENTS.md` for repository-wide context and the `.ai/skills/` files for task-specific command recipes.
 
 ## Mental model
 
