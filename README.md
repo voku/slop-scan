@@ -6,9 +6,11 @@
 
 # 💩 slop-scan
 
-slop-scan: Deterministic PHP CLI for finding explainable slop patterns in PHP repositories.
+`slop-scan` is a deterministic PHP CLI for maintainers and reviewers who want explainable slop findings in PHP repositories.
 
-`slop-scan` is a static-analysis style heuristic scanner. It is **not** an authorship detector. It reports concrete findings with rule IDs, evidence, scores, and stable occurrence fingerprints so results can be reviewed, compared, and tracked over time.
+Install the latest PHAR from GitHub Releases, or run `php bin/slop-scan.php scan .` from a checkout, to flag patterns such as empty catches, placeholder bodies, suppressions, and clone clusters with rule IDs, evidence, scores, and stable occurrence fingerprints.
+
+It is a static-analysis style heuristic scanner. It is **not** an authorship detector.
 
 This repository started from a fork of [`modem-dev/slop-scan`](https://github.com/modem-dev/slop-scan) and was rewritten in PHP with Codex so it fits PHP tooling, packaging, and CI workflows directly.
 

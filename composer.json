@@ -1,6 +1,14 @@
 {
     "name": "voku/slop-scan",
-    "description": "Deterministic PHP CLI for explainable slop heuristics in PHP repositories.",
+    "description": "Deterministic PHP CLI that reports explainable slop heuristics in PHP repositories.",
+    "keywords": [
+        "php",
+        "cli",
+        "static-analysis",
+        "code-quality",
+        "heuristics"
+    ],
+    "homepage": "https://github.com/voku/slop-scan",
     "type": "project",
     "require": {
         "php": "^8.3",
@@ -19,6 +27,21 @@
         {
             "name": "Lars Moelleken",
             "email": "lars@moelleken.org"
+        }
+    ],
+    "support": {
+        "docs": "https://github.com/voku/slop-scan#readme",
+        "issues": "https://github.com/voku/slop-scan/issues",
+        "source": "https://github.com/voku/slop-scan"
+    },
+    "funding": [
+        {
+            "type": "patreon",
+            "url": "https://www.patreon.com/voku"
+        },
+        {
+            "type": "other",
+            "url": "https://www.paypal.me/moelleken"
         }
     ],
     "autoload": {
