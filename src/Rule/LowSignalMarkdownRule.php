@@ -64,11 +64,11 @@ final class LowSignalMarkdownRule extends BaseRule
         $minContentLines = (int) ($context->ruleConfig['options']['minContentLines'] ?? self::DEFAULT_MIN_CONTENT_LINES);
         $minBoilerplateLines = (int) ($context->ruleConfig['options']['minBoilerplateLines'] ?? self::DEFAULT_MIN_BOILERPLATE_LINES);
         $maxRepoAnchors = (int) ($context->ruleConfig['options']['maxRepoAnchors'] ?? self::DEFAULT_MAX_REPO_ANCHORS);
-        $boilerplateScore = $signals['boilerplateLines'] + ($signals['suspiciousFilename'] ? self::FILENAME_ARTIFACT_BONUS : 0);
+        $effectiveBoilerplateLines = $signals['boilerplateLines'] + ($signals['suspiciousFilename'] ? self::FILENAME_ARTIFACT_BONUS : 0);
 
         if (
             $signals['contentLines'] < $minContentLines
-            || $boilerplateScore < $minBoilerplateLines
+            || $effectiveBoilerplateLines < $minBoilerplateLines
             || $signals['descriptiveLines'] >= 2
             || $signals['repoAnchors'] > $maxRepoAnchors
             || (
@@ -76,7 +76,7 @@ final class LowSignalMarkdownRule extends BaseRule
                 && $signals['genericHeadings'] < self::DEFAULT_MIN_GENERIC_HEADINGS
                 && $signals['checklistLines'] < self::DEFAULT_MIN_CHECKLIST_LINES
             )
-            || ($signals['repoAnchors'] * self::REPO_ANCHOR_WEIGHT) >= ($boilerplateScore + self::REPO_ANCHOR_OFFSET)
+            || self::hasEnoughRepoAnchorsForBoilerplate($signals['repoAnchors'], $effectiveBoilerplateLines)
         ) {
             return [];
         }
@@ -205,6 +205,11 @@ final class LowSignalMarkdownRule extends BaseRule
     private static function isDescriptiveLine(string $line): bool
     {
         return str_word_count(preg_replace('/[^A-Za-z0-9\'-]+/', ' ', $line) ?? '') >= 8;
+    }
+
+    private static function hasEnoughRepoAnchorsForBoilerplate(int $repoAnchors, int $effectiveBoilerplateLines): bool
+    {
+        return ($repoAnchors * self::REPO_ANCHOR_WEIGHT) >= ($effectiveBoilerplateLines + self::REPO_ANCHOR_OFFSET);
     }
 
     /** @param list<string> $keywords */

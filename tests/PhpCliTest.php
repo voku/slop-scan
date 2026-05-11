@@ -373,7 +373,7 @@ PHP);
         self::assertNotContains('php.duplicate-function-signatures', $this->ruleIds($result->findings));
     }
 
-    public function testDiscovererSkipsUnsupportedFilesAndAnalyzerHandlesEmptyRepos(): void
+    public function testDiscovererSkipsNonPhpAndNonMarkdownFilesAndAnalyzerHandlesEmptyRepos(): void
     {
         $fixture = $this->makeFixture();
         file_put_contents($fixture . '/notes.txt', "ignored\n");
@@ -697,7 +697,7 @@ PHP);
             'return constant stub' => ['return-constant-stub.fixture', 'src/ReturnConstantStub.php', 'php.return-constant-stub'],
             'placeholder method body' => ['placeholder-method-body.fixture', 'src/PlaceholderMethodBody.php', 'php.placeholder-method-bodies'],
             'type escape hotspot' => ['type-escape-hotspot.fixture', 'src/TypeEscapeHotspot.php', 'php.type-escape-hotspots'],
-            'low signal markdown' => ['low-signal-markdown.fixture', 'docs/implementation-summary.md', 'markdown.low-signal'],
+            'low-signal markdown' => ['low-signal-markdown.fixture', 'docs/implementation-summary.md', 'markdown.low-signal'],
         ];
     }
 
