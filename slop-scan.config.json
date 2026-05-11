@@ -31,6 +31,14 @@
           "enabled": false
         }
       }
+    },
+    {
+      "path": "tests/**",
+      "rules": {
+        "php.magic-numbers": {
+          "enabled": false
+        }
+      }
     }
   ]
 }
