@@ -1,0 +1,7 @@
+# Implementation Summary
+
+The analyzer walks the repository, loads file facts, and runs rules in a deterministic order so results stay stable across runs.
+
+The Markdown detector compares generic workflow language against concrete explanations of behavior and contributor expectations.
+
+The goal of this document is to explain design trade-offs, not to track task progress.

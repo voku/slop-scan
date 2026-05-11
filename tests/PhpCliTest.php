@@ -731,6 +731,9 @@ PHP);
             'contributing markdown' => ['contributing-markdown.fixture', 'docs/contributing.md'],
             'release checklist markdown' => ['release-checklist-markdown.fixture', 'docs/release-checklist.md'],
             'architecture markdown' => ['architecture-markdown.fixture', 'docs/architecture.md'],
+            'migration notes markdown' => ['migration-notes-markdown.fixture', 'docs/migration-notes.md'],
+            'status markdown' => ['status-markdown.fixture', 'docs/status.md'],
+            'implementation summary markdown' => ['implementation-summary-markdown.fixture', 'docs/implementation-summary.md'],
         ];
     }
 

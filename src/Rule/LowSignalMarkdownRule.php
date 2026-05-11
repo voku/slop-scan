@@ -69,6 +69,7 @@ final class LowSignalMarkdownRule extends BaseRule
         if (
             $signals['contentLines'] < $minContentLines
             || $boilerplateScore < $minBoilerplateLines
+            || $signals['descriptiveLines'] >= 2
             || $signals['repoAnchors'] > $maxRepoAnchors
             || (
                 !$signals['suspiciousFilename']
@@ -109,13 +110,14 @@ final class LowSignalMarkdownRule extends BaseRule
     }
 
     /**
-     * @return array{boilerplateLines:int,checklistLines:int,contentLines:int,firstBoilerplateLine:?int,genericHeadings:int,repoAnchors:int,suspiciousFilename:bool}
+     * @return array{boilerplateLines:int,checklistLines:int,contentLines:int,descriptiveLines:int,firstBoilerplateLine:?int,genericHeadings:int,repoAnchors:int,suspiciousFilename:bool}
      */
     private function signals(string $fileName, string $text): array
     {
         $boilerplateLines = 0;
         $checklistLines = 0;
         $contentLines = 0;
+        $descriptiveLines = 0;
         $firstBoilerplateLine = null;
         $genericHeadings = 0;
         $repoAnchors = 0;
@@ -149,7 +151,10 @@ final class LowSignalMarkdownRule extends BaseRule
             if ($hasRepoAnchor) {
                 $repoAnchors++;
             }
-            if (!$isGenericHeading && !$isGenericBullet && !$isGenericProcess && !$isChecklist) {
+            if (!$isGenericHeading && !$isGenericBullet && !$isGenericProcess) {
+                if (!$isChecklist && self::isDescriptiveLine($trimmed)) {
+                    $descriptiveLines++;
+                }
                 continue;
             }
 
@@ -161,6 +166,7 @@ final class LowSignalMarkdownRule extends BaseRule
             'boilerplateLines' => $boilerplateLines,
             'checklistLines' => $checklistLines,
             'contentLines' => $contentLines,
+            'descriptiveLines' => $descriptiveLines,
             'firstBoilerplateLine' => $firstBoilerplateLine,
             'genericHeadings' => $genericHeadings,
             'repoAnchors' => $repoAnchors,
@@ -194,6 +200,11 @@ final class LowSignalMarkdownRule extends BaseRule
             || preg_match(self::MARKDOWN_LINK_PATTERN, $line) === 1
             || preg_match(self::FILE_PATH_PATTERN, $line) === 1
             || preg_match(self::COMMAND_PATTERN, $line) === 1;
+    }
+
+    private static function isDescriptiveLine(string $line): bool
+    {
+        return str_word_count(preg_replace('/[^A-Za-z0-9\'-]+/', ' ', $line) ?? '') >= 8;
     }
 
     /** @param list<string> $keywords */
