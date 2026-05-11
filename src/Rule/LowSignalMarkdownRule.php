@@ -14,10 +14,11 @@ final class LowSignalMarkdownRule extends BaseRule
     private const DEFAULT_MAX_REPO_ANCHORS = 2;
     private const DEFAULT_MIN_GENERIC_HEADINGS = 2;
     private const DEFAULT_MIN_CHECKLIST_LINES = 2;
+    private const FILENAME_ARTIFACT_BONUS = 1;
     private const REPO_ANCHOR_WEIGHT = 2;
     private const REPO_ANCHOR_OFFSET = 1;
     private const FINDING_SCORE = 0.75;
-    private const SUSPICIOUS_FILENAME_PATTERN = '/(?:^|[-_.])(agent|analysis|checklist|implementation|notes|plan|progress|prompt|report|status|summary|task|todo)(?:[-_.]|$)/i';
+    private const GENERIC_ARTIFACT_FILENAME_PATTERN = '/(?:^|[-_.])(agent|analysis|checklist|implementation|notes|plan|progress|prompt|report|status|summary|task|todo)(?:[-_.]|$)/i';
     private const GENERIC_HEADING_PATTERN = '/^(?:#+\s*)?(?:summary|overview|changes?|implementation|testing|validation|next steps|follow-up|notes?|status|checklist|plan|prompt|completed work|remaining work)\b/i';
     private const GENERIC_BULLET_PATTERN = '/^(?:[-*+]|\d+\.)\s+(?:\[[ xX]\]\s*)?(?:summary|overview|changes?|implementation|testing|validation|next steps|follow-up|notes?|status|checklist|plan|prompt|completed work|remaining work)\b/i';
     private const GENERIC_PROCESS_PATTERN = '/\b(?:implemented|updated|added|removed|validated|completed|remaining work|follow-up|next steps|this document|the following changes|successfully)\b/i';
@@ -41,7 +42,7 @@ final class LowSignalMarkdownRule extends BaseRule
         $minContentLines = (int) ($context->ruleConfig['options']['minContentLines'] ?? self::DEFAULT_MIN_CONTENT_LINES);
         $minBoilerplateLines = (int) ($context->ruleConfig['options']['minBoilerplateLines'] ?? self::DEFAULT_MIN_BOILERPLATE_LINES);
         $maxRepoAnchors = (int) ($context->ruleConfig['options']['maxRepoAnchors'] ?? self::DEFAULT_MAX_REPO_ANCHORS);
-        $boilerplateScore = $signals['boilerplateLines'] + ($signals['suspiciousFilename'] ? 1 : 0);
+        $boilerplateScore = $signals['boilerplateLines'] + ($signals['suspiciousFilename'] ? self::FILENAME_ARTIFACT_BONUS : 0);
 
         if (
             $signals['contentLines'] < $minContentLines
@@ -140,7 +141,7 @@ final class LowSignalMarkdownRule extends BaseRule
             'firstBoilerplateLine' => $firstBoilerplateLine,
             'genericHeadings' => $genericHeadings,
             'repoAnchors' => $repoAnchors,
-            'suspiciousFilename' => preg_match(self::SUSPICIOUS_FILENAME_PATTERN, basename($context->file->path)) === 1,
+            'suspiciousFilename' => preg_match(self::GENERIC_ARTIFACT_FILENAME_PATTERN, basename($context->file->path)) === 1,
         ];
     }
 }

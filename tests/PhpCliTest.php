@@ -2690,6 +2690,28 @@ MD);
         }
     }
 
+    public function testMarkdownFilesAreDiscoveredWithoutLowSignalFindingWhenConcrete(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/docs', 0777, true);
+        file_put_contents($fixture . '/docs/Guide.md', <<<'MD'
+# Guide
+
+See `src/Analyzer.php` for scan orchestration.
+MD);
+
+        try {
+            $discovery = Discoverer::discover($fixture, Config::defaults(), DefaultRegistry::create());
+            $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+            self::assertSame(['docs/Guide.md'], array_map(static fn(FileRecord $file): string => $file->path, $discovery['files']));
+            self::assertSame(1, $result->summary['fileCount']);
+            self::assertSame([], $this->ruleIds($result->findings));
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
     public function testMarkdownLowSignalRuleStaysQuietForConcreteDocs(): void
     {
         $fixture = $this->makeFixture();
