@@ -734,6 +734,8 @@ PHP);
             'migration notes markdown' => ['migration-notes-markdown.fixture', 'docs/migration-notes.md'],
             'status markdown' => ['status-markdown.fixture', 'docs/status.md'],
             'implementation summary markdown' => ['implementation-summary-markdown.fixture', 'docs/implementation-summary.md'],
+            'task summary markdown with prose' => ['task-summary-with-prose-markdown.fixture', 'docs/task-summary.md'],
+            'status markdown with anchors' => ['status-with-anchors-markdown.fixture', 'docs/status-with-anchors.md'],
         ];
     }
 

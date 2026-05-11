@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Added release notes for the Markdown low-signal detector ahead of the next cut, including clearer rule guidance for descriptive prose, repository anchors, and checklist-heavy docs.
+- Expanded Markdown regression coverage so generic artifact-style docs stay quiet when they contain enough concrete prose or repository-specific commands and file references.
+
 ## 0.1.2 - 2026-05-04
 
 - Forked the original idea from [`modem-dev/slop-scan`](https://github.com/modem-dev/slop-scan).
