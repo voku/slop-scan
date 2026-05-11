@@ -1,0 +1,6 @@
+<?php
+
+function magic_number_total(array $values): int
+{
+    return array_sum($values) + 42;
+}

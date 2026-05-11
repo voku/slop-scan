@@ -17,12 +17,12 @@
     {
       "path": "src/Rule",
       "rules": {
-        "php.directory-fanout-hotspot": {
-          "options": {
-            "fileCount": 23
+            "php.directory-fanout-hotspot": {
+              "options": {
+                "fileCount": 24
+              }
+            }
           }
-        }
-      }
     },
     {
       "path": "src/Fact/PhpFacts.php",

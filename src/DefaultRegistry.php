@@ -27,6 +27,7 @@ use SlopScan\Rule\ErrorObscuringCatchRule;
 use SlopScan\Rule\ErrorSwallowingRule;
 use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
 use SlopScan\Rule\MockHeavyTestsWithoutAssertionsRule;
+use SlopScan\Rule\MagicNumbersRule;
 use SlopScan\Rule\MisleadingPhpDocTypesRule;
 use SlopScan\Rule\OverFragmentationRule;
 use SlopScan\Rule\PassThroughWrappersRule;
@@ -58,6 +59,7 @@ final class DefaultRegistry
             new CatchReturnsExceptionMessageRule(),
             new DebugOutputRule(),
             new MockHeavyTestsWithoutAssertionsRule(),
+            new MagicNumbersRule(),
             new MisleadingPhpDocTypesRule(),
             new PlaceholderCommentsRule(),
             new PassThroughWrappersRule(),

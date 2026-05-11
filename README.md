@@ -62,7 +62,7 @@ If your repository keeps its config outside the scan root, point the scan at it 
 ## What it ships with
 
 - Deterministic findings with stable occurrence fingerprints for review, delta comparisons, and baseline workflows.
-- Built-in PHP heuristics for patterns such as empty catches, error swallowing, blanket suppressions, placeholder bodies, clone clusters, and type-escape hotspots.
+- Built-in PHP heuristics for patterns such as empty catches, error swallowing, blanket suppressions, magic numbers, placeholder bodies, clone clusters, and type-escape hotspots.
 - Multiple output targets including text, lint, JSON, GitHub annotations, TOON, and NDJSON.
 - Repo-friendly controls including path ignores, per-rule overrides, PHPStan-style `ignoreErrors`, and inline `@slop-scan-ignore` directives.
 - Reusable per-file scan caching via `.slop-scan.cache.json` and a `stats` command for repository-level summaries.
