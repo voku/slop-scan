@@ -18,11 +18,13 @@ final class LowSignalMarkdownRule extends BaseRule
     private const REPO_ANCHOR_WEIGHT = 2;
     private const REPO_ANCHOR_OFFSET = 1;
     private const FINDING_SCORE = 0.75;
-    private const GENERIC_ARTIFACT_FILENAME_PATTERN = '/(?:^|[-_.])(analysis|checklist|implementation|notes|plan|progress|report|status|summary|task|todo)(?:[-_.]|$)/i';
-    private const GENERIC_HEADING_PATTERN = '/^(?:#+\s*)?(?:summary|overview|changes?|implementation|testing|validation|next steps|follow-up|notes?|status|checklist|plan|prompt|completed work|remaining work)\b/i';
-    private const GENERIC_BULLET_PATTERN = '/^(?:[-*+]|\d+\.)\s+(?:\[[ xX]\]\s*)?(?:summary|overview|changes?|implementation|testing|validation|next steps|follow-up|notes?|status|checklist|plan|prompt|completed work|remaining work)\b/i';
-    private const GENERIC_PROCESS_PATTERN = '/\b(?:implemented|updated|added|removed|validated|completed|remaining work|follow-up|next steps|this document|the following changes|successfully)\b/i';
-    private const REPO_ANCHOR_PATTERN = '/(?:`[^`]+`|\[[^\]]+\]\([^)]+\)|(?:^|[\s(])(?:\.{0,2}\/)?(?:[A-Za-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.[A-Za-z0-9]+(?:[:#]\d+)?|(?:^|\s)(?:composer|php|vendor\/bin\/[A-Za-z0-9_.-]+|bin\/[A-Za-z0-9_.-]+)\b)/i';
+    private const ARTIFACT_FILENAME_KEYWORDS = ['analysis', 'checklist', 'implementation', 'notes', 'plan', 'progress', 'report', 'status', 'summary', 'task', 'todo'];
+    private const GENERIC_SECTION_KEYWORDS = ['summary', 'overview', 'change', 'changes', 'implementation', 'testing', 'validation', 'next steps', 'follow-up', 'note', 'notes', 'status', 'checklist', 'plan', 'completed work', 'remaining work'];
+    private const GENERIC_PROCESS_KEYWORDS = ['implemented', 'updated', 'added', 'removed', 'validated', 'completed', 'remaining work', 'follow-up', 'next steps', 'this document', 'the following changes', 'successfully'];
+    private const INLINE_CODE_PATTERN = '/`[^`]+`/';
+    private const MARKDOWN_LINK_PATTERN = '/\[[^\]]+\]\([^)]+\)/';
+    private const FILE_PATH_PATTERN = '/(?:^|[\s(])(?:\.{0,2}\/)?(?:[A-Za-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.[A-Za-z0-9]+(?:[:#]\d+)?/i';
+    private const COMMAND_PATTERN = '/(?:^|\s)(?:composer|php|vendor\/bin\/[A-Za-z0-9_.-]+|bin\/[A-Za-z0-9_.-]+)\b/i';
 
     public function id(): string
     {
@@ -133,10 +135,10 @@ final class LowSignalMarkdownRule extends BaseRule
 
             $contentLines++;
             $isChecklist = preg_match('/^(?:[-*+]|\d+\.)\s+\[[ xX]\]/', $trimmed) === 1;
-            $isGenericHeading = preg_match(self::GENERIC_HEADING_PATTERN, $trimmed) === 1;
-            $isGenericBullet = preg_match(self::GENERIC_BULLET_PATTERN, $trimmed) === 1;
-            $isGenericProcess = preg_match(self::GENERIC_PROCESS_PATTERN, $trimmed) === 1;
-            $hasRepoAnchor = preg_match(self::REPO_ANCHOR_PATTERN, $trimmed) === 1;
+            $isGenericHeading = preg_match(self::genericHeadingPattern(), $trimmed) === 1;
+            $isGenericBullet = preg_match(self::genericBulletPattern(), $trimmed) === 1;
+            $isGenericProcess = preg_match(self::genericProcessPattern(), $trimmed) === 1;
+            $hasRepoAnchor = self::hasRepoAnchor($trimmed);
 
             if ($isChecklist) {
                 $checklistLines++;
@@ -162,7 +164,41 @@ final class LowSignalMarkdownRule extends BaseRule
             'firstBoilerplateLine' => $firstBoilerplateLine,
             'genericHeadings' => $genericHeadings,
             'repoAnchors' => $repoAnchors,
-            'suspiciousFilename' => preg_match(self::GENERIC_ARTIFACT_FILENAME_PATTERN, $fileName) === 1,
+            'suspiciousFilename' => preg_match(self::artifactFilenamePattern(), $fileName) === 1,
         ];
+    }
+
+    private static function artifactFilenamePattern(): string
+    {
+        return '/(?:^|[-_.])(?:' . self::keywordAlternation(self::ARTIFACT_FILENAME_KEYWORDS) . ')(?:[-_.]|$)/i';
+    }
+
+    private static function genericHeadingPattern(): string
+    {
+        return '/^(?:#+\s*)?(?:' . self::keywordAlternation(self::GENERIC_SECTION_KEYWORDS) . ')\b/i';
+    }
+
+    private static function genericBulletPattern(): string
+    {
+        return '/^(?:[-*+]|\d+\.)\s+(?:\[[ xX]\]\s*)?(?:' . self::keywordAlternation(self::GENERIC_SECTION_KEYWORDS) . ')\b/i';
+    }
+
+    private static function genericProcessPattern(): string
+    {
+        return '/\b(?:' . self::keywordAlternation(self::GENERIC_PROCESS_KEYWORDS) . ')\b/i';
+    }
+
+    private static function hasRepoAnchor(string $line): bool
+    {
+        return preg_match(self::INLINE_CODE_PATTERN, $line) === 1
+            || preg_match(self::MARKDOWN_LINK_PATTERN, $line) === 1
+            || preg_match(self::FILE_PATH_PATTERN, $line) === 1
+            || preg_match(self::COMMAND_PATTERN, $line) === 1;
+    }
+
+    /** @param list<string> $keywords */
+    private static function keywordAlternation(array $keywords): string
+    {
+        return implode('|', array_map(static fn(string $keyword): string => preg_quote($keyword, '/'), $keywords));
     }
 }
