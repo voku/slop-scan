@@ -697,6 +697,7 @@ PHP);
             'return constant stub' => ['return-constant-stub.fixture', 'src/ReturnConstantStub.php', 'php.return-constant-stub'],
             'placeholder method body' => ['placeholder-method-body.fixture', 'src/PlaceholderMethodBody.php', 'php.placeholder-method-bodies'],
             'type escape hotspot' => ['type-escape-hotspot.fixture', 'src/TypeEscapeHotspot.php', 'php.type-escape-hotspots'],
+            'low signal markdown' => ['low-signal-markdown.fixture', 'docs/implementation-summary.md', 'markdown.low-signal'],
         ];
     }
 
@@ -726,6 +727,10 @@ PHP);
             'error wrapping with previous' => ['error-wrapping-with-previous.fixture', 'src/ErrorWrappingWithPrevious.php'],
             'test with mocks and assertions' => ['test-with-mocks-and-real-assertions.fixture', 'tests/MockAssertionsTest.php'],
             'helpful phpdoc types' => ['helpful-phpdoc-types.fixture', 'src/HelpfulPhpDoc.php'],
+            'installation markdown' => ['installation-guide-markdown.fixture', 'docs/installation.md'],
+            'contributing markdown' => ['contributing-markdown.fixture', 'docs/contributing.md'],
+            'release checklist markdown' => ['release-checklist-markdown.fixture', 'docs/release-checklist.md'],
+            'architecture markdown' => ['architecture-markdown.fixture', 'docs/architecture.md'],
         ];
     }
 
@@ -2661,39 +2666,17 @@ PHP);
         }
     }
 
-    public function testMarkdownLowSignalRuleFlagsGenericAgentStyleArtifacts(): void
+    public function testMarkdownLowSignalFixtureReportsExpectedEvidence(): void
     {
-        $fixture = $this->makeFixture();
-        mkdir($fixture . '/docs', 0777, true);
-        file_put_contents($fixture . '/docs/implementation-summary.md', <<<'MD'
-# Summary
+        $result = $this->scanStoredFixture('slop', 'low-signal-markdown.fixture', 'docs/implementation-summary.md');
+        $evidence = $this->firstEvidenceForRule($result->findings, 'markdown.low-signal');
 
-- [x] Completed work
-- [x] Updated changes
-
-## Testing
-
-- Validation pending
-
-## Next Steps
-
-- Follow-up later
-MD);
-
-        try {
-            $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
-            $evidence = $this->firstEvidenceForRule($result->findings, 'markdown.low-signal');
-
-            self::assertContains('markdown.low-signal', $this->ruleIds($result->findings));
-            self::assertContains('filename=implementation-summary.md', $evidence);
-            self::assertContains('boilerplateLines=7', $evidence);
-            self::assertContains('genericHeadings=3', $evidence);
-            self::assertContains('checklistLines=2', $evidence);
-            self::assertContains('repoAnchors=0', $evidence);
-            self::assertContains('filenamePattern=generic-artifact', $evidence);
-        } finally {
-            $this->remove($fixture);
-        }
+        self::assertContains('filename=implementation-summary.md', $evidence);
+        self::assertContains('boilerplateLines=7', $evidence);
+        self::assertContains('genericHeadings=3', $evidence);
+        self::assertContains('checklistLines=2', $evidence);
+        self::assertContains('repoAnchors=0', $evidence);
+        self::assertContains('filenamePattern=generic-artifact', $evidence);
     }
 
     public function testMarkdownFilesAreDiscoveredWithoutLowSignalFindingWhenConcrete(): void
@@ -2713,31 +2696,6 @@ MD);
             self::assertSame(['docs/Guide.md'], array_map(static fn(FileRecord $file): string => $file->path, $discovery['files']));
             self::assertSame(1, $result->summary['fileCount']);
             self::assertSame([], $this->ruleIds($result->findings));
-        } finally {
-            $this->remove($fixture);
-        }
-    }
-
-    public function testMarkdownLowSignalRuleStaysQuietForConcreteDocs(): void
-    {
-        $fixture = $this->makeFixture();
-        mkdir($fixture . '/docs', 0777, true);
-        file_put_contents($fixture . '/docs/installation.md', <<<'MD'
-# Installation
-
-Run `composer run test` before you change `src/Analyzer.php`.
-
-See `docs/rules.md` for the built-in rule list.
-
-```bash
-php bin/slop-scan.php scan . --json
-```
-MD);
-
-        try {
-            $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
-
-            self::assertNotContains('markdown.low-signal', $this->ruleIds($result->findings));
         } finally {
             $this->remove($fixture);
         }

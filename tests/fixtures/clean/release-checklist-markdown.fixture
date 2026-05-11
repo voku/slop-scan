@@ -1,0 +1,8 @@
+# Release Checklist
+
+- [ ] Run `composer validate --strict`
+- [ ] Run `composer run phar:build`
+- [ ] Verify `dist/slop-scan.phar --help`
+- [ ] Review `README.md` and `docs/installation.md` for release-specific notes
+
+Record the published version in `CHANGELOG.md` after the release is cut.

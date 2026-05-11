@@ -1,0 +1,10 @@
+# Contributing
+
+Start with [Development](../../docs/development.md) and review `tests/PhpCliTest.php` before changing assertions.
+
+When you add a rule under `src/Rule/`, update `src/DefaultRegistry.php` and run:
+
+```bash
+composer run analyse
+composer run test
+```
