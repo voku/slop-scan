@@ -24,11 +24,30 @@ final class LowSignalMarkdownRule extends BaseRule
     private const GENERIC_PROCESS_PATTERN = '/\b(?:implemented|updated|added|removed|validated|completed|remaining work|follow-up|next steps|this document|the following changes|successfully)\b/i';
     private const REPO_ANCHOR_PATTERN = '/(?:`[^`]+`|\[[^\]]+\]\([^)]+\)|(?:^|[\s(])(?:\.{0,2}\/)?(?:[A-Za-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.[A-Za-z0-9]+(?:[:#]\d+)?|(?:^|\s)(?:composer|php|vendor\/bin\/[A-Za-z0-9_.-]+|bin\/[A-Za-z0-9_.-]+)\b)/i';
 
-    public function id(): string { return 'markdown.low-signal'; }
-    public function family(): string { return 'docs'; }
-    public function severity(): string { return 'weak'; }
-    public function scope(): string { return 'file'; }
-    public function requires(): array { return ['file.text']; }
+    public function id(): string
+    {
+        return 'markdown.low-signal';
+    }
+
+    public function family(): string
+    {
+        return 'docs';
+    }
+
+    public function severity(): string
+    {
+        return 'weak';
+    }
+
+    public function scope(): string
+    {
+        return 'file';
+    }
+
+    public function requires(): array
+    {
+        return ['file.text'];
+    }
 
     public function supports(ProviderContext $context): bool
     {
@@ -38,7 +57,8 @@ final class LowSignalMarkdownRule extends BaseRule
     public function evaluate(ProviderContext $context): array
     {
         $text = (string) ($context->runtime->store->getFileFact($context->file->path, 'file.text') ?? '');
-        $signals = $this->signals($context, $text);
+        $fileName = basename($context->file->path);
+        $signals = $this->signals($fileName, $text);
         $minContentLines = (int) ($context->ruleConfig['options']['minContentLines'] ?? self::DEFAULT_MIN_CONTENT_LINES);
         $minBoilerplateLines = (int) ($context->ruleConfig['options']['minBoilerplateLines'] ?? self::DEFAULT_MIN_BOILERPLATE_LINES);
         $maxRepoAnchors = (int) ($context->ruleConfig['options']['maxRepoAnchors'] ?? self::DEFAULT_MAX_REPO_ANCHORS);
@@ -59,7 +79,7 @@ final class LowSignalMarkdownRule extends BaseRule
         }
 
         $evidence = [
-            'filename=' . basename($context->file->path),
+            'filename=' . $fileName,
             'boilerplateLines=' . $signals['boilerplateLines'],
             'genericHeadings=' . $signals['genericHeadings'],
             'checklistLines=' . $signals['checklistLines'],
@@ -89,7 +109,7 @@ final class LowSignalMarkdownRule extends BaseRule
     /**
      * @return array{boilerplateLines:int,checklistLines:int,contentLines:int,firstBoilerplateLine:?int,genericHeadings:int,repoAnchors:int,suspiciousFilename:bool}
      */
-    private function signals(ProviderContext $context, string $text): array
+    private function signals(string $fileName, string $text): array
     {
         $boilerplateLines = 0;
         $checklistLines = 0;
@@ -141,7 +161,7 @@ final class LowSignalMarkdownRule extends BaseRule
             'firstBoilerplateLine' => $firstBoilerplateLine,
             'genericHeadings' => $genericHeadings,
             'repoAnchors' => $repoAnchors,
-            'suspiciousFilename' => preg_match(self::GENERIC_ARTIFACT_FILENAME_PATTERN, basename($context->file->path)) === 1,
+            'suspiciousFilename' => preg_match(self::GENERIC_ARTIFACT_FILENAME_PATTERN, $fileName) === 1,
         ];
     }
 }
