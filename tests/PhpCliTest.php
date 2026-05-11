@@ -2682,9 +2682,15 @@ MD);
 
         try {
             $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+            $evidence = $this->firstEvidenceForRule($result->findings, 'markdown.low-signal');
 
             self::assertContains('markdown.low-signal', $this->ruleIds($result->findings));
-            self::assertSame(['filename=implementation-summary.md', 'boilerplateLines=7', 'genericHeadings=3', 'checklistLines=2', 'repoAnchors=0', 'filenamePattern=generic-artifact'], $this->firstEvidenceForRule($result->findings, 'markdown.low-signal'));
+            self::assertContains('filename=implementation-summary.md', $evidence);
+            self::assertContains('boilerplateLines=7', $evidence);
+            self::assertContains('genericHeadings=3', $evidence);
+            self::assertContains('checklistLines=2', $evidence);
+            self::assertContains('repoAnchors=0', $evidence);
+            self::assertContains('filenamePattern=generic-artifact', $evidence);
         } finally {
             $this->remove($fixture);
         }

@@ -18,7 +18,7 @@ final class LowSignalMarkdownRule extends BaseRule
     private const REPO_ANCHOR_WEIGHT = 2;
     private const REPO_ANCHOR_OFFSET = 1;
     private const FINDING_SCORE = 0.75;
-    private const GENERIC_ARTIFACT_FILENAME_PATTERN = '/(?:^|[-_.])(agent|analysis|checklist|implementation|notes|plan|progress|prompt|report|status|summary|task|todo)(?:[-_.]|$)/i';
+    private const GENERIC_ARTIFACT_FILENAME_PATTERN = '/(?:^|[-_.])(analysis|checklist|implementation|notes|plan|progress|report|status|summary|task|todo)(?:[-_.]|$)/i';
     private const GENERIC_HEADING_PATTERN = '/^(?:#+\s*)?(?:summary|overview|changes?|implementation|testing|validation|next steps|follow-up|notes?|status|checklist|plan|prompt|completed work|remaining work)\b/i';
     private const GENERIC_BULLET_PATTERN = '/^(?:[-*+]|\d+\.)\s+(?:\[[ xX]\]\s*)?(?:summary|overview|changes?|implementation|testing|validation|next steps|follow-up|notes?|status|checklist|plan|prompt|completed work|remaining work)\b/i';
     private const GENERIC_PROCESS_PATTERN = '/\b(?:implemented|updated|added|removed|validated|completed|remaining work|follow-up|next steps|this document|the following changes|successfully)\b/i';
@@ -119,7 +119,8 @@ final class LowSignalMarkdownRule extends BaseRule
         $repoAnchors = 0;
         $inFence = false;
 
-        foreach (preg_split("/\r\n|\n|\r/", $text) ?: [] as $index => $line) {
+        $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", $text));
+        foreach ($lines as $index => $line) {
             $trimmed = trim($line);
             if (preg_match('/^(?:```|~~~)/', $trimmed) === 1) {
                 $inFence = !$inFence;
