@@ -51,7 +51,7 @@ final class PhpFacts
         return $comments;
     }
 
-    /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string,className:?string,namespaceName:?string}> */
+    /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,magicNumbers:list<array{value:string,normalized:string,kind:string,line:int,column:int}>,classKind:?string,className:?string,namespaceName:?string}> */
     public static function functions(string $text): array
     {
         $statements = self::parseStatements($text);
@@ -60,7 +60,7 @@ final class PhpFacts
         }
 
         $functions = [];
-        self::collectFunctions($statements, null, null, $functions);
+        self::collectFunctions($statements, null, null, $functions, $text);
         return $functions;
     }
 
@@ -279,7 +279,7 @@ final class PhpFacts
     }
 
     /** @param list<Stmt> $statements */
-    private static function collectFunctions(array $statements, ?string $className, ?string $namespaceName, array &$functions): void
+    private static function collectFunctions(array $statements, ?string $className, ?string $namespaceName, array &$functions, string $text): void
     {
         foreach ($statements as $statement) {
             if ($statement instanceof Stmt\Namespace_) {
@@ -287,13 +287,14 @@ final class PhpFacts
                     $statement->stmts,
                     $className,
                     $statement->name instanceof Name ? $statement->name->toString() : null,
-                    $functions
+                    $functions,
+                    $text
                 );
                 continue;
             }
 
             if ($statement instanceof Stmt\Function_) {
-                $functions[] = self::functionSummary($statement, null, null, $namespaceName);
+                $functions[] = self::functionSummary($statement, null, null, $namespaceName, $text);
                 continue;
             }
 
@@ -304,23 +305,23 @@ final class PhpFacts
                     if ($method->stmts === null) {
                         continue;
                     }
-                    $functions[] = self::functionSummary($method, $nestedClassName, $classKind, $namespaceName);
+                    $functions[] = self::functionSummary($method, $nestedClassName, $classKind, $namespaceName, $text);
                 }
 
                 foreach (self::childStatements($statement) as $childStatements) {
-                    self::collectFunctions($childStatements, $nestedClassName ?? $className, $namespaceName, $functions);
+                    self::collectFunctions($childStatements, $nestedClassName ?? $className, $namespaceName, $functions, $text);
                 }
                 continue;
             }
 
             foreach (self::childStatements($statement) as $childStatements) {
-                self::collectFunctions($childStatements, $className, $namespaceName, $functions);
+                self::collectFunctions($childStatements, $className, $namespaceName, $functions, $text);
             }
         }
     }
 
-    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,classKind:?string,className:?string,namespaceName:?string} */
-    private static function functionSummary(Stmt\ClassMethod|Stmt\Function_ $function, ?string $className, ?string $classKind, ?string $namespaceName): array
+    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,magicNumbers:list<array{value:string,normalized:string,kind:string,line:int,column:int}>,classKind:?string,className:?string,namespaceName:?string} */
+    private static function functionSummary(Stmt\ClassMethod|Stmt\Function_ $function, ?string $className, ?string $classKind, ?string $namespaceName, string $text): array
     {
         $name = $function->name->toString();
         $params = array_map(
@@ -337,6 +338,7 @@ final class PhpFacts
             'params' => $params,
             'passThroughCall' => self::passThroughCallSummary($function, $params),
             'constantReturn' => self::singleConstantReturnKind($function),
+            'magicNumbers' => self::magicNumberSummaries($function, $text),
             'classKind' => $classKind,
             'className' => $className,
             'namespaceName' => $namespaceName,
@@ -608,6 +610,37 @@ final class PhpFacts
         return self::defaultLiteralKind($stmts[0]->expr);
     }
 
+    /** @return list<array{value:string,normalized:string,kind:string,line:int,column:int}> */
+    private static function magicNumberSummaries(Stmt\ClassMethod|Stmt\Function_ $function, string $text): array
+    {
+        $numbers = [];
+        self::walkNodes($function->stmts ?? [], null, static function (Node $node, ?Node $parent) use (&$numbers, $text): bool {
+            if ($node instanceof Stmt\ClassLike) {
+                return false;
+            }
+
+            $candidate = self::magicNumberCandidate($node, $parent, $text);
+            if ($candidate === null) {
+                return true;
+            }
+
+            $key = $candidate['line'] . ':' . $candidate['column'] . ':' . $candidate['kind'] . ':' . $candidate['value'];
+            $numbers[$key] = $candidate;
+
+            return true;
+        });
+
+        $numbers = array_values($numbers);
+        usort(
+            $numbers,
+            static fn(array $left, array $right): int => ($left['line'] <=> $right['line'])
+                ?: ($left['column'] <=> $right['column'])
+                ?: strcmp($left['value'], $right['value'])
+        );
+
+        return $numbers;
+    }
+
     private static function countMixedInSignature(Stmt\ClassMethod|Stmt\Function_ $function): int
     {
         $count = 0;
@@ -665,6 +698,142 @@ final class PhpFacts
         }
 
         return '$' . $arg->value->name;
+    }
+
+    /**
+     * @return null|array{value:string,normalized:string,kind:string,line:int,column:int}
+     */
+    private static function magicNumberCandidate(Node $node, ?Node $parent, string $text): ?array
+    {
+        if ($node instanceof Node\Scalar\String_) {
+            if (!is_numeric($node->value) || self::isArrayKeyLiteral($node, $parent)) {
+                return null;
+            }
+
+            $normalized = self::normalizeNumericValue($node->value);
+            if ($normalized === null) {
+                return null;
+            }
+
+            return [
+                'value' => $node->value,
+                'normalized' => $normalized,
+                'kind' => 'numeric-string',
+                'line' => $node->getStartLine(),
+                'column' => self::nodeStartColumn($node, $text),
+            ];
+        }
+
+        if (($node instanceof Node\Scalar\LNumber || $node instanceof Node\Scalar\DNumber) && !self::isSignedNumericChild($node, $parent)) {
+            $value = self::nodeSourceText($node, $text) ?? (string) $node->value;
+            $normalized = self::normalizeNumericValue($value);
+            if ($normalized === null) {
+                return null;
+            }
+
+            return [
+                'value' => $value,
+                'normalized' => $normalized,
+                'kind' => 'numeric',
+                'line' => $node->getStartLine(),
+                'column' => self::nodeStartColumn($node, $text),
+            ];
+        }
+
+        if (($node instanceof Expr\UnaryMinus || $node instanceof Expr\UnaryPlus)
+            && ($node->expr instanceof Node\Scalar\LNumber || $node->expr instanceof Node\Scalar\DNumber)
+        ) {
+            $value = self::nodeSourceText($node, $text);
+            if ($value === null) {
+                $sign = $node instanceof Expr\UnaryMinus ? '-' : '+';
+                $value = $sign . (string) $node->expr->value;
+            }
+
+            $normalized = self::normalizeNumericValue($value);
+            if ($normalized === null) {
+                return null;
+            }
+
+            return [
+                'value' => $value,
+                'normalized' => $normalized,
+                'kind' => 'numeric',
+                'line' => $node->getStartLine(),
+                'column' => self::nodeStartColumn($node, $text),
+            ];
+        }
+
+        return null;
+    }
+
+    private static function isArrayKeyLiteral(Node $node, ?Node $parent): bool
+    {
+        return $parent instanceof Expr\ArrayItem && $parent->key === $node;
+    }
+
+    private static function isSignedNumericChild(Node $node, ?Node $parent): bool
+    {
+        return ($parent instanceof Expr\UnaryMinus || $parent instanceof Expr\UnaryPlus) && $parent->expr === $node;
+    }
+
+    private static function normalizeNumericValue(string $value): ?string
+    {
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        return json_encode(0 + $value, JSON_THROW_ON_ERROR);
+    }
+
+    private static function nodeStartColumn(Node $node, string $text): int
+    {
+        $start = $node->getStartFilePos();
+        if ($start < 0) {
+            return 1;
+        }
+
+        $prefix = substr($text, 0, $start);
+        $lineStart = strrpos($prefix, "\n");
+
+        return $lineStart === false ? $start + 1 : $start - $lineStart;
+    }
+
+    private static function nodeSourceText(Node $node, string $text): ?string
+    {
+        $start = $node->getStartFilePos();
+        $end = $node->getEndFilePos();
+        if ($start < 0 || $end < $start) {
+            return null;
+        }
+
+        return substr($text, $start, $end - $start + 1);
+    }
+
+    /**
+     * @param mixed $value
+     * @param callable(Node, ?Node): bool $visitor
+     */
+    private static function walkNodes(mixed $value, ?Node $parent, callable $visitor): void
+    {
+        if ($value instanceof Node) {
+            if (!$visitor($value, $parent)) {
+                return;
+            }
+
+            foreach ($value->getSubNodeNames() as $name) {
+                self::walkNodes($value->$name, $value, $visitor);
+            }
+
+            return;
+        }
+
+        if (!is_array($value)) {
+            return;
+        }
+
+        foreach ($value as $item) {
+            self::walkNodes($item, $parent, $visitor);
+        }
     }
 
     /**

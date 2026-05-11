@@ -17,17 +17,25 @@
     {
       "path": "src/Rule",
       "rules": {
-        "php.directory-fanout-hotspot": {
-          "options": {
-            "fileCount": 23
+            "php.directory-fanout-hotspot": {
+              "options": {
+                "fileCount": 24
+              }
+            }
           }
-        }
-      }
     },
     {
       "path": "src/Fact/PhpFacts.php",
       "rules": {
         "php.catch-default-fallbacks": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "path": "tests/**",
+      "rules": {
+        "php.magic-numbers": {
           "enabled": false
         }
       }

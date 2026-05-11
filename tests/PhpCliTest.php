@@ -690,6 +690,7 @@ PHP);
             'catch returns exception message' => ['catch-returns-exception-message.fixture', 'src/CatchReturnsExceptionMessage.php', 'php.catch-returns-exception-message'],
             'debug output' => ['debug-output.fixture', 'src/DebugOutput.php', 'php.debug-output'],
             'mock heavy test without assertions' => ['mock-heavy-test-without-assertions.fixture', 'tests/OnlyMocksTest.php', 'php.mock-heavy-tests-without-assertions'],
+            'magic numbers' => ['magic-number.fixture', 'src/MagicNumber.php', 'php.magic-numbers'],
             'misleading phpdoc types' => ['misleading-phpdoc-types.fixture', 'src/MisleadingPhpDoc.php', 'php.misleading-phpdoc-types'],
             'placeholder comments' => ['placeholder-comments.fixture', 'src/PlaceholderComments.php', 'php.placeholder-comments'],
             'pass through wrapper' => ['pass-through-wrapper.fixture', 'src/PassThroughWrapper.php', 'php.pass-through-wrappers'],
@@ -2285,6 +2286,65 @@ PHP);
         $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
 
         self::assertNotContains('php.type-escape-hotspots', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testMagicNumbersRuleFlagsNumericValuesAndNumericStringsButIgnoresZeroAndOneByDefault(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/MagicNumbers.php', <<<'PHP'
+<?php
+
+function calculate_total(int $count): string
+{
+    if ($count > 1) {
+        return (string) ($count + 2);
+    }
+
+    return '42';
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(2, $this->countForRule($result->findings, 'php.magic-numbers'));
+        self::assertSame(['calculate_total', 'value=2', 'kind=numeric'], $this->findEvidenceForRuleAndLine($result->findings, 'php.magic-numbers', 6));
+        self::assertSame(['calculate_total', 'value=42', 'kind=numeric-string'], $this->findEvidenceForRuleAndLine($result->findings, 'php.magic-numbers', 9));
+
+        $this->remove($fixture);
+    }
+
+    public function testMagicNumbersRuleUsesConfiguredIgnoredValuesForNumericStringsAndNumbers(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/MagicNumbers.php', <<<'PHP'
+<?php
+
+function calculate_total(int $count): string
+{
+    if ($count > 1) {
+        return (string) ($count + 2);
+    }
+
+    return '42';
+}
+PHP);
+        file_put_contents($fixture . '/slop-scan.config.json', Json::encode([
+            'rules' => [
+                'php.magic-numbers' => [
+                    'options' => [
+                        'ignoredValues' => [0, 1, 2, '42'],
+                    ],
+                ],
+            ],
+        ]));
+
+        $result = (new Analyzer())->analyze($fixture, Config::load($fixture), DefaultRegistry::create());
+
+        self::assertNotContains('php.magic-numbers', $this->ruleIds($result->findings));
 
         $this->remove($fixture);
     }
