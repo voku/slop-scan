@@ -1,0 +1,8 @@
+# Status
+
+## Changes
+
+- [x] Checked `src/Analyzer.php`
+- [x] Ran `composer run test`
+
+Use `docs/configuration.md` to explain overrides, and run `php bin/slop-scan.php scan .` before posting release notes.

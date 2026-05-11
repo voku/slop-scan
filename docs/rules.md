@@ -44,4 +44,8 @@ It also scans Markdown docs:
 | `php.type-escape-hotspots` | Files with concentrated `mixed` native types and type-cast expressions | A high density of `mixed` signatures and explicit casts signals type friction that is being suppressed rather than addressed. |
 | `markdown.low-signal` | Markdown files dominated by generic summary/checklist/process scaffolding but lacking concrete file, command, or code anchors | Low-signal Markdown artifacts often restate obvious work without preserving durable repository knowledge. |
 
+For `markdown.low-signal`, repository-specific anchors include inline code, Markdown links, file paths such as `src/Analyzer.php`, and concrete commands such as `composer run test` or `php bin/slop-scan.php scan .`.
+
+The rule is intentionally conservative: checklist-heavy docs should stay quiet when they also include at least two descriptive prose lines or enough concrete repository anchors to explain what a maintainer should actually do next.
+
 The tool is intentionally heuristic: a finding is a prompt for review, not a verdict.
