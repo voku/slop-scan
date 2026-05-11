@@ -7,6 +7,7 @@ namespace SlopScan;
 use SlopScan\Fact\DirectoryMetricsFactProvider;
 use SlopScan\Fact\FunctionDuplicationFactProvider;
 use SlopScan\Fact\PhpStructureFactProvider;
+use SlopScan\Rule\LowSignalMarkdownRule;
 use SlopScan\Reporter\GithubReporter;
 use SlopScan\Reporter\JsonReporter;
 use SlopScan\Reporter\LintReporter;
@@ -43,6 +44,7 @@ final class DefaultRegistry
     {
         $registry = new Registry();
         $registry->registerLanguage(new PhpLanguage());
+        $registry->registerLanguage(new MarkdownLanguage());
         $registry->registerFactProvider(new PhpStructureFactProvider());
         $registry->registerFactProvider(new DirectoryMetricsFactProvider());
         $registry->registerFactProvider(new FunctionDuplicationFactProvider());
@@ -70,6 +72,7 @@ final class DefaultRegistry
             new PlaceholderMethodBodiesRule(),
             new CloneClusterRule(),
             new TypeEscapeHotspotsRule(),
+            new LowSignalMarkdownRule(),
         ] as $rule) {
             $registry->registerRule($rule);
         }

@@ -22,6 +22,7 @@ use SlopScan\Delta;
 use SlopScan\Discoverer;
 use SlopScan\Fact\FactStore;
 use SlopScan\Fact\PhpFacts;
+use SlopScan\MarkdownLanguage;
 use SlopScan\Model\AnalysisResult;
 use SlopScan\Model\DirectoryRecord;
 use SlopScan\Model\FileRecord;
@@ -375,9 +376,8 @@ PHP);
     public function testDiscovererSkipsUnsupportedFilesAndAnalyzerHandlesEmptyRepos(): void
     {
         $fixture = $this->makeFixture();
-        mkdir($fixture . '/docs', 0777, true);
-        file_put_contents($fixture . '/README.md', "# ignored\n");
-        file_put_contents($fixture . '/docs/Guide.md', "# ignored\n");
+        file_put_contents($fixture . '/notes.txt', "ignored\n");
+        file_put_contents($fixture . '/todo.rst', "ignored\n");
 
         $discovery = Discoverer::discover($fixture, Config::defaults(), DefaultRegistry::create());
         $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
@@ -1628,6 +1628,7 @@ PHP);
     {
         $registry = new Registry();
         $registry->registerLanguage(new PhpLanguage());
+        $registry->registerLanguage(new MarkdownLanguage());
         $registry->registerReporter(new JsonReporter());
         $registry->registerReporter(new GithubReporter());
 
@@ -1636,10 +1637,11 @@ PHP);
         self::assertFalse(PatternMatcher::ignored('src/Foo.php', ['**/vendor/**']));
         self::assertFalse(PatternMatcher::matches('src/Foo.php', 'tests/*.php'));
         self::assertSame('php', $registry->detectLanguage('template.phtml')?->id());
-        self::assertNull($registry->detectLanguage('README.md'));
+        self::assertSame('markdown', $registry->detectLanguage('README.md')?->id());
         self::assertSame('json', $registry->reporter('json')->id());
         self::assertSame('github', $registry->reporter('github')->id());
         self::assertSame('php', $registry->languages()[0]->id());
+        self::assertSame('markdown', $registry->languages()[1]->id());
         self::assertSame(0, count($registry->factProviders()));
         self::assertSame(0, count($registry->rules()));
 
@@ -2656,6 +2658,60 @@ PHP);
             PhpFacts::useParserFactoryForTesting(null);
             ParserStub::$statements = [];
             ParserStub::$exceptionMessage = null;
+        }
+    }
+
+    public function testMarkdownLowSignalRuleFlagsGenericAgentStyleArtifacts(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/docs', 0777, true);
+        file_put_contents($fixture . '/docs/implementation-summary.md', <<<'MD'
+# Summary
+
+- [x] Completed work
+- [x] Updated changes
+
+## Testing
+
+- Validation pending
+
+## Next Steps
+
+- Follow-up later
+MD);
+
+        try {
+            $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+            self::assertContains('markdown.low-signal', $this->ruleIds($result->findings));
+            self::assertSame(['filename=implementation-summary.md', 'boilerplateLines=7', 'genericHeadings=3', 'checklistLines=2', 'repoAnchors=0', 'filenamePattern=generic-artifact'], $this->firstEvidenceForRule($result->findings, 'markdown.low-signal'));
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
+    public function testMarkdownLowSignalRuleStaysQuietForConcreteDocs(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/docs', 0777, true);
+        file_put_contents($fixture . '/docs/installation.md', <<<'MD'
+# Installation
+
+Run `composer run test` before you change `src/Analyzer.php`.
+
+See `docs/rules.md` for the built-in rule list.
+
+```bash
+php bin/slop-scan.php scan . --json
+```
+MD);
+
+        try {
+            $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+            self::assertNotContains('markdown.low-signal', $this->ruleIds($result->findings));
+        } finally {
+            $this->remove($fixture);
         }
     }
 

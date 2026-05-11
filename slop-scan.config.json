@@ -19,7 +19,7 @@
       "rules": {
             "php.directory-fanout-hotspot": {
               "options": {
-                "fileCount": 24
+                "fileCount": 25
               }
             }
           }
