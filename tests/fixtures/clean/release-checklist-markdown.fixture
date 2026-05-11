@@ -1,0 +1,8 @@
+# Release Checklist
+
+- [ ] Build the PHAR for the release candidate
+- [ ] Run the full validation suite on the candidate
+- [ ] Smoke-test the scan command on a representative PHP repository
+- [ ] Publish release notes after the tag is available
+
+This checklist exists so maintainers can cut releases consistently and verify the packaged CLI before publishing.

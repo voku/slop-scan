@@ -1,0 +1,13 @@
+# Status
+
+## Overview
+
+The analyzer now scans Markdown alongside PHP so the repository can catch low-signal planning artifacts before they land.
+
+## Changes
+
+The new rule looks for generic scaffolding, but it should stay quiet for stable project documentation with concrete explanations.
+
+## Next Steps
+
+Add fixtures for healthy docs until the false-positive boundary is well understood.

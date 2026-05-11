@@ -1,0 +1,7 @@
+# Architecture Notes
+
+The CLI entrypoint lives in `bin/slop-scan.php`, while repository traversal starts in `src/Discoverer.php`.
+
+Rule execution flows through `src/Analyzer.php`, and report rendering happens in `src/Reporter/`.
+
+Use `docs/configuration.md` when you need to explain ignores, overrides, or inline suppressions.

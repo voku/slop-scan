@@ -1,0 +1,13 @@
+# Migration Notes
+
+## Summary
+
+This note explains how the Markdown detector balances generic workflow language against repository-specific guidance.
+
+## Testing
+
+The rule should ignore contributor docs that explain validation policy, release flow, and maintenance expectations in concrete prose.
+
+## Notes
+
+Reviewers should be able to understand the intended behavior without reading implementation details first.

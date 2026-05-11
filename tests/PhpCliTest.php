@@ -22,6 +22,7 @@ use SlopScan\Delta;
 use SlopScan\Discoverer;
 use SlopScan\Fact\FactStore;
 use SlopScan\Fact\PhpFacts;
+use SlopScan\MarkdownLanguage;
 use SlopScan\Model\AnalysisResult;
 use SlopScan\Model\DirectoryRecord;
 use SlopScan\Model\FileRecord;
@@ -372,12 +373,11 @@ PHP);
         self::assertNotContains('php.duplicate-function-signatures', $this->ruleIds($result->findings));
     }
 
-    public function testDiscovererSkipsUnsupportedFilesAndAnalyzerHandlesEmptyRepos(): void
+    public function testDiscovererSkipsNonPhpAndNonMarkdownFilesAndAnalyzerHandlesEmptyRepos(): void
     {
         $fixture = $this->makeFixture();
-        mkdir($fixture . '/docs', 0777, true);
-        file_put_contents($fixture . '/README.md', "# ignored\n");
-        file_put_contents($fixture . '/docs/Guide.md', "# ignored\n");
+        file_put_contents($fixture . '/notes.txt', "ignored\n");
+        file_put_contents($fixture . '/todo.rst', "ignored\n");
 
         $discovery = Discoverer::discover($fixture, Config::defaults(), DefaultRegistry::create());
         $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
@@ -697,6 +697,7 @@ PHP);
             'return constant stub' => ['return-constant-stub.fixture', 'src/ReturnConstantStub.php', 'php.return-constant-stub'],
             'placeholder method body' => ['placeholder-method-body.fixture', 'src/PlaceholderMethodBody.php', 'php.placeholder-method-bodies'],
             'type escape hotspot' => ['type-escape-hotspot.fixture', 'src/TypeEscapeHotspot.php', 'php.type-escape-hotspots'],
+            'low-signal markdown' => ['low-signal-markdown.fixture', 'docs/implementation-summary.md', 'markdown.low-signal'],
         ];
     }
 
@@ -726,6 +727,13 @@ PHP);
             'error wrapping with previous' => ['error-wrapping-with-previous.fixture', 'src/ErrorWrappingWithPrevious.php'],
             'test with mocks and assertions' => ['test-with-mocks-and-real-assertions.fixture', 'tests/MockAssertionsTest.php'],
             'helpful phpdoc types' => ['helpful-phpdoc-types.fixture', 'src/HelpfulPhpDoc.php'],
+            'installation markdown' => ['installation-guide-markdown.fixture', 'docs/installation.md'],
+            'contributing markdown' => ['contributing-markdown.fixture', 'docs/contributing.md'],
+            'release checklist markdown' => ['release-checklist-markdown.fixture', 'docs/release-checklist.md'],
+            'architecture markdown' => ['architecture-markdown.fixture', 'docs/architecture.md'],
+            'migration notes markdown' => ['migration-notes-markdown.fixture', 'docs/migration-notes.md'],
+            'status markdown' => ['status-markdown.fixture', 'docs/status.md'],
+            'implementation summary markdown' => ['implementation-summary-markdown.fixture', 'docs/implementation-summary.md'],
         ];
     }
 
@@ -1628,6 +1636,7 @@ PHP);
     {
         $registry = new Registry();
         $registry->registerLanguage(new PhpLanguage());
+        $registry->registerLanguage(new MarkdownLanguage());
         $registry->registerReporter(new JsonReporter());
         $registry->registerReporter(new GithubReporter());
 
@@ -1636,10 +1645,11 @@ PHP);
         self::assertFalse(PatternMatcher::ignored('src/Foo.php', ['**/vendor/**']));
         self::assertFalse(PatternMatcher::matches('src/Foo.php', 'tests/*.php'));
         self::assertSame('php', $registry->detectLanguage('template.phtml')?->id());
-        self::assertNull($registry->detectLanguage('README.md'));
+        self::assertSame('markdown', $registry->detectLanguage('README.md')?->id());
         self::assertSame('json', $registry->reporter('json')->id());
         self::assertSame('github', $registry->reporter('github')->id());
         self::assertSame('php', $registry->languages()[0]->id());
+        self::assertSame('markdown', $registry->languages()[1]->id());
         self::assertSame(0, count($registry->factProviders()));
         self::assertSame(0, count($registry->rules()));
 
@@ -2656,6 +2666,41 @@ PHP);
             PhpFacts::useParserFactoryForTesting(null);
             ParserStub::$statements = [];
             ParserStub::$exceptionMessage = null;
+        }
+    }
+
+    public function testMarkdownLowSignalFixtureReportsExpectedEvidence(): void
+    {
+        $result = $this->scanStoredFixture('slop', 'low-signal-markdown.fixture', 'docs/implementation-summary.md');
+        $evidence = $this->firstEvidenceForRule($result->findings, 'markdown.low-signal');
+
+        self::assertContains('filename=implementation-summary.md', $evidence);
+        self::assertContains('boilerplateLines=7', $evidence);
+        self::assertContains('genericHeadings=3', $evidence);
+        self::assertContains('checklistLines=2', $evidence);
+        self::assertContains('repoAnchors=0', $evidence);
+        self::assertContains('filenamePattern=generic-artifact', $evidence);
+    }
+
+    public function testMarkdownFilesAreDiscoveredWithoutLowSignalFindingWhenConcrete(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/docs', 0777, true);
+        file_put_contents($fixture . '/docs/Guide.md', <<<'MD'
+# Guide
+
+See `src/Analyzer.php` for scan orchestration.
+MD);
+
+        try {
+            $discovery = Discoverer::discover($fixture, Config::defaults(), DefaultRegistry::create());
+            $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+            self::assertSame(['docs/Guide.md'], array_map(static fn(FileRecord $file): string => $file->path, $discovery['files']));
+            self::assertSame(1, $result->summary['fileCount']);
+            self::assertSame([], $this->ruleIds($result->findings));
+        } finally {
+            $this->remove($fixture);
         }
     }
 

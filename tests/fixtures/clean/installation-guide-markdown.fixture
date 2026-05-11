@@ -1,0 +1,9 @@
+# Installation
+
+Run `composer run test` before you change `src/Analyzer.php`.
+
+See `docs/rules.md` for the built-in rule list and `slop-scan.config.json` for local overrides.
+
+```bash
+php bin/slop-scan.php scan . --json
+```

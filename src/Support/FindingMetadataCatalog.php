@@ -126,5 +126,10 @@ final class FindingMetadataCatalog
             'suggestedAction' => 'Tighten the data contract or isolate the conversion boundary into a smaller, named adapter.',
             'confidence' => 'medium',
         ],
+        'markdown.low-signal' => [
+            'why' => 'Generic process-heavy markdown with few code, path, or command anchors often adds review noise without preserving durable knowledge.',
+            'suggestedAction' => 'Fold the note into an existing durable doc, add concrete repository references, or delete the file if it only restates obvious work.',
+            'confidence' => 'medium',
+        ],
     ];
 }

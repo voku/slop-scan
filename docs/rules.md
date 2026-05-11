@@ -8,6 +8,11 @@ The PHP implementation scans:
 - `.phtml`
 - `.inc`
 
+It also scans Markdown docs:
+
+- `.md`
+- `.markdown`
+
 ## What the built-in rules check and why
 
 `slop-scan` focuses on explainable, reviewable heuristics. These rules try to catch patterns that often show up in rushed, weakly reviewed, or partially cleaned-up code:
@@ -37,5 +42,6 @@ The PHP implementation scans:
 | `php.placeholder-method-bodies` | Methods in concrete (non-abstract, non-interface) classes with completely empty bodies | Empty concrete methods can signal forgotten implementations or scaffolded-but-unfinished code. |
 | `php.clone-cluster` | Functions whose bodies are identical across the repository | Identical bodies beyond the length threshold are stronger evidence of copy-paste than duplicate signatures alone. |
 | `php.type-escape-hotspots` | Files with concentrated `mixed` native types and type-cast expressions | A high density of `mixed` signatures and explicit casts signals type friction that is being suppressed rather than addressed. |
+| `markdown.low-signal` | Markdown files dominated by generic summary/checklist/process scaffolding but lacking concrete file, command, or code anchors | Low-signal Markdown artifacts often restate obvious work without preserving durable repository knowledge. |
 
 The tool is intentionally heuristic: a finding is a prompt for review, not a verdict.

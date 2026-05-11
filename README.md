@@ -51,7 +51,7 @@ chmod +x "$HOME/.local/bin/slop-scan"
 "$HOME/.local/bin/slop-scan" scan . --ignore 'vendor/**' --ignore 'tests/fixtures/**'
 ```
 
-The scanner targets PHP source files such as `.php`, `.phtml`, and `.inc`.
+The scanner targets PHP source files such as `.php`, `.phtml`, and `.inc`, plus Markdown docs such as `.md` and `.markdown`.
 
 If your repository keeps its config outside the scan root, point the scan at it explicitly:
 
@@ -62,7 +62,7 @@ If your repository keeps its config outside the scan root, point the scan at it 
 ## What it ships with
 
 - Deterministic findings with stable occurrence fingerprints for review, delta comparisons, and baseline workflows.
-- Built-in PHP heuristics for patterns such as empty catches, error swallowing, blanket suppressions, magic numbers, placeholder bodies, clone clusters, and type-escape hotspots.
+- Built-in heuristics for PHP patterns such as empty catches, error swallowing, blanket suppressions, magic numbers, placeholder bodies, clone clusters, and type-escape hotspots, plus Markdown checks for low-signal process docs.
 - Multiple output targets including text, lint, JSON, GitHub annotations, TOON, and NDJSON.
 - Repo-friendly controls including path ignores, per-rule overrides, PHPStan-style `ignoreErrors`, and inline `@slop-scan-ignore` directives.
 - Reusable per-file scan caching via `.slop-scan.cache.json` and a `stats` command for repository-level summaries.
