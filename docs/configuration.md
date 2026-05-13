@@ -23,9 +23,19 @@ Scans now reuse unchanged per-file analysis by default through `.slop-scan.cache
         "php.placeholder-comments": { "enabled": false }
       }
     }
-  ]
+  ],
+  "scan": {
+    "cacheFile": ".slop-scan.cache.json",
+    "baselineFile": "slop-baseline.json",
+    "rules": ["php.debug-output"],
+    "pathFilters": ["src/**"],
+    "maxFindings": 50,
+    "minScore": 1.0
+  }
 }
 ```
+
+`scan` sets repo-level defaults for scan command options. CLI flags still take precedence when provided (`--cache-file`, `--baseline-file`, `--rule`, `--path-filter`, `--max-findings`, `--min-score`).
 
 `ignoreErrors` follows PHPStan-style matching for intentional false positives:
 

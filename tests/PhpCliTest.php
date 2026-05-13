@@ -1092,6 +1092,46 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testCliScanJsonSupportsRulePathMaxFindingAndMinScoreFiltersFromConfig(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO keep note
+var_dump($value);
+PHP);
+        file_put_contents($fixture . '/src/B.php', <<<'PHP'
+<?php
+print_r($value);
+PHP);
+        file_put_contents($fixture . '/slop-scan.config.json', Json::encode([
+            'scan' => [
+                'rules' => ['php.debug-output'],
+                'pathFilters' => ['src/A.php'],
+                'maxFindings' => 1,
+                'minScore' => 1.2,
+            ],
+        ]));
+
+        [$exit, $output] = $this->runCommand([
+            'scan',
+            $fixture,
+            '--json',
+        ]);
+
+        $decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(0, $exit);
+        self::assertSame(1, $decoded['summary']['findingCount']);
+        self::assertSame(3, $decoded['summary']['findingCountBeforeFilters']);
+        self::assertSame(['php.debug-output'], array_values(array_unique(array_column($decoded['findings'], 'ruleId'))));
+        self::assertSame('src/A.php', $decoded['findings'][0]['path']);
+        self::assertSame(['rules' => ['php.debug-output'], 'paths' => ['src/A.php'], 'maxFindings' => 1, 'minScore' => 1.2], $decoded['metadata']['appliedFilters']);
+
+        $this->remove($fixture);
+    }
+
     public function testCliScanUsesExplicitConfigFileRelativeToScanRoot(): void
     {
         $fixture = $this->makeFixture();
@@ -1601,6 +1641,39 @@ PHP);
         $this->remove($head);
     }
 
+    public function testCliDeltaUsesConfiguredCacheFilesFromConfig(): void
+    {
+        $base = $this->makeFixture();
+        $head = $this->makeFixture();
+        mkdir($base . '/src', 0777, true);
+        mkdir($head . '/src', 0777, true);
+        mkdir($base . '/cache', 0777, true);
+        mkdir($head . '/cache', 0777, true);
+        file_put_contents($base . '/src/A.php', "<?php\nfunction clean_base() { return 1; }\n");
+        file_put_contents($head . '/src/A.php', "<?php\n// TODO added\nfunction clean_head() { return 1; }\n");
+        file_put_contents($base . '/slop-scan.config.json', Json::encode([
+            'scan' => [
+                'cacheFile' => 'cache/base-cache.json',
+            ],
+        ]));
+        file_put_contents($head . '/slop-scan.config.json', Json::encode([
+            'scan' => [
+                'cacheFile' => 'cache/head-cache.json',
+            ],
+        ]));
+
+        [$deltaExit] = $this->runCommand(['delta', '--base', $base, '--head', $head, '--fail-on', 'added']);
+
+        self::assertSame(1, $deltaExit);
+        self::assertFileExists($base . '/cache/base-cache.json');
+        self::assertFileExists($head . '/cache/head-cache.json');
+        self::assertFileDoesNotExist(ScanCache::defaultPath($base));
+        self::assertFileDoesNotExist(ScanCache::defaultPath($head));
+
+        $this->remove($base);
+        $this->remove($head);
+    }
+
     public function testScanCommandCacheOptionOverridesDefaultCacheLocation(): void
     {
         $fixture = $this->makeFixture();
@@ -1614,6 +1687,31 @@ PHP);
 
             self::assertSame(0, $exit);
             self::assertFileExists($customCacheFile);
+            self::assertFileDoesNotExist(ScanCache::defaultPath($fixture));
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
+    public function testScanCommandConfigCacheOptionOverridesDefaultCacheLocation(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        mkdir($fixture . '/infra/cache', 0777, true);
+        file_put_contents($fixture . '/src/A.php', "<?php\nvar_dump(\$value);\n");
+        file_put_contents($fixture . '/slop-scan.config.json', Json::encode([
+            'scan' => [
+                'cacheFile' => 'infra/cache/slop-cache.json',
+            ],
+        ]));
+        $configuredCacheFile = $fixture . '/infra/cache/slop-cache.json';
+
+        try {
+            $scanTester = new CommandTester(new ScanCommand());
+            $exit = $scanTester->execute(['path' => $fixture, '--json' => true]);
+
+            self::assertSame(0, $exit);
+            self::assertFileExists($configuredCacheFile);
             self::assertFileDoesNotExist(ScanCache::defaultPath($fixture));
         } finally {
             $this->remove($fixture);
