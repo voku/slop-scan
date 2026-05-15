@@ -52,11 +52,11 @@ final class ScanCommand extends Command
             $ignore = $this->stringListOption($input, 'ignore');
             $config = Config::load($target, $this->stringOption($input, 'config-file'));
             $config['ignores'] = array_values(array_merge($config['ignores'], $ignore));
-            $selection = $this->selection($input);
-            $rawResult = (new Analyzer())->analyze($target, $config, DefaultRegistry::create(), $this->cacheFile($target, $input));
+            $selection = $this->selection($input, $config);
+            $rawResult = (new Analyzer())->analyze($target, $config, DefaultRegistry::create(), $this->cacheFile($target, $input, $config));
             $originalFindingCount = (int) $rawResult->summary['findingCount'];
             $result = CommandSupport::filteredResult($rawResult, $selection);
-            $baselineFile = $this->stringOption($input, 'baseline-file');
+            $baselineFile = $this->baselineFile($target, $input, $config);
 
             if ((bool) $input->getOption('generate-baseline')) {
                 if ($baselineFile === null || $baselineFile === '') {
@@ -148,22 +148,62 @@ final class ScanCommand extends Command
     /**
      * @return array{rules:list<string>,paths:list<string>,maxFindings:?int,minScore:?float}
      */
-    private function selection(InputInterface $input): array
+    private function selection(InputInterface $input, array $config): array
     {
         $maxFindings = $this->stringOption($input, 'max-findings');
         $minScore = $this->stringOption($input, 'min-score');
+        $scan = $config['scan'] ?? [];
 
         return [
-            'rules' => $this->stringListOption($input, 'rule'),
-            'paths' => $this->stringListOption($input, 'path-filter'),
-            'maxFindings' => $maxFindings !== null && $maxFindings !== '' ? max(0, (int) $maxFindings) : null,
-            'minScore' => $minScore !== null && $minScore !== '' ? (float) $minScore : null,
+            'rules' => $this->firstNonEmptyList($this->stringListOption($input, 'rule'), $scan['rules'] ?? []),
+            'paths' => $this->firstNonEmptyList($this->stringListOption($input, 'path-filter'), $scan['pathFilters'] ?? []),
+            'maxFindings' => $maxFindings !== null && $maxFindings !== ''
+                ? max(0, (int) $maxFindings)
+                : ($scan['maxFindings'] ?? null),
+            'minScore' => $minScore !== null && $minScore !== ''
+                ? (float) $minScore
+                : ($scan['minScore'] ?? null),
         ];
     }
 
-    private function cacheFile(string $target, InputInterface $input): string
+    private function cacheFile(string $target, InputInterface $input, array $config): string
     {
-        return $this->stringOption($input, 'cache-file') ?? ScanCache::defaultPath($target);
+        $explicit = $this->stringOption($input, 'cache-file');
+        if (is_string($explicit) && $explicit !== '') {
+            return $explicit;
+        }
+
+        $scan = $config['scan'] ?? [];
+        $configured = $scan['cacheFile'] ?? null;
+
+        return $configured !== null
+            ? CommandSupport::resolveTargetPath($target, $configured)
+            : ScanCache::defaultPath($target);
+    }
+
+    private function baselineFile(string $target, InputInterface $input, array $config): ?string
+    {
+        $explicit = $this->stringOption($input, 'baseline-file');
+        if (is_string($explicit) && $explicit !== '') {
+            return $explicit;
+        }
+
+        $scan = $config['scan'] ?? [];
+        $configured = $scan['baselineFile'] ?? null;
+
+        return $configured !== null
+            ? CommandSupport::resolveTargetPath($target, $configured)
+            : null;
+    }
+
+    /**
+     * @param list<string> $primary
+     * @param list<string> $fallback
+     * @return list<string>
+     */
+    private function firstNonEmptyList(array $primary, array $fallback): array
+    {
+        return $primary !== [] ? $primary : $fallback;
     }
 
     /** @return list<string> */

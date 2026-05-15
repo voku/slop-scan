@@ -33,8 +33,12 @@ final class CommandSupport
 
         $config = Config::load($targetPath, $configFile);
         $config['ignores'] = array_values(array_merge($config['ignores'], $ignore));
+        $scan = $config['scan'] ?? [];
+        $cacheFile = ($scan['cacheFile'] ?? null) !== null
+            ? self::resolveTargetPath($targetPath, $scan['cacheFile'])
+            : ScanCache::defaultPath($targetPath);
 
-        return (new Analyzer())->analyze($targetPath, $config, DefaultRegistry::create(), ScanCache::defaultPath($targetPath))->toReport();
+        return (new Analyzer())->analyze($targetPath, $config, DefaultRegistry::create(), $cacheFile)->toReport();
     }
 
     /** @param array<string,mixed> $delta */
@@ -344,6 +348,15 @@ final class CommandSupport
         return (float) $numerator / (float) $denominator;
     }
 
+    public static function resolveTargetPath(string $targetPath, string $path): string
+    {
+        if (self::isAbsolutePath($path)) {
+            return $path;
+        }
+
+        return (realpath($targetPath) ?: $targetPath) . DIRECTORY_SEPARATOR . $path;
+    }
+
     /**
      * @param array{rules:list<string>,paths:list<string>,maxFindings:?int,minScore:?float} $selection
      * @return array<string,mixed>
@@ -365,5 +378,12 @@ final class CommandSupport
         }
 
         return $filters;
+    }
+
+    private static function isAbsolutePath(string $path): bool
+    {
+        return str_starts_with($path, '/')
+            || str_starts_with($path, '\\')
+            || (bool) preg_match('~^[A-Za-z]:[\\\\/]~', $path);
     }
 }
