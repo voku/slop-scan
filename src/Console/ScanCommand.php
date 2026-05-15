@@ -152,19 +152,17 @@ final class ScanCommand extends Command
     {
         $maxFindings = $this->stringOption($input, 'max-findings');
         $minScore = $this->stringOption($input, 'min-score');
-        $scan = is_array($config['scan'] ?? null) ? $config['scan'] : [];
-        $configRules = is_array($scan['rules'] ?? null) ? array_values(array_map('strval', $scan['rules'])) : [];
-        $configPaths = is_array($scan['pathFilters'] ?? null) ? array_values(array_map('strval', $scan['pathFilters'])) : [];
+        $scan = $config['scan'] ?? [];
 
         return [
-            'rules' => $this->firstNonEmptyList($this->stringListOption($input, 'rule'), $configRules),
-            'paths' => $this->firstNonEmptyList($this->stringListOption($input, 'path-filter'), $configPaths),
+            'rules' => $this->firstNonEmptyList($this->stringListOption($input, 'rule'), $scan['rules']),
+            'paths' => $this->firstNonEmptyList($this->stringListOption($input, 'path-filter'), $scan['pathFilters']),
             'maxFindings' => $maxFindings !== null && $maxFindings !== ''
                 ? max(0, (int) $maxFindings)
-                : (is_numeric($scan['maxFindings'] ?? null) ? max(0, (int) $scan['maxFindings']) : null),
+                : $scan['maxFindings'],
             'minScore' => $minScore !== null && $minScore !== ''
                 ? (float) $minScore
-                : (is_numeric($scan['minScore'] ?? null) ? (float) $scan['minScore'] : null),
+                : $scan['minScore'],
         ];
     }
 
@@ -175,8 +173,8 @@ final class ScanCommand extends Command
             return $explicit;
         }
 
-        $scan = is_array($config['scan'] ?? null) ? $config['scan'] : [];
-        $configured = is_string($scan['cacheFile'] ?? null) && $scan['cacheFile'] !== '' ? $scan['cacheFile'] : null;
+        $scan = $config['scan'] ?? [];
+        $configured = $scan['cacheFile'] ?? null;
 
         return $configured !== null
             ? CommandSupport::resolveTargetPath($target, $configured)
@@ -190,8 +188,8 @@ final class ScanCommand extends Command
             return $explicit;
         }
 
-        $scan = is_array($config['scan'] ?? null) ? $config['scan'] : [];
-        $configured = is_string($scan['baselineFile'] ?? null) && $scan['baselineFile'] !== '' ? $scan['baselineFile'] : null;
+        $scan = $config['scan'] ?? [];
+        $configured = $scan['baselineFile'] ?? null;
 
         return $configured !== null
             ? CommandSupport::resolveTargetPath($target, $configured)

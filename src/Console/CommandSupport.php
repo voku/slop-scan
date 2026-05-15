@@ -33,8 +33,8 @@ final class CommandSupport
 
         $config = Config::load($targetPath, $configFile);
         $config['ignores'] = array_values(array_merge($config['ignores'], $ignore));
-        $scan = is_array($config['scan'] ?? null) ? $config['scan'] : [];
-        $cacheFile = is_string($scan['cacheFile'] ?? null) && $scan['cacheFile'] !== ''
+        $scan = $config['scan'] ?? [];
+        $cacheFile = ($scan['cacheFile'] ?? null) !== null
             ? self::resolveTargetPath($targetPath, $scan['cacheFile'])
             : ScanCache::defaultPath($targetPath);
 
