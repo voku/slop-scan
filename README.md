@@ -59,12 +59,29 @@ If your repository keeps its config outside the scan root, point the scan at it 
 "$HOME/.local/bin/slop-scan" scan . --config-file infra/githooks/slop-scan.config.json
 ```
 
+You can also keep common scan defaults in `slop-scan.config.json` so teams do not need to repeat the same flags on every run:
+
+```json
+{
+  "scan": {
+    "cacheFile": ".slop-scan.cache.json",
+    "baselineFile": "slop-baseline.json",
+    "rules": ["php.debug-output"],
+    "pathFilters": ["src/**"],
+    "maxFindings": 50,
+    "minScore": 1.0
+  }
+}
+```
+
+When present, those config values act as defaults for `scan`. Explicit CLI flags still win.
+
 ## What it ships with
 
 - Deterministic findings with stable occurrence fingerprints for review, delta comparisons, and baseline workflows.
 - Built-in heuristics for PHP patterns such as empty catches, error swallowing, blanket suppressions, magic numbers, placeholder bodies, clone clusters, and type-escape hotspots, plus Markdown checks for low-signal process docs.
 - Multiple output targets including text, lint, JSON, GitHub annotations, TOON, and NDJSON.
-- Repo-friendly controls including path ignores, per-rule overrides, PHPStan-style `ignoreErrors`, and inline `@slop-scan-ignore` directives.
+- Repo-friendly controls including path ignores, per-rule overrides, repo-level `scan` defaults, PHPStan-style `ignoreErrors`, and inline `@slop-scan-ignore` directives.
 - Reusable per-file scan caching via `.slop-scan.cache.json` and a `stats` command for repository-level summaries.
 
 ## More docs
