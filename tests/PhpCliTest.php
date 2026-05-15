@@ -1365,6 +1365,86 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testCliScanUsesConfiguredBaselineFileFromConfig(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        mkdir($fixture . '/artifacts', 0777, true);
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO baseline
+function proxy($value) {
+    return transform($value);
+}
+PHP);
+        file_put_contents($fixture . '/slop-scan.config.json', Json::encode([
+            'scan' => [
+                'baselineFile' => 'artifacts/slop-baseline.json',
+            ],
+        ]));
+        $baselineFile = $fixture . '/artifacts/slop-baseline.json';
+
+        [$generateExit, $generateOutput] = $this->runCommand(['scan', $fixture, '--generate-baseline']);
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO baseline
+function proxy($value) {
+    return transform($value);
+}
+try {
+    risky();
+} catch (Throwable $e) {
+}
+PHP);
+        [$jsonExit, $jsonOutput] = $this->runCommand(['scan', $fixture, '--json']);
+
+        self::assertSame(0, $generateExit);
+        self::assertStringContainsString('baseline written', $generateOutput);
+        self::assertFileExists($baselineFile);
+        self::assertSame(1, $jsonExit);
+        $decoded = json_decode($jsonOutput, true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(1, $decoded['baseline']['summary']['added']);
+        self::assertSame('php.empty-catch', $decoded['newFindings'][0]['ruleId']);
+
+        $this->remove($fixture);
+    }
+
+    public function testScanCommandBaselineOptionOverridesConfiguredBaselineLocation(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        mkdir($fixture . '/artifacts', 0777, true);
+        file_put_contents($fixture . '/src/A.php', <<<'PHP'
+<?php
+// TODO baseline
+function proxy($value) {
+    return transform($value);
+}
+PHP);
+        file_put_contents($fixture . '/slop-scan.config.json', Json::encode([
+            'scan' => [
+                'baselineFile' => 'artifacts/config-baseline.json',
+            ],
+        ]));
+        $configuredBaselineFile = $fixture . '/artifacts/config-baseline.json';
+        $explicitBaselineFile = $fixture . '/explicit-baseline.json';
+
+        [$exit, $output] = $this->runCommand([
+            'scan',
+            $fixture,
+            '--baseline-file',
+            $explicitBaselineFile,
+            '--generate-baseline',
+        ]);
+
+        self::assertSame(0, $exit);
+        self::assertStringContainsString('baseline written', $output);
+        self::assertFileExists($explicitBaselineFile);
+        self::assertFileDoesNotExist($configuredBaselineFile);
+
+        $this->remove($fixture);
+    }
+
     public function testCliDeltaUsesExplicitBaseAndHeadConfigFiles(): void
     {
         $base = $this->makeFixture();
@@ -1712,6 +1792,37 @@ PHP);
 
             self::assertSame(0, $exit);
             self::assertFileExists($configuredCacheFile);
+            self::assertFileDoesNotExist(ScanCache::defaultPath($fixture));
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
+    public function testScanCommandCacheOptionOverridesConfiguredCacheLocation(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        mkdir($fixture . '/infra/cache', 0777, true);
+        file_put_contents($fixture . '/src/A.php', "<?php\nvar_dump(\$value);\n");
+        file_put_contents($fixture . '/slop-scan.config.json', Json::encode([
+            'scan' => [
+                'cacheFile' => 'infra/cache/slop-cache.json',
+            ],
+        ]));
+        $configuredCacheFile = $fixture . '/infra/cache/slop-cache.json';
+        $explicitCacheFile = $fixture . '/custom-cache.json';
+
+        try {
+            $scanTester = new CommandTester(new ScanCommand());
+            $exit = $scanTester->execute([
+                'path' => $fixture,
+                '--json' => true,
+                '--cache-file' => $explicitCacheFile,
+            ]);
+
+            self::assertSame(0, $exit);
+            self::assertFileExists($explicitCacheFile);
+            self::assertFileDoesNotExist($configuredCacheFile);
             self::assertFileDoesNotExist(ScanCache::defaultPath($fixture));
         } finally {
             $this->remove($fixture);
