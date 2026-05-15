@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 - Added release notes for the Markdown low-signal detector ahead of the next cut, including clearer rule guidance for descriptive prose, repository anchors, and checklist-heavy docs.
 - Expanded Markdown regression coverage so generic artifact-style docs stay quiet when they contain enough concrete prose or repository-specific commands and file references.
+- Added repo-level `scan` defaults for cache files, baseline files, rule filters, path filters, maximum findings, and minimum score so teams can keep common scan settings in JSON config.
+- Documented baseline and config-file workflows for those `scan` defaults and added CLI coverage to confirm explicit flags still override configured cache and baseline paths.
 
 ## 0.1.2 - 2026-05-04
 
