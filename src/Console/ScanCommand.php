@@ -155,14 +155,14 @@ final class ScanCommand extends Command
         $scan = $config['scan'] ?? [];
 
         return [
-            'rules' => $this->firstNonEmptyList($this->stringListOption($input, 'rule'), $scan['rules']),
-            'paths' => $this->firstNonEmptyList($this->stringListOption($input, 'path-filter'), $scan['pathFilters']),
+            'rules' => $this->firstNonEmptyList($this->stringListOption($input, 'rule'), $scan['rules'] ?? []),
+            'paths' => $this->firstNonEmptyList($this->stringListOption($input, 'path-filter'), $scan['pathFilters'] ?? []),
             'maxFindings' => $maxFindings !== null && $maxFindings !== ''
                 ? max(0, (int) $maxFindings)
-                : $scan['maxFindings'],
+                : ($scan['maxFindings'] ?? null),
             'minScore' => $minScore !== null && $minScore !== ''
                 ? (float) $minScore
-                : $scan['minScore'],
+                : ($scan['minScore'] ?? null),
         ];
     }
 
