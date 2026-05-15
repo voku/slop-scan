@@ -196,7 +196,11 @@ final class ScanCommand extends Command
             : null;
     }
 
-    /** @param list<string> $primary @param list<string> $fallback @return list<string> */
+    /**
+     * @param list<string> $primary
+     * @param list<string> $fallback
+     * @return list<string>
+     */
     private function firstNonEmptyList(array $primary, array $fallback): array
     {
         return $primary !== [] ? $primary : $fallback;
