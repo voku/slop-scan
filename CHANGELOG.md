@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.4 - 2026-05-18
+
+- Refine excessive suppression counting, so that it's not so noisy. (ignored errors via identifier + comment are ok)
+
 ## 0.1.3 - 2026-05-18
 
 - Added release notes for the Markdown low-signal detector ahead of the next cut, including clearer rule guidance for descriptive prose, repository anchors, and checklist-heavy docs.
