@@ -454,7 +454,7 @@ PHP);
         self::assertSame(3, $this->countForRule($result->findings, 'php.blanket-static-analysis-suppressions'));
         self::assertSame(1, $this->countForRule($result->findings, 'php.excessive-static-analysis-suppressions'));
         self::assertSame(
-            ['suppressions=5', 'threshold=3', 'lines=3,5,7,9,11'],
+            ['suppressions=4', 'threshold=3', 'lines=3,5,7,11'],
             $this->firstEvidenceForRule($result->findings, 'php.excessive-static-analysis-suppressions')
         );
 
@@ -475,6 +475,30 @@ PHP);
         $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
 
         self::assertNotContains('php.blanket-static-analysis-suppressions', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testStaticAnalysisSuppressionDetectionAllowsReasonedSuppressionsWithoutExcessiveFinding(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Ignored.php', <<<'PHP'
+<?php
+
+// @phpstan-ignore itportal.exception.baseClassThrown (legacy auth flow keeps the generic throw here)
+throw new Exception(i::_('Auth client id nicht gefunden.'));
+// @phpstan-ignore argument.type (third-party payload is not typed yet)
+risky($input);
+// @psalm-suppress MixedAssignment (upstream response shape is still mixed)
+$value = risky($input);
+// @psalm-suppress MixedArgument (adapter accepts the temporary mixed value)
+risky($value);
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.excessive-static-analysis-suppressions', $this->ruleIds($result->findings));
 
         $this->remove($fixture);
     }

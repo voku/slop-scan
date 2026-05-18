@@ -24,9 +24,11 @@ final class ExcessiveStaticAnalysisSuppressionsRule extends BaseRule
         $threshold = max(1, (int) ($context->ruleConfig['options']['commentCount'] ?? self::DEFAULT_THRESHOLD));
         $suppressions = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.comments') ?? [] as $comment) {
-            if (StaticAnalysisSuppressions::hasAnySuppression($comment['text'])) {
-                $suppressions[] = $comment;
+            if (!StaticAnalysisSuppressions::countsTowardExcessiveThreshold($comment['text'])) {
+                continue;
             }
+
+            $suppressions[] = $comment;
         }
         if (count($suppressions) <= $threshold) {
             return [];
