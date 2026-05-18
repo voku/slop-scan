@@ -35,7 +35,7 @@ final class StaticAnalysisSuppressions
         ];
     }
 
-    /** @return null|array{directive:string,tail:string} */
+    /** @return ?array{directive:string,tail:string} */
     public static function suppressionDirective(string $comment): ?array
     {
         if (!preg_match(self::GENERAL_WITH_TAIL_PATTERN, $comment, $match)) {
@@ -53,11 +53,19 @@ final class StaticAnalysisSuppressions
         return preg_match(self::PHPSTAN_IGNORE_IDENTIFIER_PATTERN, trim($tail)) === 1;
     }
 
+    /**
+     * Treat only scoped suppressions with a parenthesized inline reason as justified.
+     * Those comments should stay out of the excessive-suppressions threshold.
+     */
     public static function hasScopedSuppressionWithReason(string $tail): bool
     {
         return preg_match(self::SCOPED_SUPPRESSION_WITH_REASON_PATTERN, trim($tail)) === 1;
     }
 
+    /**
+     * Count blanket or unexplained suppressions toward the excessive-suppressions threshold.
+     * Scoped suppressions with a parenthesized inline reason are intentionally ignored here.
+     */
     public static function countsTowardExcessiveThreshold(string $comment): bool
     {
         $match = self::suppressionDirective(CommentText::body($comment));
