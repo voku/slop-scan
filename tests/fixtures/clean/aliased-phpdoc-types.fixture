@@ -1,0 +1,19 @@
+<?php
+
+namespace Demo;
+
+use Demo\Support\Payload as Message;
+use Demo\Support\Payload;
+
+final class AliasedPhpDoc
+{
+    /**
+     * @param Message $message Payload received from the upstream queue
+     *
+     * @return Message Payload forwarded to the downstream queue
+     */
+    public function forward(Payload $message): Payload
+    {
+        return $message;
+    }
+}

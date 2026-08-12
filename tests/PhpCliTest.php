@@ -674,6 +674,71 @@ PHP);
         $this->remove($fixture);
     }
 
+    public function testMisleadingPhpDocTypeRuleKeepsDescribedPropertyAnnotations(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/DescribedProperty.php', <<<'PHP'
+<?php
+
+final class DescribedProperty
+{
+    /** @var string Visible label from the external system */
+    public string $label = '';
+
+    /** @var string */
+    public string $key = '';
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(
+            [
+                'subject=DescribedProperty::$key',
+                'annotation=@var $key',
+                'native=string',
+                'phpdoc=string',
+                'reason=phpdoc-repeats-native-type',
+            ],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.misleading-phpdoc-types', 9)
+        );
+        self::assertSame(1, $this->countForRule($result->findings, 'php.misleading-phpdoc-types'));
+
+        $this->remove($fixture);
+    }
+
+    public function testMisleadingPhpDocTypeRuleTreatsMixedUnionsAsTheSameNativeType(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/MixedDocs.php', <<<'PHP'
+<?php
+
+/**
+ * @param mixed|null $value
+ */
+function accepts_anything(mixed $value): void
+{
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(
+            [
+                'subject=accepts_anything',
+                'annotation=@param $value',
+                'native=mixed',
+                'phpdoc=mixed|null $value',
+                'reason=phpdoc-repeats-native-type',
+            ],
+            $this->findEvidenceForRuleAndLine($result->findings, 'php.misleading-phpdoc-types', 6)
+        );
+
+        $this->remove($fixture);
+    }
+
     public function testMisleadingPhpDocTypeRuleDoesNotFlagHelpfulDescriptionsOnMatchingTypes(): void
     {
         $fixture = $this->makeFixture();
@@ -716,6 +781,7 @@ PHP);
             'mock heavy test without assertions' => ['mock-heavy-test-without-assertions.fixture', 'tests/OnlyMocksTest.php', 'php.mock-heavy-tests-without-assertions'],
             'magic numbers' => ['magic-number.fixture', 'src/MagicNumber.php', 'php.magic-numbers'],
             'misleading phpdoc types' => ['misleading-phpdoc-types.fixture', 'src/MisleadingPhpDoc.php', 'php.misleading-phpdoc-types'],
+            'misleading phpdoc property' => ['misleading-phpdoc-property.fixture', 'src/MisleadingPhpDocProperty.php', 'php.misleading-phpdoc-types'],
             'placeholder comments' => ['placeholder-comments.fixture', 'src/PlaceholderComments.php', 'php.placeholder-comments'],
             'pass through wrapper' => ['pass-through-wrapper.fixture', 'src/PassThroughWrapper.php', 'php.pass-through-wrappers'],
             'return constant stub' => ['return-constant-stub.fixture', 'src/ReturnConstantStub.php', 'php.return-constant-stub'],
@@ -751,6 +817,7 @@ PHP);
             'error wrapping with previous' => ['error-wrapping-with-previous.fixture', 'src/ErrorWrappingWithPrevious.php'],
             'test with mocks and assertions' => ['test-with-mocks-and-real-assertions.fixture', 'tests/MockAssertionsTest.php'],
             'helpful phpdoc types' => ['helpful-phpdoc-types.fixture', 'src/HelpfulPhpDoc.php'],
+            'aliased phpdoc types' => ['aliased-phpdoc-types.fixture', 'src/AliasedPhpDoc.php'],
             'installation markdown' => ['installation-guide-markdown.fixture', 'docs/installation.md'],
             'contributing markdown' => ['contributing-markdown.fixture', 'docs/contributing.md'],
             'release checklist markdown' => ['release-checklist-markdown.fixture', 'docs/release-checklist.md'],
@@ -2852,10 +2919,90 @@ PHP);
         $summaries = PhpFacts::phpDocTypeSummaries($file);
 
         self::assertSame(['format_name', 'Formatter::names'], array_column($summaries, 'subject'));
-        self::assertSame('string', $summaries[0]['params'][0]['nativeType']);
-        self::assertSame('string|null', $summaries[0]['return']['phpDocType']);
-        self::assertSame('int', $summaries[1]['params'][0]['nativeType']);
-        self::assertSame('array<int, string>', $summaries[1]['return']['phpDocExtendedType']);
+        self::assertSame(['@param $name', '@return'], array_column($summaries[0]['annotations'], 'annotation'));
+        self::assertSame('string', $summaries[0]['annotations'][0]['nativeType']);
+        self::assertSame('string|null', $summaries[0]['annotations'][1]['phpDocType']);
+        self::assertSame('int', $summaries[1]['annotations'][0]['nativeType']);
+        self::assertSame('array<int, string>', $summaries[1]['annotations'][1]['phpDocExtendedType']);
+        self::assertSame(7, $summaries[0]['line']);
+        self::assertSame(9, $summaries[0]['endLine']);
+    }
+
+    public function testPhpFactsCollectPhpDocTypeSummariesFromInterfacesTraitsAndProperties(): void
+    {
+        $file = $this->fixtureDir . '/src/PhpDocMembers.php';
+        file_put_contents($file, <<<'PHP'
+<?php
+
+interface Renderer
+{
+    /** @return string */
+    public function render(): string;
+}
+
+trait Loud
+{
+    /** @var string */
+    public string $volume = 'high';
+}
+
+final class Widget
+{
+    /** @var int */
+    public string $label = '';
+}
+PHP);
+
+        $summaries = PhpFacts::phpDocTypeSummaries($file);
+
+        self::assertSame(
+            ['Renderer::render', 'Loud::$volume', 'Widget::$label'],
+            array_column($summaries, 'subject')
+        );
+        self::assertSame(['method', 'property', 'property'], array_column($summaries, 'kind'));
+        self::assertSame('@var $volume', $summaries[1]['annotations'][0]['annotation']);
+        self::assertSame('@var', $summaries[1]['annotations'][0]['tag']);
+        self::assertSame('volume', $summaries[1]['annotations'][0]['variable']);
+        self::assertSame('@return', $summaries[0]['annotations'][0]['tag']);
+        self::assertNull($summaries[0]['annotations'][0]['variable']);
+        self::assertSame('int', $summaries[2]['annotations'][0]['phpDocType']);
+        self::assertSame('string', $summaries[2]['annotations'][0]['nativeType']);
+    }
+
+    public function testPhpFactsResolveImportedPhpDocTypesAndParameterLines(): void
+    {
+        $file = $this->fixtureDir . '/src/PhpDocImports.php';
+        file_put_contents($file, <<<'PHP'
+<?php
+
+namespace Demo;
+
+use Demo\Support\Payload as Message;
+use Demo\Support\Payload;
+
+final class Service
+{
+    /**
+     * @param Message $message
+     * @param int $count
+     */
+    public function handle(
+        Payload $message,
+        int $count
+    ): void {
+    }
+}
+PHP);
+
+        $summaries = PhpFacts::phpDocTypeSummaries($file);
+
+        self::assertSame(['Demo\Service::handle'], array_column($summaries, 'subject'));
+        self::assertSame('\Message', $summaries[0]['annotations'][0]['phpDocType']);
+        self::assertSame('\Demo\Support\Payload', $summaries[0]['annotations'][0]['phpDocResolvedType']);
+        self::assertSame('\Demo\Support\Payload', $summaries[0]['annotations'][0]['nativeType']);
+        self::assertSame(15, $summaries[0]['annotations'][0]['line']);
+        self::assertSame(16, $summaries[0]['annotations'][1]['line']);
+        self::assertSame(14, $summaries[0]['line']);
     }
 
     public function testParserSummaryHandlesUnavailableInjectedAndErrorStates(): void

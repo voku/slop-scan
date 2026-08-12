@@ -15,6 +15,13 @@ use PhpParser\Node\Stmt;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
+use voku\SimplePhpParser\Model\PHPClass;
+use voku\SimplePhpParser\Model\PHPEnum;
+use voku\SimplePhpParser\Model\PHPFunction;
+use voku\SimplePhpParser\Model\PHPInterface;
+use voku\SimplePhpParser\Model\PHPProperty;
+use voku\SimplePhpParser\Model\PHPTrait;
+use voku\SimplePhpParser\Parsers\Helper\ParserContainer;
 use voku\SimplePhpParser\Parsers\PhpCodeParser;
 
 final class PhpFacts
@@ -95,8 +102,8 @@ final class PhpFacts
      *     kind:string,
      *     subject:string,
      *     line:int,
-     *     params:list<array{name:string,nativeType:?string,phpDocType:?string,phpDocRaw:?string,phpDocExtendedType:?string}>,
-     *     return:null|array{nativeType:?string,phpDocType:?string,phpDocRaw:?string,phpDocExtendedType:?string}
+     *     endLine:?int,
+     *     annotations:list<array{annotation:string,tag:string,variable:?string,line:int,nativeType:?string,phpDocType:?string,phpDocResolvedType:?string,phpDocRaw:?string,phpDocExtendedType:?string}>
      * }>
      */
     public static function phpDocTypeSummaries(string $absolutePath): array
@@ -112,18 +119,23 @@ final class PhpFacts
         }
 
         $entries = [];
-        foreach ($container->getFunctionsInfo() as $functionName => $info) {
-            $entry = self::phpDocTypeSummaryEntry('function', (string) $functionName, null, $info);
+        foreach ($container->getFunctions() as $functionName => $function) {
+            $entry = self::phpDocFunctionEntry('function', (string) $functionName, null, $function);
             if ($entry !== null) {
                 $entries[] = $entry;
             }
         }
 
-        $classes = $container->getClasses();
-        ksort($classes, SORT_STRING);
-        foreach ($classes as $className => $class) {
-            foreach ($class->getMethodsInfo() as $methodName => $info) {
-                $entry = self::phpDocTypeSummaryEntry('method', (string) $methodName, (string) $className, $info);
+        foreach (self::classLikeModels($container) as $className => $classLike) {
+            foreach ($classLike->methods as $method) {
+                $entry = self::phpDocFunctionEntry('method', $method->name, $className, $method);
+                if ($entry !== null) {
+                    $entries[] = $entry;
+                }
+            }
+
+            foreach ($classLike->properties as $property) {
+                $entry = self::phpDocPropertyEntry($className, $property);
                 if ($entry !== null) {
                     $entries[] = $entry;
                 }
@@ -531,55 +543,146 @@ final class PhpFacts
     }
 
     /**
-     * @param array<string,mixed> $info
+     * Class-likes that can carry documented members, keyed by their fully qualified name.
+     *
+     * @return array<string,PHPClass|PHPEnum|PHPInterface|PHPTrait>
+     */
+    private static function classLikeModels(ParserContainer $container): array
+    {
+        $classLikes = array_merge(
+            $container->getClasses(),
+            $container->getInterfaces(),
+            $container->getTraits(),
+            $container->getEnums()
+        );
+        ksort($classLikes, SORT_STRING);
+
+        return $classLikes;
+    }
+
+    /**
      * @return null|array{
      *     kind:string,
      *     subject:string,
      *     line:int,
-     *     params:list<array{name:string,nativeType:?string,phpDocType:?string,phpDocRaw:?string,phpDocExtendedType:?string}>,
-     *     return:null|array{nativeType:?string,phpDocType:?string,phpDocRaw:?string,phpDocExtendedType:?string}
+     *     endLine:?int,
+     *     annotations:list<array{annotation:string,tag:string,variable:?string,line:int,nativeType:?string,phpDocType:?string,phpDocResolvedType:?string,phpDocRaw:?string,phpDocExtendedType:?string}>
      * }
      */
-    private static function phpDocTypeSummaryEntry(string $kind, string $memberName, ?string $className, array $info): ?array
+    private static function phpDocFunctionEntry(string $kind, string $memberName, ?string $className, PHPFunction $function): ?array
     {
-        $params = [];
-        foreach (($info['paramsTypes'] ?? []) as $paramName => $types) {
-            $raw = $info['paramsPhpDocRaw'][$paramName] ?? null;
-            if (!is_string($raw) || trim($raw) === '') {
-                continue;
-            }
+        $declarationLine = $function->line ?? 1;
 
-            $params[] = [
-                'name' => (string) $paramName,
-                'nativeType' => is_string($types['type'] ?? null) ? $types['type'] : null,
-                'phpDocType' => is_string($types['typeFromPhpDoc'] ?? null) ? $types['typeFromPhpDoc'] : null,
-                'phpDocRaw' => $raw,
-                'phpDocExtendedType' => is_string($types['typeFromPhpDocExtended'] ?? null) ? $types['typeFromPhpDocExtended'] : null,
-            ];
+        $annotations = [];
+        foreach ($function->parameters as $parameter) {
+            $annotation = self::phpDocAnnotation(
+                '@param',
+                $parameter->name,
+                $parameter->line ?? $declarationLine,
+                $parameter->type,
+                $parameter->typeFromPhpDoc,
+                $parameter->typeFromPhpDocResolved,
+                $parameter->phpDocRaw,
+                $parameter->typeFromPhpDocExtended
+            );
+            if ($annotation !== null) {
+                $annotations[] = $annotation;
+            }
         }
 
-        $returnRaw = $info['returnPhpDocRaw'] ?? null;
-        $return = is_string($returnRaw) && trim($returnRaw) !== ''
-            ? [
-                'nativeType' => is_string($info['returnTypes']['type'] ?? null) ? $info['returnTypes']['type'] : null,
-                'phpDocType' => is_string($info['returnTypes']['typeFromPhpDoc'] ?? null) ? $info['returnTypes']['typeFromPhpDoc'] : null,
-                'phpDocRaw' => $returnRaw,
-                'phpDocExtendedType' => is_string($info['returnTypes']['typeFromPhpDocExtended'] ?? null) ? $info['returnTypes']['typeFromPhpDocExtended'] : null,
-            ]
-            : null;
+        $return = self::phpDocAnnotation(
+            '@return',
+            null,
+            $declarationLine,
+            $function->returnType,
+            $function->returnTypeFromPhpDoc,
+            $function->returnTypeFromPhpDocResolved,
+            $function->returnPhpDocRaw,
+            $function->returnTypeFromPhpDocExtended
+        );
+        if ($return !== null) {
+            $annotations[] = $return;
+        }
 
-        if ($params === [] && $return === null) {
+        if ($annotations === []) {
             return null;
         }
 
-        $subject = $className !== null ? $className . '::' . $memberName : $memberName;
-
         return [
             'kind' => $kind,
-            'subject' => $subject,
-            'line' => is_int($info['line'] ?? null) ? $info['line'] : 1,
-            'params' => $params,
-            'return' => $return,
+            'subject' => $className !== null ? $className . '::' . $memberName : $memberName,
+            'line' => $declarationLine,
+            'endLine' => $function->endLine,
+            'annotations' => $annotations,
+        ];
+    }
+
+    /**
+     * @return null|array{
+     *     kind:string,
+     *     subject:string,
+     *     line:int,
+     *     endLine:?int,
+     *     annotations:list<array{annotation:string,tag:string,variable:?string,line:int,nativeType:?string,phpDocType:?string,phpDocResolvedType:?string,phpDocRaw:?string,phpDocExtendedType:?string}>
+     * }
+     */
+    private static function phpDocPropertyEntry(string $className, PHPProperty $property): ?array
+    {
+        $declarationLine = $property->line ?? 1;
+
+        $annotation = self::phpDocAnnotation(
+            '@var',
+            $property->name,
+            $declarationLine,
+            $property->type,
+            $property->typeFromPhpDoc,
+            $property->typeFromPhpDocResolved,
+            $property->phpDocRaw,
+            $property->typeFromPhpDocExtended
+        );
+        if ($annotation === null) {
+            return null;
+        }
+
+        return [
+            'kind' => 'property',
+            'subject' => $className . '::$' . $property->name,
+            'line' => $declarationLine,
+            'endLine' => $property->endLine,
+            'annotations' => [$annotation],
+        ];
+    }
+
+    /**
+     * @param string  $tag      PHPDoc tag this annotation came from, such as `@param`.
+     * @param ?string $variable Variable the raw PHPDoc line repeats after the type, when the tag carries one.
+     *
+     * @return null|array{annotation:string,tag:string,variable:?string,line:int,nativeType:?string,phpDocType:?string,phpDocResolvedType:?string,phpDocRaw:?string,phpDocExtendedType:?string}
+     */
+    private static function phpDocAnnotation(
+        string $tag,
+        ?string $variable,
+        int $line,
+        ?string $nativeType,
+        ?string $phpDocType,
+        ?string $phpDocResolvedType,
+        ?string $phpDocRaw,
+        ?string $phpDocExtendedType
+    ): ?array {
+        if ($phpDocRaw === null || trim($phpDocRaw) === '') {
+            return null;
+        }
+
+        return [
+            'annotation' => $variable !== null ? $tag . ' $' . $variable : $tag,
+            'tag' => $tag,
+            'variable' => $variable,
+            'line' => $line,
+            'nativeType' => $nativeType,
+            'phpDocType' => $phpDocType,
+            'phpDocResolvedType' => $phpDocResolvedType,
+            'phpDocRaw' => $phpDocRaw,
+            'phpDocExtendedType' => $phpDocExtendedType,
         ];
     }
 
@@ -810,7 +913,6 @@ final class PhpFacts
     }
 
     /**
-     * @param mixed $value
      * @param callable(Node, ?Node): bool $visitor
      */
     private static function walkNodes(mixed $value, ?Node $parent, callable $visitor): void
