@@ -2,8 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.1.5 - 2026-08-12
 
+- Added the `compare-slop-scan-delta` portable agent skill, covering both the report-based and checkout-based forms of the `delta` command, the `--fail-on` gate, and the option pairs that are easy to mix up.
+- Added the `summarize-slop-scan-stats` portable agent skill for ranking findings by rule and file before reading a large report in full.
 - Updated dependencies: `voku/simple-php-code-parser` to `^0.22.2`, `nikic/php-parser` to `^5.8`, `helgesverre/toon` to `^3.2`, `phpstan/phpstan` to `^2.2.8`, `phpunit/phpunit` to `^12.5`, and `infection/infection` to `^0.34.2`. `symfony/console` stays on `^7.4` because Symfony 8 requires PHP 8.4 and this package still supports PHP 8.3.
 - Resolved imported PHPDoc types before comparing them with native types, so `use Vendor\Payload as Message;` with `@param Message $message` on a `Payload $message` parameter is no longer reported as a mismatch.
 - Extended `php.misleading-phpdoc-types` to interface, trait, and enum members and to `@var` annotations on typed properties, including every property of a grouped `public string $a, $b;` declaration.

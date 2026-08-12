@@ -1,0 +1,50 @@
+name: compare-slop-scan-delta
+purpose: Compare two slop-scan inputs and report which findings a change added or resolved.
+triggers:
+  - compare slop-scan results before and after a change
+  - which findings did this branch add
+  - gate a change on new slop findings
+requiredEnvironment:
+  workingDirectory: repository root
+  runtime:
+    - PHP 8.3+
+  tools:
+    - php
+  prerequisites:
+    - Both sides must be comparable inputs, either two checkouts or two JSON reports produced by the scan command.
+inputs:
+  required:
+    - basePath: Relative path to the base checkout when comparing trees. Default "../main"
+    - headPath: Relative path to the head checkout when comparing trees. Default "."
+  optional:
+    - baseReport: Existing base JSON report file, used instead of basePath
+    - headReport: Existing head JSON report file, used instead of headPath
+    - baseConfigFile: Relative config path for the base tree when its config lives outside the scan root
+    - headConfigFile: Relative config path for the head tree when its config lives outside the scan root
+    - failOn: Comma-separated delta statuses that should fail the command, such as "added"
+commands:
+  - description: Preferred machine-readable comparison of two saved reports
+    template: php bin/slop-scan.php delta --base-report <baseReport> --head-report <headReport> --json
+  - description: Comparison of two checkouts when no reports exist yet
+    template: php bin/slop-scan.php delta --base <basePath> --head <headPath> --json
+    defaults:
+      basePath: ../main
+      headPath: .
+  - description: Produce the two reports a report comparison needs
+    template: php bin/slop-scan.php scan <scanPath> --config-file <configFile> --json
+    defaults:
+      scanPath: .
+      configFile: slop-scan.config.json
+  - description: Fail the command when a change introduces findings
+    template: php bin/slop-scan.php delta --base-report <baseReport> --head-report <headReport> --fail-on added
+expectedOutputs:
+  - JSON with `summary.added` and `summary.resolved` counts, plus a `changes` list whose entries carry `status`, `fingerprint`, and the full `finding`.
+  - Exit code 0 without --fail-on, even when the comparison reports added findings.
+  - Exit code 1 when --fail-on names a status that the comparison reports.
+failureHandling:
+  - Path options and report options are not interchangeable. --base and --head expect directories, while --base-report and --head-report expect JSON report files; passing a report file to --base fails with a directory error.
+  - If both sides produce identical fingerprints for a moved finding, confirm the line numbers, because fingerprints combine ruleId, message, path, and line.
+  - If a comparison reports unexpected churn, regenerate both reports with the same config file so both sides use identical rule settings.
+  - If either report file is missing or not valid JSON, regenerate it with the scan command before comparing.
+validationFollowUp:
+  - When comparing a work in progress against its base, regenerate the head report after each meaningful edit so the delta reflects the current tree.

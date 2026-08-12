@@ -24,3 +24,9 @@ skills:
   - id: interpret-slop-scan-json
     file: .ai/skills/interpret-slop-scan-json.yaml
     summary: Read slop-scan JSON output and turn it into actionable review guidance.
+  - id: compare-slop-scan-delta
+    file: .ai/skills/compare-slop-scan-delta.yaml
+    summary: Compare two scans or reports and report which findings a change added or resolved.
+  - id: summarize-slop-scan-stats
+    file: .ai/skills/summarize-slop-scan-stats.yaml
+    summary: Rank findings by rule and file to decide where a cleanup should start.
