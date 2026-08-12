@@ -4,15 +4,15 @@
     "type": "project",
     "require": {
         "php": "^8.3",
-        "nikic/php-parser": "^5.7",
+        "nikic/php-parser": "^5.8",
         "symfony/console": "^7.4",
-        "voku/simple-php-code-parser": "^0.21.0",
-        "helgesverre/toon": "^3.1"
+        "voku/simple-php-code-parser": "^0.22.2",
+        "helgesverre/toon": "^3.2"
     },
     "require-dev": {
-        "infection/infection": "^0.32.7",
-        "phpstan/phpstan": "^2.1.54",
-        "phpunit/phpunit": "^11.5"
+        "infection/infection": "^0.34.2",
+        "phpstan/phpstan": "^2.2.8",
+        "phpunit/phpunit": "^12.5"
     },
     "license": "MIT",
     "authors": [

@@ -20,12 +20,19 @@ final class MisleadingPhpDocTypesRule extends BaseRule
         $findings = [];
 
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.phpDocTypeSummaries') ?? [] as $entry) {
-            foreach ($entry['params'] as $param) {
-                $issue = self::issueForTypes($param['nativeType'], $param['phpDocType'], $param['phpDocRaw'], $param['phpDocExtendedType']);
+            foreach ($entry['annotations'] as $annotation) {
+                $issue = self::issueForTypes(
+                    $annotation['nativeType'],
+                    $annotation['phpDocResolvedType'] ?? $annotation['phpDocType'],
+                    $annotation['phpDocRaw'],
+                    $annotation['phpDocExtendedType']
+                );
                 if ($issue === null) {
                     continue;
                 }
-                if ($issue['kind'] === 'redundant' && self::hasDescriptionText($param['phpDocRaw'], $param['name'])) {
+                // `@param` repeats the variable between type and description, `@return` and `@var` do not.
+                $repeatedVariable = $annotation['tag'] === '@param' ? $annotation['variable'] : null;
+                if ($issue['kind'] === 'redundant' && self::hasDescriptionText($annotation['phpDocRaw'], $repeatedVariable)) {
                     continue;
                 }
 
@@ -39,49 +46,16 @@ final class MisleadingPhpDocTypesRule extends BaseRule
                         : 'Found misleading PHPDoc type annotation that disagrees with the native signature',
                     [
                         'subject=' . $entry['subject'],
-                        'annotation=@param $' . $param['name'],
-                        'native=' . $param['nativeType'],
-                        'phpdoc=' . $param['phpDocRaw'],
+                        'annotation=' . $annotation['annotation'],
+                        'native=' . $annotation['nativeType'],
+                        'phpdoc=' . $annotation['phpDocRaw'],
                         'reason=' . $issue['reason'],
                     ],
                     $issue['kind'] === 'redundant' ? 0.75 : 1.5,
-                    [['path' => $context->file->path, 'line' => $entry['line'], 'column' => 1]],
+                    [['path' => $context->file->path, 'line' => $annotation['line'], 'column' => 1]],
                     $context->file->path
                 );
             }
-
-            $return = $entry['return'] ?? null;
-            if ($return === null) {
-                continue;
-            }
-
-            $issue = self::issueForTypes($return['nativeType'], $return['phpDocType'], $return['phpDocRaw'], $return['phpDocExtendedType']);
-            if ($issue === null) {
-                continue;
-            }
-            if ($issue['kind'] === 'redundant' && self::hasDescriptionText($return['phpDocRaw'], null)) {
-                continue;
-            }
-
-            $findings[] = new Finding(
-                $this->id(),
-                $this->family(),
-                $this->severity(),
-                'file',
-                $issue['kind'] === 'redundant'
-                    ? 'Found redundant PHPDoc type annotation that repeats the native signature'
-                    : 'Found misleading PHPDoc type annotation that disagrees with the native signature',
-                [
-                    'subject=' . $entry['subject'],
-                    'annotation=@return',
-                    'native=' . $return['nativeType'],
-                    'phpdoc=' . $return['phpDocRaw'],
-                    'reason=' . $issue['reason'],
-                ],
-                $issue['kind'] === 'redundant' ? 0.75 : 1.5,
-                [['path' => $context->file->path, 'line' => $entry['line'], 'column' => 1]],
-                $context->file->path
-            );
         }
 
         return $findings;
@@ -128,6 +102,12 @@ final class MisleadingPhpDocTypesRule extends BaseRule
             static fn(string $part): string => ltrim(trim($part), '\\'),
             explode('|', str_replace(' ', '', $type))
         ));
+
+        // `mixed` already covers every other member of a union, including `null`.
+        if (in_array('mixed', $parts, true)) {
+            return 'mixed';
+        }
+
         sort($parts, SORT_STRING);
 
         return implode('|', array_values(array_unique($parts)));

@@ -1,0 +1,9 @@
+<?php
+
+final class MisleadingPhpDocProperty
+{
+    /**
+     * @var int
+     */
+    public string $label = '';
+}
