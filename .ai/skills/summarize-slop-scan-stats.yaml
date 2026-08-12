@@ -14,10 +14,11 @@ requiredEnvironment:
     - Use an existing JSON report when one is available, so the summary matches the report under review.
 inputs:
   required:
-    - reportSource: Existing JSON report or baseline file, or a scan path when no report exists
+    - inputMode: Which input to summarize, "report" or "scan". Prefer "report" when one exists, so the summary matches the report under review.
   optional:
-    - scanPath: Relative path to scan when no report is provided. Default "."
-    - configFile: Relative config path when scanning. Default "slop-scan.config.json"
+    - reportSource: Existing JSON report or baseline file. Required in "report" mode
+    - scanPath: Relative path to scan. Required in "scan" mode. Default "."
+    - configFile: Relative config path, used in "scan" mode. Default "slop-scan.config.json"
     - topRules: How many rules to list. Default 10
     - topFiles: How many files to list. Default 10
 commands:
@@ -31,7 +32,7 @@ commands:
   - description: Widen the summary when the default lists hide the tail
     template: php bin/slop-scan.php stats --report <reportSource> --top-rules 25 --top-files 25
 expectedOutputs:
-  - JSON with `summary.findingCount`, `summary.uniqueRules`, `summary.uniquePaths`, and `summary.reportKind`, which names the input the summary was built from.
+  - JSON with `summary.findingCount`, `summary.uniqueRules`, `summary.uniquePaths`, and `summary.reportKind`, which reports the report kind read from `metadata.kind`, such as `baseline`, and falls back to `scan` when the input declares no kind.
   - A `topRules` list of `ruleId` with `findingCount` and `locationCount`, plus a `topFiles` list of `path` with `findingCount`.
 failureHandling:
   - The summary ranks findings, it does not explain them. Read the report itself, or use interpret-slop-scan-json, before acting on a ranking.

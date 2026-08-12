@@ -14,11 +14,12 @@ requiredEnvironment:
     - Both sides must be comparable inputs, either two checkouts or two JSON reports produced by the scan command.
 inputs:
   required:
-    - basePath: Relative path to the base checkout when comparing trees. Default "../main"
-    - headPath: Relative path to the head checkout when comparing trees. Default "."
+    - comparisonMode: Which input pair to compare, "reports" or "checkouts". Prefer "reports" when both sides are already scanned. Supply the whole pair for the selected mode and do not mix the two.
   optional:
-    - baseReport: Existing base JSON report file, used instead of basePath
-    - headReport: Existing head JSON report file, used instead of headPath
+    - baseReport: Base JSON report file. Required together with headReport in "reports" mode
+    - headReport: Head JSON report file. Required together with baseReport in "reports" mode
+    - basePath: Relative path to the base checkout. Required together with headPath in "checkouts" mode. Default "../main"
+    - headPath: Relative path to the head checkout. Required together with basePath in "checkouts" mode. Default "."
     - baseConfigFile: Relative config path for the base tree when its config lives outside the scan root
     - headConfigFile: Relative config path for the head tree when its config lives outside the scan root
     - failOn: Comma-separated delta statuses that should fail the command, such as "added"
@@ -30,11 +31,16 @@ commands:
     defaults:
       basePath: ../main
       headPath: .
-  - description: Produce the two reports a report comparison needs
-    template: php bin/slop-scan.php scan <scanPath> --config-file <configFile> --json
+  - description: Write the base report that "reports" mode consumes
+    template: php bin/slop-scan.php scan <basePath> --config-file <baseConfigFile> --json > <baseReport>
     defaults:
-      scanPath: .
-      configFile: slop-scan.config.json
+      basePath: ../main
+      baseConfigFile: slop-scan.config.json
+  - description: Write the head report that "reports" mode consumes
+    template: php bin/slop-scan.php scan <headPath> --config-file <headConfigFile> --json > <headReport>
+    defaults:
+      headPath: .
+      headConfigFile: slop-scan.config.json
   - description: Fail the command when a change introduces findings
     template: php bin/slop-scan.php delta --base-report <baseReport> --head-report <headReport> --fail-on added
 expectedOutputs:
