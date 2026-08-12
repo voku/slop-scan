@@ -119,3 +119,5 @@ Current portable skills:
 - `scan-php-slop` for deterministic PHP repository scans
 - `validate-slop-scan-repo` for scan-readiness checks and slop-scan troubleshooting on a target PHP repository
 - `interpret-slop-scan-json` for machine-readable report review
+- `compare-slop-scan-delta` for before-and-after comparisons of a change
+- `summarize-slop-scan-stats` for rule and file rankings on large reports
