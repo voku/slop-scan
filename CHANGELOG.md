@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Excluded repository metadata from the PHAR build, so vendor `.git` directories are no longer bundled. Nothing reads them at runtime, and when Composer falls back to source installs the history dwarfed the shipped code: a local build went from 38.1 MB to 10.7 MB. Dist-based builds, including CI, are unaffected.
+
 ## 0.1.5 - 2026-08-12
 
 - Added the `compare-slop-scan-delta` portable agent skill, covering both the report-based and checkout-based forms of the `delta` command, the `--fail-on` gate, and the option pairs that are easy to mix up.

@@ -97,6 +97,12 @@ PHP);
 }
 
 /**
+ * Repository metadata never belongs in the PHAR.
+ *
+ * Nothing reads it at runtime, and when Composer falls back to source installs
+ * -- for example behind a proxy that blocks dist downloads -- every vendor
+ * package carries its own history, which dwarfs the code being shipped.
+ *
  * @return array<string,string>
  */
 function collectDirectoryFiles(string $directory, string $baseDir): array
@@ -106,7 +112,12 @@ function collectDirectoryFiles(string $directory, string $baseDir): array
     }
 
     $files = [];
-    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS));
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveCallbackFilterIterator(
+            new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS),
+            static fn(SplFileInfo $candidate): bool => $candidate->getFilename() !== '.git'
+        )
+    );
 
     foreach ($iterator as $file) {
         if (!$file->isFile()) {
