@@ -27,28 +27,88 @@ final class Delta
     {
         $baseMap = self::occurrenceMap($base['findings'] ?? []);
         $headMap = self::occurrenceMap($head['findings'] ?? []);
+        $added = array_diff_key($headMap, $baseMap);
+        $resolved = array_diff_key($baseMap, $headMap);
+        [$resolved, $added] = self::withoutUniqueRelocations($resolved, $added);
+
         $changes = [];
-        foreach ($headMap as $fingerprint => $finding) {
-            if (!isset($baseMap[$fingerprint])) {
-                $changes[] = ['status' => 'added', 'fingerprint' => $fingerprint, 'finding' => $finding];
-            }
+        foreach ($added as $fingerprint => $entry) {
+            $changes[] = ['status' => 'added', 'fingerprint' => $fingerprint, 'finding' => $entry['finding']];
         }
-        foreach ($baseMap as $fingerprint => $finding) {
-            if (!isset($headMap[$fingerprint])) {
-                $changes[] = ['status' => 'resolved', 'fingerprint' => $fingerprint, 'finding' => $finding];
-            }
+        foreach ($resolved as $fingerprint => $entry) {
+            $changes[] = ['status' => 'resolved', 'fingerprint' => $fingerprint, 'finding' => $entry['finding']];
         }
         usort($changes, static fn(array $left, array $right): int => strcmp($left['fingerprint'], $right['fingerprint']));
-        return ['summary' => ['added' => count(array_filter($changes, static fn(array $c): bool => $c['status'] === 'added')), 'resolved' => count(array_filter($changes, static fn(array $c): bool => $c['status'] === 'resolved'))], 'changes' => $changes];
+        return ['summary' => ['added' => count($added), 'resolved' => count($resolved)], 'changes' => $changes];
     }
 
-    /** @param list<array<string,mixed>> $findings @return array<string,array<string,mixed>> */
+    /**
+     * @param array<string,array{finding:array<string,mixed>,occurrence:array<string,mixed>}> $resolved
+     * @param array<string,array{finding:array<string,mixed>,occurrence:array<string,mixed>}> $added
+     * @return array{
+     *     array<string,array{finding:array<string,mixed>,occurrence:array<string,mixed>}>,
+     *     array<string,array{finding:array<string,mixed>,occurrence:array<string,mixed>}>
+     * }
+     */
+    private static function withoutUniqueRelocations(array $resolved, array $added): array
+    {
+        $resolvedGroups = self::relocationGroups($resolved);
+        $addedGroups = self::relocationGroups($added);
+        foreach ($resolvedGroups as $key => $resolvedFingerprints) {
+            $addedFingerprints = $addedGroups[$key] ?? [];
+            if (count($resolvedFingerprints) !== 1 || count($addedFingerprints) !== 1) {
+                continue;
+            }
+            unset($resolved[$resolvedFingerprints[0]], $added[$addedFingerprints[0]]);
+        }
+
+        return [$resolved, $added];
+    }
+
+    /**
+     * @param array<string,array{finding:array<string,mixed>,occurrence:array<string,mixed>}> $occurrences
+     * @return array<string,list<string>>
+     */
+    private static function relocationGroups(array $occurrences): array
+    {
+        $groups = [];
+        foreach ($occurrences as $fingerprint => $entry) {
+            $groups[self::relocationKey($entry)][] = $fingerprint;
+        }
+
+        return $groups;
+    }
+
+    /** @param array{finding:array<string,mixed>,occurrence:array<string,mixed>} $entry */
+    private static function relocationKey(array $entry): string
+    {
+        $finding = $entry['finding'];
+        $occurrence = $entry['occurrence'];
+        $evidence = array_values(array_filter(
+            is_array($finding['evidence'] ?? null) ? $finding['evidence'] : [],
+            'is_string',
+        ));
+
+        return hash('sha256', json_encode([
+            'rule_id' => $finding['ruleId'] ?? '',
+            'family' => $finding['family'] ?? '',
+            'scope' => $finding['scope'] ?? '',
+            'message' => $finding['message'] ?? '',
+            'path' => $occurrence['path'] ?? $finding['path'] ?? '<repo>',
+            'evidence' => $evidence,
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * @param list<array<string,mixed>> $findings
+     * @return array<string,array{finding:array<string,mixed>,occurrence:array<string,mixed>}>
+     */
     private static function occurrenceMap(array $findings): array
     {
         $map = [];
         foreach ($findings as $finding) {
             foreach (($finding['deltaIdentity']['occurrences'] ?? []) as $occurrence) {
-                $map[$occurrence['fingerprint']] = $finding;
+                $map[$occurrence['fingerprint']] = ['finding' => $finding, 'occurrence' => $occurrence];
             }
         }
         ksort($map, SORT_STRING);
