@@ -1,4 +1,4 @@
-name: Tag release
+name: Release from marker
 
 on:
   push:
@@ -10,54 +10,101 @@ permissions:
   contents: write
 
 jobs:
-  tag:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Create requested release tags
+      - name: Resolve release marker
+        id: release
         shell: bash
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          markers=(.release/*.json)
+
+          mapfile -t markers < <(
+            jq -r '
+              .commits[]
+              | (.added[]?, .modified[]?)
+              | select(startswith(".release/") and endswith(".json"))
+            ' "$GITHUB_EVENT_PATH" | sort -u
+          )
+
           if [ "${#markers[@]}" -eq 0 ]; then
-            echo 'No release markers found.' >&2
+            echo 'No added or modified release marker; nothing to do.'
+            exit 0
+          fi
+
+          if [ "${#markers[@]}" -ne 1 ]; then
+            printf 'Expected exactly one release marker, got %s:\n' "${#markers[@]}" >&2
+            printf ' - %s\n' "${markers[@]}" >&2
             exit 1
           fi
 
-          for marker in "${markers[@]}"; do
-            version="$(jq -er '.version' "$marker")"
-            target="$(jq -er '.target_sha' "$marker")"
+          marker="${markers[0]}"
+          version="$(jq -er '.version' "$marker")"
+          target="$(jq -er '.target_sha' "$marker")"
 
-            if [[ "$version" != "$(basename "$marker" .json)" ]]; then
-              echo "Marker filename/version mismatch: $marker -> $version" >&2
+          if [[ "$version" != "$(basename "$marker" .json)" ]]; then
+            echo "Marker filename/version mismatch: $marker -> $version" >&2
+            exit 1
+          fi
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release version: $version" >&2
+            exit 1
+          fi
+
+          git cat-file -e "${target}^{commit}"
+
+          if ! git show "$target:CHANGELOG.md" | grep -Fq "## [$version] - " \
+            && ! git show "$target:CHANGELOG.md" | grep -Fq "## $version - "; then
+            echo "CHANGELOG.md at $target has no release section for $version" >&2
+            exit 1
+          fi
+
+          if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+            existing="$(git rev-list -n 1 "$version")"
+            if [[ "$existing" != "$target" ]]; then
+              echo "Tag $version exists at $existing, expected $target" >&2
               exit 1
             fi
-
-            if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "Invalid release version: $version" >&2
-              exit 1
-            fi
-
-            if ! grep -Fq "## [$version] - " CHANGELOG.md && ! grep -Fq "## $version - " CHANGELOG.md; then
-              echo "CHANGELOG.md has no release section for $version" >&2
-              exit 1
-            fi
-
-            git cat-file -e "${target}^{commit}"
-
-            if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
-              existing="$(git rev-list -n 1 "$version")"
-              [[ "$existing" == "$target" ]] || {
-                echo "Tag $version exists at $existing, expected $target" >&2
-                exit 1
-              }
-              continue
-            fi
-
+          else
             git tag "$version" "$target"
             git push origin "refs/tags/$version"
-          done
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+
+      - name: Check out release target
+        if: steps.release.outputs.target != ''
+        shell: bash
+        run: git checkout --detach "${{ steps.release.outputs.target }}"
+
+      - name: Set up PHP
+        if: steps.release.outputs.target != ''
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer
+
+      - name: Build PHAR
+        if: steps.release.outputs.target != ''
+        run: composer run phar:build
+
+      - name: Verify PHAR
+        if: steps.release.outputs.target != ''
+        run: php dist/slop-scan.phar --help
+
+      - name: Create GitHub release and upload PHAR
+        if: steps.release.outputs.target != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.version }}
+          name: ${{ steps.release.outputs.version }}
+          generate_release_notes: true
+          files: dist/slop-scan.phar
+          fail_on_unmatched_files: true
