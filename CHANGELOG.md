@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.6 - 2026-08-13
+
+- Fixed baseline delta false positives when an unchanged finding moves only because unrelated lines were inserted earlier in the same file. Exact fingerprints remain primary; unmatched findings are treated as relocations only for an unambiguous semantic 1:1 match on rule, message, path, and evidence.
+- Ambiguous duplicate findings remain exact-match-only, and changed evidence still reports normal added/resolved delta entries.
+- Added focused regressions for pure line relocation, changed evidence, and ambiguous duplicate relocation. The release candidate passed syntax checks, PHPStan, PHPUnit, self-scan dogfood, and PHAR build/verification.
+
 ## 0.1.5 - 2026-08-12
 
 - Added the `compare-slop-scan-delta` portable agent skill, covering both the report-based and checkout-based forms of the `delta` command, the `--fail-on` gate, and the option pairs that are easy to mix up.
