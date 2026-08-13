@@ -24,15 +24,11 @@ jobs:
           set -euo pipefail
 
           mapfile -t markers < <(
-            jq -r '
-              .commits[]
-              | (.added[]?, .modified[]?)
-              | select(startswith(".release/") and endswith(".json"))
-            ' "$GITHUB_EVENT_PATH" | sort -u
+            git diff --name-only HEAD^ HEAD -- '.release/*.json' | sort -u
           )
 
           if [ "${#markers[@]}" -eq 0 ]; then
-            echo 'No added or modified release marker; nothing to do.'
+            echo 'No changed release marker; nothing to do.'
             exit 0
           fi
 
