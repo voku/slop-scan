@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.7 - 2026-08-13
+
+- Fixed PHAR packaging so runtime dependencies are resolved against PHP 8.3.0, the package's minimum supported PHP line, instead of inheriting the release runner's PHP version.
+- This prevents a PHAR built on PHP 8.4 from embedding a dependency tree that refuses to start on supported PHP 8.3 consumers. Source-package dependency constraints remain unchanged.
+- The exact candidate passed repository CI, including PHAR build and PHAR startup after resolving the temporary binary dependency tree against PHP 8.3.0.
+
 ## 0.1.6 - 2026-08-13
 
 - Fixed baseline delta false positives when an unchanged finding moves only because unrelated lines were inserted earlier in the same file. Exact fingerprints remain primary; unmatched findings are treated as relocations only for an unambiguous semantic 1:1 match on rule, message, path, and evidence.
