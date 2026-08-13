@@ -45,6 +45,7 @@ try {
         }
     }
 
+    runCommand(['composer', 'config', 'platform.php', '8.3.0'], $buildDir);
     runCommand(
         ['composer', 'install', '--no-dev', '--prefer-dist', '--no-interaction', '--optimize-autoloader', '--no-scripts'],
         $buildDir,
