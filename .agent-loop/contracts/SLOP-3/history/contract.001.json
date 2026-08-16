@@ -1,27 +1,26 @@
 {
     "acceptance_criteria": [
         "php.duplicate-mock-setup is registered and documented as a PHP-native adaptation of upstream tests.duplicate-mock-setup.",
-        "The same meaningful PHPUnit mock/stub behavior setup repeated in at least three distinct test files produces deterministic repo-scope findings with concrete occurrence locations.",
+        "The same meaningful PHPUnit mock/stub behavior setup repeated in at least three distinct test files produces deterministic findings on the affected files.",
         "Bare createMock/createStub declarations, tearDown-only setup, clusters in fewer than three files, and semantically different mock target or method shapes stay quiet.",
         "php.mock-heavy-tests-without-assertions and existing finding/delta behavior remain unchanged.",
-        "No dedicated repo fact provider, generic SLOP-13 parity layer, analyzer lifecycle change, plugin system, or benchmark infrastructure is added.",
+        "No generic SLOP-13 parity fact layer, plugin system, benchmark infrastructure, or analyzer/scheduler special case is added.",
         "composer validate --strict, composer run lint, composer run analyse, composer run test, composer run scan:self and composer run phar:build pass on the implementation head."
     ],
-    "approved_at": null,
-    "approved_by": null,
+    "approved_at": "2026-08-16T09:06:00+00:00",
+    "approved_by": "voku",
     "base_commit": "758a2e956dfadc8c5186f25f3856220b8170e8e3",
     "behavior_anchors": [
-        "PHP test source -> php.structure file.functionSummaries -> repo-scope php.duplicate-mock-setup clustering -> repo finding with concrete test-file locations",
+        "PHP test source -> existing file.text -> repo.testMockDuplication clusters -> php.duplicate-mock-setup finding",
         "existing php.mock-heavy-tests-without-assertions single-file behavior remains independent"
     ],
-    "created_at": "2026-08-16T09:20:00+00:00",
-    "goal": "Adapt upstream tests.duplicate-mock-setup into one conservative repo-scope PHP rule that directly clusters existing parser-normalized file.functionSummaries across test files, avoiding the upstream file-fact/repo-fact topology that does not fit this analyzer lifecycle.",
+    "created_at": "2026-08-16T09:06:00+00:00",
+    "goal": "Adapt upstream tests.duplicate-mock-setup into a conservative PHP rule that reports meaningful PHPUnit mock/stub behavior setup repeated across at least three distinct test files, using one focused repo-level duplication fact rather than a generic parity prerequisite layer.",
     "kind": "task_contract",
     "non_goals": [
-        "Do not add a dedicated TestMockDuplicationFactProvider or generic upstream fact-parity infrastructure.",
-        "Do not change Analyzer rule/provider ordering or add a second rule pass.",
-        "Do not make SLOP-13 a prerequisite for this rule.",
+        "Do not add generic upstream fact-parity infrastructure or make SLOP-13 a prerequisite for this rule.",
         "Do not port barrel-density, async-noise, plugin, benchmark, delta-strategy, or release-comparison features.",
+        "Do not change existing rule scoring, evidence, or baseline identity unless a focused compatibility fix is required and separately evidenced.",
         "Do not treat common bare PHPUnit mock creation as duplication evidence."
     ],
     "operating_prompt_manifest": "vendor/voku/agent-loop/resources/operating-prompts.json",
@@ -32,13 +31,15 @@
         }
     ],
     "planned_by": "GPT-5.6 Sol",
-    "revision": 2,
+    "revision": 1,
     "schema_version": "1.0",
     "scope": [
         ".agent-loop/contracts/SLOP-3",
         ".agent-loop/tasks/SLOP-3.md",
         ".agent-loop/todo/cards/SLOP-3.md",
         ".agent-loop/todo/cards/SLOP-13.md",
+        "src/Fact/PhpFacts.php",
+        "src/Fact/TestMockDuplicationFactProvider.php",
         "src/Rule/DuplicateMockSetupRule.php",
         "src/DefaultRegistry.php",
         "src/Support/FindingMetadataCatalog.php",
@@ -46,7 +47,7 @@
         "docs/rules.md",
         "docs/upstream-parity.md"
     ],
-    "status": "candidate",
+    "status": "superseded",
     "tags": [
         "rules",
         "momentum"
