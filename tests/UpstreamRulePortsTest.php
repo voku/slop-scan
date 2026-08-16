@@ -183,6 +183,33 @@ PHP);
         self::assertSame([], $this->forRule($result->findings, 'php.catch-returns-exception-message'));
     }
 
+    public function testCatchRuleStillFlagsCapturedCatchVariableInsideClosure(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function recover(): void
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        $handler = static function () use ($exception): string {
+            $message = $exception->getMessage();
+
+            return $message;
+        };
+
+        consume($handler);
+    }
+}
+PHP);
+
+        $findings = $this->forRule($result->findings, 'php.catch-returns-exception-message');
+
+        self::assertCount(1, $findings);
+        self::assertSame(['normalization=assigned-caught-message'], $findings[0]->evidence);
+    }
+
     public function testGenericStatusEnvelopeEvidenceIncludesRuntimeContext(): void
     {
         $result = $this->analyze(<<<'PHP'
