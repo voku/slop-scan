@@ -11,6 +11,7 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
+use voku\SimplePhpParser\Parsers\Helper\AstNodeInspector;
 use voku\SimplePhpParser\Parsers\PhpCodeParser;
 
 /**
@@ -158,7 +159,7 @@ final class PhpRulePortFacts
             'variable' => '$' . $assign->var->name,
             'kind' => $kind,
             'line' => $assign->expr->getStartLine(),
-            'column' => self::nodeStartColumn($assign->expr, $text),
+            'column' => AstNodeInspector::startColumn($assign->expr, $text),
         ];
     }
 
@@ -233,7 +234,7 @@ final class PhpRulePortFacts
             'payloadKeys' => $keys,
             'kind' => self::statusEnvelopeContextKind($array),
             'line' => $array->getStartLine(),
-            'column' => self::nodeStartColumn($array, $text),
+            'column' => AstNodeInspector::startColumn($array, $text),
         ];
     }
 
@@ -307,41 +308,12 @@ final class PhpRulePortFacts
 
             $setups[] = [
                 'label' => $label,
-                'fingerprint' => $label . '::' . self::fingerprintNodeShape($statement),
+                'fingerprint' => $label . '::' . AstNodeInspector::shapeFingerprint($statement, 5),
                 'line' => $statement->getStartLine(),
             ];
         }
 
         return $setups;
-    }
-
-    private static function fingerprintNodeShape(Node $node, int $depth = 0): string
-    {
-        $label = $node->getType();
-        if ($depth >= 5) {
-            return $label;
-        }
-
-        $children = [];
-        foreach ($node->getSubNodeNames() as $name) {
-            $value = $node->$name;
-            if ($value instanceof Node) {
-                $children[] = self::fingerprintNodeShape($value, $depth + 1);
-                continue;
-            }
-
-            if (!is_array($value)) {
-                continue;
-            }
-
-            foreach ($value as $child) {
-                if ($child instanceof Node) {
-                    $children[] = self::fingerprintNodeShape($child, $depth + 1);
-                }
-            }
-        }
-
-        return $children === [] ? $label : $label . '(' . implode(',', $children) . ')';
     }
 
     /** @return list<CaughtExceptionNormalization> */
@@ -509,7 +481,7 @@ final class PhpRulePortFacts
         return [
             'kind' => $kind,
             'line' => $expr->getStartLine(),
-            'column' => self::nodeStartColumn($expr, $text),
+            'column' => AstNodeInspector::startColumn($expr, $text),
         ];
     }
 
@@ -545,18 +517,5 @@ final class PhpRulePortFacts
         $parent = $node->getAttribute('parent');
 
         return $parent instanceof Node ? $parent : null;
-    }
-
-    private static function nodeStartColumn(Node $node, string $text): int
-    {
-        $start = $node->getStartFilePos();
-        if ($start < 0) {
-            return 1;
-        }
-
-        $prefix = substr($text, 0, $start);
-        $lineStart = strrpos($prefix, "\n");
-
-        return $lineStart === false ? $start + 1 : $start - $lineStart;
     }
 }
