@@ -12,8 +12,6 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\NodeFinder;
 use PhpParser\Node\Stmt;
-use PhpParser\Parser;
-use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
 use voku\SimplePhpParser\Model\PHPClass;
 use voku\SimplePhpParser\Model\PHPEnum;
@@ -42,9 +40,6 @@ final class PhpFacts
         'underflowexception',
         'unexpectedvalueexception',
     ];
-
-    /** @var null|callable():Parser */
-    private static $parserFactory = null;
 
     /** @return list<array{text:string,line:int}> */
     public static function comments(string $text): array
@@ -150,9 +145,7 @@ final class PhpFacts
         return $entries;
     }
 
-    /**
-     * @return array{mixedTypeCount:int,castCount:int}
-     */
+    /** @return array{mixedTypeCount:int,castCount:int} */
     public static function typeEscapeSummary(string $text): array
     {
         $statements = self::parseStatements($text);
@@ -254,18 +247,10 @@ final class PhpFacts
         ];
     }
 
-    /**
-     * @param null|callable():Parser $parserFactory Factory returning a nikic/php-parser parser instance.
-     */
-    public static function useParserFactoryForTesting(?callable $parserFactory): void
-    {
-        self::$parserFactory = $parserFactory;
-    }
-
     /** @return array{available:bool,classCount:int,functionCount:int,error?:string} */
     public static function parserSummary(string $absolutePath): array
     {
-        if (self::$parserFactory === null && !class_exists(ParserFactory::class)) {
+        if (!class_exists(PhpCodeParser::class)) {
             return ['available' => false, 'classCount' => 0, 'functionCount' => 0];
         }
 
@@ -275,7 +260,7 @@ final class PhpFacts
         }
 
         try {
-            $statements = self::parser()->parse($text) ?? [];
+            $statements = PhpCodeParser::getAstFromString($text);
             $finder = self::nodeFinder();
             $classCount = count($finder->find($statements, static fn(Node $node): bool => $node instanceof Stmt\Class_ || $node instanceof Stmt\Interface_ || $node instanceof Stmt\Trait_ || $node instanceof Stmt\Enum_));
             $functionCount = count($finder->findInstanceOf($statements, Stmt\Function_::class));
@@ -361,17 +346,12 @@ final class PhpFacts
     private static function parseStatements(string $text): ?array
     {
         try {
-            return self::parser()->parse($text) ?? [];
+            $statements = PhpCodeParser::getAstFromString($text);
+            /** @var list<Stmt> $statements */
+            return $statements;
         } catch (\Throwable) {
             return null;
         }
-    }
-
-    private static function parser(): Parser
-    {
-        return self::$parserFactory !== null
-            ? (self::$parserFactory)()
-            : (new ParserFactory())->createForHostVersion();
     }
 
     private static function nodeFinder(): NodeFinder
@@ -389,9 +369,7 @@ final class PhpFacts
         return trim((new Standard())->prettyPrint($statements));
     }
 
-    /**
-     * @return list<list<Stmt>>
-     */
+    /** @return list<list<Stmt>> */
     private static function childStatements(Node $node): array
     {
         $children = [];
@@ -803,9 +781,7 @@ final class PhpFacts
         return '$' . $arg->value->name;
     }
 
-    /**
-     * @return null|array{value:string,normalized:string,kind:string,line:int,column:int}
-     */
+    /** @return null|array{value:string,normalized:string,kind:string,line:int,column:int} */
     private static function magicNumberCandidate(Node $node, ?Node $parent, string $text): ?array
     {
         if ($node instanceof Node\Scalar\String_) {
@@ -912,9 +888,7 @@ final class PhpFacts
         return substr($text, $start, $end - $start + 1);
     }
 
-    /**
-     * @param callable(Node, ?Node): bool $visitor
-     */
+    /** @param callable(Node, ?Node): bool $visitor */
     private static function walkNodes(mixed $value, ?Node $parent, callable $visitor): void
     {
         if ($value instanceof Node) {
@@ -1075,9 +1049,7 @@ final class PhpFacts
         return null;
     }
 
-    /**
-     * @return array{class:?string,isGeneric:bool,preservesPrevious:bool,usesCaughtVariable:bool}
-     */
+    /** @return array{class:?string,isGeneric:bool,preservesPrevious:bool,usesCaughtVariable:bool} */
     private static function thrownExceptionSummary(Expr\Throw_ $throw, ?string $catchVariableName): array
     {
         if (!$throw->expr instanceof Expr\New_) {
@@ -1102,9 +1074,7 @@ final class PhpFacts
         ];
     }
 
-    /**
-     * @param list<Arg> $args
-     */
+    /** @param list<Arg> $args */
     private static function callUsesVariable(array $args, string $variableName): bool
     {
         foreach ($args as $arg) {
