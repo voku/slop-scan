@@ -13,6 +13,7 @@ use PhpParser\Node\Name;
 use PhpParser\NodeFinder;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
@@ -270,14 +271,12 @@ final class PhpFacts
     public static function parseSyntax(string $text): array
     {
         try {
-            if (self::$parserFactory !== null) {
-                $statements = self::parser()->parse($text) ?? [];
-                $statements = (new NodeTraverser(new ParentConnectingVisitor()))->traverse($statements);
-                /** @var list<Stmt> $statements */
-            } else {
-                $statements = PhpCodeParser::getAstFromString($text);
-                /** @var list<Stmt> $statements */
-            }
+            $statements = self::parser()->parse($text) ?? [];
+            $statements = (new NodeTraverser(
+                new ParentConnectingVisitor(),
+                new NameResolver(null, ['replaceNodes' => false]),
+            ))->traverse($statements);
+            /** @var list<Stmt> $statements */
 
             return ['statements' => $statements, 'error' => null];
         } catch (\Throwable $exception) {
