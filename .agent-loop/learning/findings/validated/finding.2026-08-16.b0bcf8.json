@@ -1,0 +1,28 @@
+{
+    "id": "finding.2026-08-16.b0bcf8",
+    "task_id": "SLOP-1",
+    "session": "2026-08-16-slop-1-2",
+    "created_at": "2026-08-16T00:45:00+00:00",
+    "created_by": "Claude",
+    "scope": [
+        "vendor/voku/agent-loop/src/Dispatcher.php",
+        "vendor/voku/agent-kanban/src/Cli/ArgvParser.php"
+    ],
+    "observation": "One CLI parses options two different ways depending on which namespace handles them. `agent-loop workflow plan SLOP-1 --by Claude` accepts the space-separated form. `agent-loop board card claim SLOP-1 --by Claude` does not, and instead of a usage error it dies with `PHP Fatal error: Uncaught voku\\AgentKanban\\Exception\\ValidationException: Option --by requires a value using --by=<value>.` and a four-frame stack trace ending in `vendor/bin/agent-loop`. The message inside the trace is a good message; it is just delivered as an unhandled exception. Every `board` subcommand inherits this, so the failure mode is reachable from the first board mutation a user attempts.",
+    "evidence": [
+        {
+            "type": "manual_verification",
+            "summary": "`vendor/bin/agent-loop board card claim SLOP-1 --by \"Claude\" --move-to-doing` printed an uncaught ValidationException with a stack trace through `voku\\AgentLoop\\Dispatcher->run()`. The same command with `--by=\"Claude\"` succeeded and moved the card to DOING."
+        },
+        {
+            "type": "manual_verification",
+            "summary": "`vendor/bin/agent-loop workflow plan SLOP-1 --by \"Claude\" ...` with the identical space-separated form was accepted and created Contract revision 1, confirming the inconsistency is between namespaces rather than a documented global convention."
+        }
+    ],
+    "hypothesis": "The dispatcher forwards argv into each package's own parser without owning a shared option grammar or a shared error boundary, so both the grammar and the exception handling of the sub-package leak through to the user.",
+    "validated_conclusion": "A dispatcher that presents several packages as one CLI owns the parts the user experiences as one CLI: one option grammar, and one place where a ValidationException becomes an exit code and a one-line message. A stack trace as a usage error is the clearest possible signal that an error path was never walked.",
+    "confidence": "high",
+    "validation_status": "validated",
+    "status": "validated",
+    "sensitivity": "public"
+}

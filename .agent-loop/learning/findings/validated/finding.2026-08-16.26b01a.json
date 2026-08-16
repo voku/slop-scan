@@ -1,0 +1,32 @@
+{
+    "id": "finding.2026-08-16.26b01a",
+    "task_id": "SLOP-1",
+    "session": "2026-08-16-slop-1-2",
+    "created_at": "2026-08-16T12:10:00+00:00",
+    "created_by": "Claude",
+    "scope": [
+        "src/Support/FindingMetadataCatalog.php",
+        "src/DefaultRegistry.php"
+    ],
+    "observation": "A rule can be registered in DefaultRegistry and emit findings while having no entry in FindingMetadataCatalog, and nothing anywhere reports it. php.generic-status-envelopes shipped that way under SLOP-1: the rule fired, the docs described it, the tests passed, and its why/suggestedAction/confidence were simply absent. Enumerating the registry against the catalog shows 23 catalog entries and two registered rules with no entry: php.generic-status-envelopes, and php.magic-numbers, which predates this work entirely. The obvious guard is a test asserting every registered rule has a catalog entry. That test cannot be added to the pull request that introduced the first omission, because it fails immediately on the second one and converts a three-rule feature branch into a historical-debt repair.",
+    "evidence": [
+        {
+            "type": "manual_verification",
+            "summary": "Iterating DefaultRegistry::create()->rules() against the FindingMetadataCatalog constant reported `catalog entries: 23, missing: 2` naming php.generic-status-envelopes and php.magic-numbers."
+        },
+        {
+            "type": "manual_verification",
+            "summary": "The SLOP-1 close gates all passed with the omission present: composer run test (136 tests), composer run analyse, composer run scan:self and agent-loop verify were green, and the review blindspots gate reported only an unrelated security-term warning."
+        },
+        {
+            "type": "manual_verification",
+            "summary": "PR #34 added the missing php.generic-status-envelopes entry as a side effect of adding entries for its own two rules, and its testAdaptedRulesExposeAgentFacingMetadata asserts only on those rules, so php.magic-numbers stays silently uncovered."
+        }
+    ],
+    "hypothesis": "The catalog is a lookup table rather than a required constructor argument, so nothing forces the two to move together. Adding a rule is a four-file change and the catalog is the file with no test pulling on it, which makes it the one that gets forgotten.",
+    "validated_conclusion": "A registry and a parallel metadata table that are only joined at read time will drift, and the drift is invisible precisely because the read path tolerates a miss. The structural fix is to make the metadata part of the rule contract so a rule cannot exist without it; the cheap fix is a completeness test. Either way the guard has to be introduced in its own change, because a correctness invariant added retroactively fails on every prior omission at once, and attaching that repair to an unrelated feature branch is how a small feature turns into an audit nobody asked for.",
+    "confidence": "high",
+    "validation_status": "validated",
+    "status": "validated",
+    "sensitivity": "public"
+}

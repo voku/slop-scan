@@ -1,0 +1,10 @@
+{
+    "version": 1,
+    "kind": "subagents",
+    "agent": "copilot",
+    "entries": [
+        "agent-loop-code-reviewer.agent.md",
+        "agent-loop-investigator.agent.md",
+        "agent-loop-surgical-builder.agent.md"
+    ]
+}

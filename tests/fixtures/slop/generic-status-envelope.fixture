@@ -1,0 +1,10 @@
+<?php
+
+function create_repository(string $name): array
+{
+    if ($name === '') {
+        return ['success' => false, 'error' => 'Repository name is required'];
+    }
+
+    return persist_repository($name);
+}

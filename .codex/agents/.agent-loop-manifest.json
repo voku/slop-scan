@@ -1,0 +1,10 @@
+{
+    "version": 1,
+    "kind": "subagents",
+    "agent": "codex",
+    "entries": [
+        "agent-loop-code-reviewer.toml",
+        "agent-loop-investigator.toml",
+        "agent-loop-surgical-builder.toml"
+    ]
+}

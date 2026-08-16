@@ -1,0 +1,29 @@
+{
+    "id": "finding.2026-08-16.b5fcf0",
+    "task_id": "SLOP-1",
+    "session": "2026-08-16-slop-1-2",
+    "created_at": "2026-08-16T00:45:00+00:00",
+    "created_by": "Claude",
+    "scope": [
+        ".agent-loop/init.json",
+        ".ai/skills/manifest.yaml",
+        ".claude/settings.json"
+    ],
+    "observation": "Two smaller rough edges in `init`, both about the tool assuming its own conventions are the repository's. First, `init doctor` warns `[WARN] Skills: no repo-managed skills found under docs/agents/skills/*/SKILL.md` and `[WARN] Composer scripts: missing ci, phpstan`; this repository keeps vendor-neutral skills in `.ai/skills/*.yaml` with its own manifest, and names its scripts `lint`, `analyse`, `test` and `scan:self`. `--skills-root` exists per invocation, but nothing in `.agent-loop/init.json` persists it, so the warnings are permanent. Second, `init install-assets --agent=all` writes a `hooks` key into `.claude/settings.json` registering `php .claude/hooks/context.php` on SessionStart and `php .claude/hooks/pre_tool_use_policy.php` on every Bash call. That changes what runs in every future agent session in the repository, and the only signal is one `[IMPORTANT]` line inside 60 lines of `[OK]` output.",
+    "evidence": [
+        {
+            "type": "manual_verification",
+            "summary": "`init doctor` emitted both warnings against a repository whose AGENTS.md points agents at `.ai/skills/manifest.yaml`; `.agent-loop/init.json` contained only `{\"version\": 1}` with no field for skills-root or script names."
+        },
+        {
+            "type": "manual_verification",
+            "summary": "After `init install-assets --agent=all`, `.claude/settings.json` contained SessionStart, SubagentStart and PreToolUse (matcher `^Bash$`) hook entries that did not exist before, alongside 17 skills and 3 subagents projected into each of `.codex`, `.claude`, `.github` and `.agents` (about 1 MB total)."
+        }
+    ],
+    "hypothesis": "Both come from the same place: `init` treats its defaults as the repository's facts. The doctor hardcodes the layout and script names agent-loop itself uses, and install-assets treats hook registration as part of \"installing guidance\" rather than as a separate, consented action.",
+    "validated_conclusion": "A diagnostic that cannot be told where a repository actually keeps things reports its own conventions as the repository's defects, and permanent warnings are quickly read as noise, which is how the real ones get missed. Separately, writing an executable hook into a config the host reads on every session is a different kind of act from copying documentation, and it deserves its own flag rather than a line of output inside a successful install.",
+    "confidence": "medium",
+    "validation_status": "validated",
+    "status": "validated",
+    "sensitivity": "public"
+}

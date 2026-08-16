@@ -1,0 +1,35 @@
+{
+    "id": "finding.2026-08-16.1270f3",
+    "task_id": "SLOP-1",
+    "session": "2026-08-16-slop-1-2",
+    "created_at": "2026-08-16T00:45:00+00:00",
+    "created_by": "Claude",
+    "scope": [
+        ".agent-map/",
+        ".agent-loop/map/",
+        "slop-scan.config.json"
+    ],
+    "observation": "`agent-loop map build` with no `--paths` indexed 744 files in 3m29s and wrote a 100 MB `.agent-loop/map/php-symbols.json`, because it swept generated and gitignored PHP under `build/phpstan/cache/**` alongside real source. The same command also created `.agent-map/phpstan-cache/` at the project root: 16,526 files and 291 MB, outside `.agent-loop/` and outside anything the quick-start describes as workflow state. Re-running as `map build --paths=src,tests,bin` produced 74 files and a 4.5 MB index in 9.6s. Because `.agent-map/` is not gitignored and not in any scan-ignore list, it silently entered slop-scan's own scan scope: `composer run scan:self` went from roughly 3 seconds to not completing within 300 seconds, and the file count in scope went from about 180 to 16,668.",
+    "evidence": [
+        {
+            "type": "test_result",
+            "command": "vendor/bin/agent-loop map build",
+            "summary": "Wrote 744 file(s), 209212 relation(s) in 3m28.944s; `du -sh .agent-loop/map/` reported 97M and `du -sh .agent-map` reported 291M across 16,526 files, all under `.agent-map/phpstan-cache/cache/PHPStan/`."
+        },
+        {
+            "type": "test_result",
+            "command": "vendor/bin/agent-loop map build --paths=src,tests,bin",
+            "summary": "Wrote 74 file(s), 6416 relation(s) in 9.587s into a 4.5 MB index: same useful content, 22x faster, 22x smaller."
+        },
+        {
+            "type": "manual_verification",
+            "summary": "`find . -path ./vendor -prune -o -path ./build -prune -o \\( -name \"*.php\" -o -name \"*.md\" \\) -print | cut -d/ -f2 | sort | uniq -c` attributed 16,486 of 16,668 in-scope files to `.agent-map`. After `rm -rf .agent-map` and adding the tooling directories to the repository scan ignores, `scan . --json` completed in 3.594s."
+        }
+    ],
+    "hypothesis": "The default path set is \"the repository\", which is correct for a small hand-written tree and wrong for any repository that keeps generated PHP on disk. The PHPStan cache location looks like an implementation detail of agent-map that predates the \"all workflow state lives below .agent-loop/\" consolidation and was never moved with the rest.",
+    "validated_conclusion": "A tool that writes hundreds of megabytes into a project root has to say so in the layout it publishes, and `.agent-map/phpstan-cache/` contradicts the documented promise that workflow state lives below `.agent-loop/`. Defaults that scan \"everything\" should respect `.gitignore`, or default to the project's Composer autoload roots, because generated PHP is indistinguishable from source to a naive walker. The damage here was not the disk: it was that another tool in the same repository silently changed behavior because of files it never agreed to see.",
+    "confidence": "high",
+    "validation_status": "validated",
+    "status": "validated",
+    "sensitivity": "public"
+}

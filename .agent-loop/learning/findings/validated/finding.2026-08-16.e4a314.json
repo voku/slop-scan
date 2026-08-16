@@ -1,0 +1,28 @@
+{
+    "id": "finding.2026-08-16.e4a314",
+    "task_id": "SLOP-1",
+    "session": "2026-08-16-slop-1-2",
+    "created_at": "2026-08-16T00:45:00+00:00",
+    "created_by": "Claude",
+    "scope": [
+        ".gitignore",
+        ".agent-loop/"
+    ],
+    "observation": "`init scaffold` creates `.agent-loop/` and later commands fill it with a mix of durable state (`todo/`, `tasks/`, `contracts/`, `learning/`) and regenerable or run-local state (`map/`, `recall/`, `runs/`, `sessions/`, `edit/`, `tool-inventory.json`), but writes no `.gitignore` and no `.gitattributes` guidance about which is which. The quick-start mentions only `/.agent-loop export-ignore` for Composer archives. agent-loop's own repository resolves this the opposite way from a board-using consumer: its `.gitignore` has `/.agent-loop/*` with re-includes for `init.json` and `learning/`, so its board is not tracked at all. A consumer repository that adopts the Kanban board as a real board needs `todo/` tracked and `map/` ignored, and has to work that split out from scratch.",
+    "evidence": [
+        {
+            "type": "manual_verification",
+            "summary": "`git -C vendor/voku/agent-loop ls-files | grep \"^\\.agent-loop/\"` returned 54 files, all under `.agent-loop/learning/`, with `todo/`, `tasks/`, `contracts/`, `runs/`, `sessions/`, `recall/` and `map/` excluded by `/.agent-loop/*`."
+        },
+        {
+            "type": "manual_verification",
+            "summary": "After one governed task in this repository `.agent-loop/` held 14 MB, of which the 4.5 MB map index and the recall compilation are fully regenerable, while `todo/` and `contracts/` together were under 40 KB."
+        }
+    ],
+    "hypothesis": "The split is obvious to whoever built the layout and invisible to whoever adopts it, and agent-loop's own repository never had to answer the question because it does not use the board.",
+    "validated_conclusion": "A scaffold that creates a directory should also state how that directory is meant to be versioned, because the alternative is that every consumer guesses, and a wrong guess commits a multi-megabyte generated index or drops the board that was the reason for adopting the tool. Shipping a `.gitignore` fragment from `init scaffold` costs one file and removes the whole class of guess.",
+    "confidence": "high",
+    "validation_status": "validated",
+    "status": "validated",
+    "sensitivity": "public"
+}
