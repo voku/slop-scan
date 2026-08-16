@@ -52,10 +52,6 @@ final class FunctionDuplicationFactProvider implements FactProvider
                 }
             }
 
-            if (!self::looksLikeTestPath($file->path)) {
-                continue;
-            }
-
             foreach ($context->runtime->store->getFileFact($file->path, 'file.testMockSetups') ?? [] as $setup) {
                 if (!is_array($setup)) {
                     continue;
@@ -113,10 +109,5 @@ final class FunctionDuplicationFactProvider implements FactProvider
             'repo.cloneFunctionBodies' => $cloneBodies,
             'repo.duplicateMockSetups' => $duplicateMockSetups,
         ];
-    }
-
-    private static function looksLikeTestPath(string $path): bool
-    {
-        return preg_match('#(?:^|/)(?:tests?|spec)(?:/|$)|(?:Test|TestCase)\.php$#i', str_replace('\\', '/', $path)) === 1;
     }
 }

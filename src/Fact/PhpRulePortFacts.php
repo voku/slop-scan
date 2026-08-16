@@ -70,7 +70,7 @@ final class PhpRulePortFacts
     ];
 
     /** @return Summary */
-    public static function summarize(string $text): array
+    public static function summarize(string $text, bool $includeTestMockSetups = false): array
     {
         $statements = self::parseStatementsWithParents($text);
         if ($statements === null) {
@@ -106,7 +106,7 @@ final class PhpRulePortFacts
             }
         }
 
-        $testMockSetups = self::testMockSetups($statements, $finder);
+        $testMockSetups = $includeTestMockSetups ? self::testMockSetups($statements, $finder) : [];
 
         usort(
             $genericArrayCasts,

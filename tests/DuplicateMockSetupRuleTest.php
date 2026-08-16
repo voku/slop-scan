@@ -83,6 +83,55 @@ PHP,
         }
     }
 
+    public function testFlagsEquivalentGetMockBuilderChainsAcrossThreeTestFiles(): void
+    {
+        $result = $this->analyzeFiles([
+            'tests/AlphaTest.php' => <<<'PHP'
+<?php
+use PHPUnit\Framework\TestCase;
+final class AlphaTest extends TestCase
+{
+    public function testAlpha(): void
+    {
+        $alpha = $this->getMockBuilder(AlphaGateway::class)->disableOriginalConstructor()->getMock();
+        self::assertInstanceOf(AlphaGateway::class, $alpha);
+    }
+}
+PHP,
+            'tests/BetaTest.php' => <<<'PHP'
+<?php
+use PHPUnit\Framework\TestCase;
+final class BetaTest extends TestCase
+{
+    public function testBeta(): void
+    {
+        $beta = $this->getMockBuilder(BetaGateway::class)->disableOriginalConstructor()->getMock();
+        self::assertInstanceOf(BetaGateway::class, $beta);
+    }
+}
+PHP,
+            'tests/GammaTest.php' => <<<'PHP'
+<?php
+use PHPUnit\Framework\TestCase;
+final class GammaTest extends TestCase
+{
+    public function testGamma(): void
+    {
+        $gamma = $this->getMockBuilder(GammaGateway::class)->disableOriginalConstructor()->getMock();
+        self::assertInstanceOf(GammaGateway::class, $gamma);
+    }
+}
+PHP,
+        ]);
+
+        $findings = $this->forRule($result->findings, 'php.duplicate-mock-setup');
+        self::assertCount(3, $findings);
+        foreach ($findings as $finding) {
+            self::assertSame(['setup=getMockBuilder|getMock|files=3'], $finding->evidence);
+            self::assertCount(3, $finding->locations);
+        }
+    }
+
     public function testNeedsThreeConfiguredFilesAndIgnoresBareMockDeclarations(): void
     {
         $result = $this->analyzeFiles([
@@ -130,6 +179,42 @@ final class BareMockTest extends TestCase
         $clock = $this->createMock(Clock::class);
 
         self::assertInstanceOf(Clock::class, $clock);
+    }
+}
+PHP,
+        ]);
+
+        self::assertSame([], $this->forRule($result->findings, 'php.duplicate-mock-setup'));
+    }
+
+    public function testRepeatedSetupInOneFileDoesNotSatisfyThreeFileThreshold(): void
+    {
+        $result = $this->analyzeFiles([
+            'tests/FirstServiceTest.php' => <<<'PHP'
+<?php
+use PHPUnit\Framework\TestCase;
+final class FirstServiceTest extends TestCase
+{
+    public function testFirst(): void
+    {
+        $first = $this->createMock(Clock::class);
+        $first->method('now')->willReturn(1);
+        $second = $this->createMock(Clock::class);
+        $second->method('later')->willReturn(2);
+        self::assertTrue(true);
+    }
+}
+PHP,
+            'tests/SecondServiceTest.php' => <<<'PHP'
+<?php
+use PHPUnit\Framework\TestCase;
+final class SecondServiceTest extends TestCase
+{
+    public function testSecond(): void
+    {
+        $clock = $this->createMock(Clock::class);
+        $clock->method('now')->willReturn(3);
+        self::assertTrue(true);
     }
 }
 PHP,
