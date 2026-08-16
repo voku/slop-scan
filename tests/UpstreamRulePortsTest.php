@@ -159,6 +159,30 @@ PHP);
         self::assertSame([], $this->forRule($result->findings, 'php.catch-returns-exception-message'));
     }
 
+    public function testCatchRuleIgnoresShadowedExceptionVariableInsideClosure(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function recover(): void
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        $handler = static function (Throwable $exception): string {
+            $message = $exception->getMessage();
+
+            return $message;
+        };
+
+        consume($handler);
+    }
+}
+PHP);
+
+        self::assertSame([], $this->forRule($result->findings, 'php.catch-returns-exception-message'));
+    }
+
     public function testGenericStatusEnvelopeEvidenceIncludesRuntimeContext(): void
     {
         $result = $this->analyze(<<<'PHP'
