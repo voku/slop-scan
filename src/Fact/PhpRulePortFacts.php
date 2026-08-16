@@ -67,10 +67,10 @@ final class PhpRulePortFacts
         'rows',
     ];
 
-    /** @return Summary */
-    public static function summarize(string $text, bool $includeTestMockSetups = false): array
+    /** @param null|list<Stmt> $statements @return Summary */
+    public static function summarize(string $text, bool $includeTestMockSetups = false, ?array $statements = null): array
     {
-        $statements = self::parseStatementsWithParents($text);
+        $statements ??= self::parseStatementsWithParents($text);
         if ($statements === null) {
             return [
                 'genericArrayCasts' => [],
