@@ -22,10 +22,12 @@ use PhpParser\ParserFactory;
  * @phpstan-type GenericArrayCast array{variable:string,kind:string,line:int,column:int}
  * @phpstan-type CaughtExceptionNormalization array{kind:string,line:int,column:int}
  * @phpstan-type StatusEnvelope array{statusKey:string,statusValue:string,payloadKeys:list<string>,kind:string,line:int,column:int}
+ * @phpstan-type TestMockSetup array{label:string,fingerprint:string,line:int}
  * @phpstan-type Summary array{
  *     genericArrayCasts:list<GenericArrayCast>,
  *     caughtExceptionNormalizations:list<CaughtExceptionNormalization>,
- *     statusEnvelopes:list<StatusEnvelope>
+ *     statusEnvelopes:list<StatusEnvelope>,
+ *     testMockSetups:list<TestMockSetup>
  * }
  */
 final class PhpRulePortFacts
@@ -76,6 +78,7 @@ final class PhpRulePortFacts
                 'genericArrayCasts' => [],
                 'caughtExceptionNormalizations' => [],
                 'statusEnvelopes' => [],
+                'testMockSetups' => [],
             ];
         }
 
@@ -103,6 +106,8 @@ final class PhpRulePortFacts
             }
         }
 
+        $testMockSetups = self::testMockSetups($statements, $finder);
+
         usort(
             $genericArrayCasts,
             static fn (array $left, array $right): int => ($left['line'] <=> $right['line'])
@@ -121,11 +126,17 @@ final class PhpRulePortFacts
                 ?: ($left['column'] <=> $right['column'])
                 ?: strcmp($left['statusKey'], $right['statusKey']),
         );
+        usort(
+            $testMockSetups,
+            static fn (array $left, array $right): int => ($left['line'] <=> $right['line'])
+                ?: strcmp($left['fingerprint'], $right['fingerprint']),
+        );
 
         return [
             'genericArrayCasts' => $genericArrayCasts,
             'caughtExceptionNormalizations' => self::uniqueNormalizations($caughtExceptionNormalizations),
             'statusEnvelopes' => $statusEnvelopes,
+            'testMockSetups' => $testMockSetups,
         ];
     }
 
@@ -267,6 +278,73 @@ final class PhpRulePortFacts
         }
 
         return 'assigned-generic-status-envelope';
+    }
+
+    /** @param list<Stmt> $statements @return list<TestMockSetup> */
+    private static function testMockSetups(array $statements, NodeFinder $finder): array
+    {
+        $setups = [];
+        foreach ($finder->findInstanceOf($statements, Stmt\Expression::class) as $statement) {
+            $methods = [];
+            foreach ($finder->findInstanceOf([$statement->expr], Expr\MethodCall::class) as $call) {
+                if (!$call->name instanceof Identifier) {
+                    continue;
+                }
+
+                $name = strtolower($call->name->toString());
+                if (in_array($name, ['method', 'willreturn', 'getmockbuilder', 'getmock'], true)) {
+                    $methods[$name] = true;
+                }
+            }
+
+            $label = null;
+            if (isset($methods['method'], $methods['willreturn'])) {
+                $label = 'method|willReturn';
+            } elseif (isset($methods['getmockbuilder'], $methods['getmock'])) {
+                $label = 'getMockBuilder|getMock';
+            }
+
+            if ($label === null) {
+                continue;
+            }
+
+            $setups[] = [
+                'label' => $label,
+                'fingerprint' => $label . '::' . self::fingerprintNodeShape($statement),
+                'line' => $statement->getStartLine(),
+            ];
+        }
+
+        return $setups;
+    }
+
+    private static function fingerprintNodeShape(Node $node, int $depth = 0): string
+    {
+        $label = $node->getType();
+        if ($depth >= 5) {
+            return $label;
+        }
+
+        $children = [];
+        foreach ($node->getSubNodeNames() as $name) {
+            $value = $node->$name;
+            if ($value instanceof Node) {
+                $children[] = self::fingerprintNodeShape($value, $depth + 1);
+                continue;
+            }
+
+            if (!is_array($value)) {
+                continue;
+            }
+
+            foreach ($value as $child) {
+                if ($child instanceof Node) {
+                    $children[] = self::fingerprintNodeShape($child, $depth + 1);
+                }
+            }
+        }
+
+        return $children === [] ? $label : $label . '(' . implode(',', $children) . ')';
     }
 
     /** @return list<CaughtExceptionNormalization> */

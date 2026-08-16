@@ -22,6 +22,7 @@ use SlopScan\Rule\CatchDefaultFallbacksRule;
 use SlopScan\Rule\DebugOutputRule;
 use SlopScan\Rule\DirectoryFanoutHotspotRule;
 use SlopScan\Rule\DuplicateFunctionSignaturesRule;
+use SlopScan\Rule\DuplicateMockSetupRule;
 use SlopScan\Rule\EmptyCatchRule;
 use SlopScan\Rule\ExceptionWrapWithoutPreviousRule;
 use SlopScan\Rule\ErrorObscuringCatchRule;
@@ -72,6 +73,7 @@ final class DefaultRegistry
             new DirectoryFanoutHotspotRule(),
             new OverFragmentationRule(),
             new DuplicateFunctionSignaturesRule(),
+            new DuplicateMockSetupRule(),
             new ReturnConstantStubRule(),
             new PlaceholderMethodBodiesRule(),
             new CloneClusterRule(),

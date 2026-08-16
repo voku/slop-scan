@@ -26,6 +26,7 @@ final class PhpStructureFactProvider implements FactProvider
             'file.statusEnvelopes',
             'file.genericArrayCasts',
             'file.caughtExceptionNormalizations',
+            'file.testMockSetups',
         ];
     }
     public function supports(ProviderContext $context): bool { return $context->file?->languageId === 'php'; }
@@ -47,6 +48,7 @@ final class PhpStructureFactProvider implements FactProvider
             'file.statusEnvelopes' => $rulePortFacts['statusEnvelopes'],
             'file.genericArrayCasts' => $rulePortFacts['genericArrayCasts'],
             'file.caughtExceptionNormalizations' => $rulePortFacts['caughtExceptionNormalizations'],
+            'file.testMockSetups' => $rulePortFacts['testMockSetups'],
         ];
     }
 }
