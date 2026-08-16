@@ -409,7 +409,7 @@ final class PhpRulePortFacts
     private static function hasParameterNamed(array $params, string $variable): bool
     {
         foreach ($params as $param) {
-            if ($param->var instanceof Expr\Variable && $param->var->name === $variable) {
+            if ($param->var->name === $variable) {
                 return true;
             }
         }
@@ -420,7 +420,7 @@ final class PhpRulePortFacts
     private static function closureUsesVariable(Expr\Closure $closure, string $variable): bool
     {
         foreach ($closure->uses as $use) {
-            if ($use->var instanceof Expr\Variable && $use->var->name === $variable) {
+            if ($use->var->name === $variable) {
                 return true;
             }
         }
