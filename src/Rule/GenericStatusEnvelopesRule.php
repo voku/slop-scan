@@ -14,13 +14,13 @@ final class GenericStatusEnvelopesRule extends BaseRule
     public function id(): string { return 'php.generic-status-envelopes'; }
     public function family(): string { return 'api'; }
     public function scope(): string { return 'file'; }
-    public function requires(): array { return ['file.statusEnvelopes', 'file.text']; }
+    public function requires(): array { return ['file.statusEnvelopes', 'file.logicalLineCount']; }
 
     public function evaluate(ProviderContext $context): array
     {
         $maxFileLines = max(1, (int) ($context->ruleConfig['options']['maxFileLines'] ?? self::DEFAULT_MAX_FILE_LINES));
-        $text = (string) $context->runtime->store->getFileFact($context->file->path, 'file.text');
-        if (substr_count($text, "\n") + 1 > $maxFileLines) {
+        $logicalLineCount = (int) $context->runtime->store->getFileFact($context->file->path, 'file.logicalLineCount');
+        if ($logicalLineCount > $maxFileLines) {
             return [];
         }
 

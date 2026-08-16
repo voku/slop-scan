@@ -49,6 +49,6 @@ For `markdown.low-signal`, repository-specific anchors include inline code, Mark
 
 The rule is intentionally conservative: checklist-heavy docs should stay quiet when they also include at least two descriptive prose lines or enough concrete repository anchors to explain what a maintainer should actually do next.
 
-For `php.generic-status-envelopes`, the status key must carry a literal `true` or `false`, so `['status' => 'archived', 'message' => $text]` stays quiet. A status key on its own (`['ok' => false]`) and a domain-named payload (`['ok' => true, 'repository' => $repo]`) also stay quiet. Bundled or generated files longer than the `maxFileLines` option (default `5000`) are skipped.
+For `php.generic-status-envelopes`, the status key must carry a literal `true` or `false`, so `['status' => 'archived', 'message' => $text]` stays quiet. A status key on its own (`['ok' => false]`) and a domain-named payload (`['ok' => true, 'repository' => $repo]`) also stay quiet. Bundled or generated files whose logical line count exceeds the `maxFileLines` option (default `5000`) are skipped.
 
 The tool is intentionally heuristic: a finding is a prompt for review, not a verdict.
