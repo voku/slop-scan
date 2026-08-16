@@ -291,7 +291,7 @@ final class PhpRulePortFacts
             }
 
             if ($node instanceof Stmt\Return_) {
-                $kind = self::caughtValueKind($node->expr, $catchVariable);
+                $kind = self::caughtValueKind($node->expr, $catchVariable, $catch);
                 if ($kind !== null && $node->expr !== null) {
                     $matches[] = self::normalization('returned-' . $kind, $node->expr, $text);
                 }
@@ -303,7 +303,7 @@ final class PhpRulePortFacts
                 && is_string($node->var->name)
                 && in_array(strtolower($node->var->name), self::GENERIC_ERROR_VARIABLES, true)
             ) {
-                $kind = self::caughtValueKind($node->expr, $catchVariable);
+                $kind = self::caughtValueKind($node->expr, $catchVariable, $catch);
                 if ($kind !== null) {
                     $matches[] = self::normalization('assigned-' . $kind, $node->expr, $text);
                 }
@@ -314,7 +314,7 @@ final class PhpRulePortFacts
                 && $node->key instanceof Node\Scalar\String_
                 && in_array(strtolower($node->key->value), self::GENERIC_ERROR_VARIABLES, true)
             ) {
-                $kind = self::caughtValueKind($node->value, $catchVariable);
+                $kind = self::caughtValueKind($node->value, $catchVariable, $catch);
                 if ($kind !== null) {
                     $matches[] = self::normalization('property-' . $kind, $node->value, $text);
                 }
@@ -337,11 +337,12 @@ final class PhpRulePortFacts
         return false;
     }
 
-    private static function caughtValueKind(?Expr $expr, string $catchVariable): ?string
+    private static function caughtValueKind(?Expr $expr, string $catchVariable, Stmt\Catch_ $catch): ?string
     {
         if ($expr instanceof Expr\MethodCall
             && $expr->var instanceof Expr\Variable
             && $expr->var->name === $catchVariable
+            && self::isCatchVariableReference($expr->var, $catchVariable, $catch)
             && $expr->name instanceof Identifier
             && strtolower($expr->name->toString()) === 'getmessage'
             && $expr->getArgs() === []
@@ -350,7 +351,7 @@ final class PhpRulePortFacts
         }
 
         if ($expr instanceof Expr\Cast\String_
-            && self::expressionUsesVariable($expr->expr, $catchVariable)
+            && self::expressionUsesCatchVariable($expr->expr, $catchVariable, $catch)
         ) {
             return 'caught-string';
         }
@@ -358,12 +359,73 @@ final class PhpRulePortFacts
         return null;
     }
 
-    private static function expressionUsesVariable(Expr $expr, string $variable): bool
+    private static function expressionUsesCatchVariable(Expr $expr, string $variable, Stmt\Catch_ $catch): bool
     {
         return (new NodeFinder())->findFirst(
             [$expr],
-            static fn (Node $node): bool => $node instanceof Expr\Variable && $node->name === $variable,
+            static fn (Node $node): bool => $node instanceof Expr\Variable
+                && $node->name === $variable
+                && self::isCatchVariableReference($node, $variable, $catch),
         ) !== null;
+    }
+
+    private static function isCatchVariableReference(
+        Expr\Variable $variableNode,
+        string $variable,
+        Stmt\Catch_ $catch,
+    ): bool {
+        $parent = self::parent($variableNode);
+        while ($parent !== null) {
+            if ($parent === $catch) {
+                return true;
+            }
+
+            if ($parent instanceof Stmt\Catch_) {
+                if (is_string($parent->var?->name) && $parent->var->name === $variable) {
+                    return false;
+                }
+            } elseif ($parent instanceof Expr\Closure) {
+                if (self::hasParameterNamed($parent->params, $variable)) {
+                    return false;
+                }
+                if (!self::closureUsesVariable($parent, $variable)) {
+                    return false;
+                }
+            } elseif ($parent instanceof Expr\ArrowFunction) {
+                if (self::hasParameterNamed($parent->params, $variable)) {
+                    return false;
+                }
+            } elseif ($parent instanceof Stmt\Function_ || $parent instanceof Stmt\ClassMethod) {
+                return false;
+            }
+
+            $parent = self::parent($parent);
+        }
+
+        return false;
+    }
+
+    /** @param list<Node\Param> $params */
+    private static function hasParameterNamed(array $params, string $variable): bool
+    {
+        foreach ($params as $param) {
+            if ($param->var instanceof Expr\Variable && $param->var->name === $variable) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function closureUsesVariable(Expr\Closure $closure, string $variable): bool
+    {
+        foreach ($closure->uses as $use) {
+            if ($use->var instanceof Expr\Variable && $use->var->name === $variable) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return CaughtExceptionNormalization */
