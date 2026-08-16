@@ -9,8 +9,8 @@ heuristics that need a real adaptation decision before they mean anything in
 PHP.
 
 This page records where the ports stand, for rules and for engine features.
-Each open row has a board card; see
-[the agent-loop workflow](agent-loop-workflow.md) for how to pick one up.
+Rule parity means preserving useful review signal, not reproducing TypeScript
+AST shapes or adding engine architecture merely because upstream has it.
 
 ## Ported
 
@@ -20,13 +20,14 @@ Each open row has a board card; see
 | `defensive.error-obscuring` | `php.error-obscuring-catch`, `php.exception-wrap-without-previous` | Split in two: PHP distinguishes a replacement exception from a message-only wrap that drops `previous`. |
 | `defensive.error-swallowing` | `php.error-swallowing` | |
 | `defensive.promise-default-fallbacks` | `php.catch-default-fallbacks` | PHP has no promise chains in the language, so the same failure-suppression habit is caught at `try`/`catch`. |
-| `defensive.stringified-unknown-errors` | `php.catch-returns-exception-message` | Partial; see `SLOP-6`. |
+| `defensive.stringified-unknown-errors` | `php.catch-returns-exception-message` | PHP catches direct returns plus generic error/message assignments and array payload entries inside the catch. It does not try to reproduce TypeScript's conditional-expression syntax. |
 | `comments.placeholder-comments` | `php.placeholder-comments` | |
 | `structure.directory-fanout-hotspot` | `php.directory-fanout-hotspot` | |
 | `structure.duplicate-function-signatures` | `php.duplicate-function-signatures` | |
 | `structure.over-fragmentation` | `php.over-fragmentation` | |
 | `structure.pass-through-wrappers` | `php.pass-through-wrappers` | |
-| `api.generic-status-envelopes` | `php.generic-status-envelopes` | Ported under `SLOP-1`; deviations below. |
+| `types.generic-record-casts` | `php.generic-array-casts` | PHP adaptation flags explicit runtime conversion (`json_decode(..., true)` / `(array)`) only when assigned to vague bag variables. PHPDoc-only declarations are intentionally not treated as runtime evidence. |
+| `api.generic-status-envelopes` | `php.generic-status-envelopes` | Ported under `SLOP-1`; context classification from `SLOP-7` distinguishes returned, JSON-response, and assigned/local envelopes. |
 
 `php.commented-out-code`, `php.blanket-static-analysis-suppressions`,
 `php.excessive-static-analysis-suppressions`,
@@ -37,25 +38,22 @@ Each open row has a board card; see
 `php.type-escape-hotspots` and `markdown.low-signal` have no upstream
 counterpart.
 
-## Open
+## Open rule adaptations
 
 | Upstream rule | Proposed PHP rule | Card |
 | --- | --- | --- |
-| `types.generic-record-casts` | `php.generic-array-casts` | `SLOP-2` |
 | `tests.duplicate-mock-setup` | `php.duplicate-mock-setup` | `SLOP-3` |
-| `structure.barrel-density` | `php.reexport-barrel` | `SLOP-4` |
-| `defensive.async-noise` | `php.await-noise` | `SLOP-5` |
-| `defensive.stringified-unknown-errors` | extend `php.catch-returns-exception-message` | `SLOP-6` |
+| `structure.barrel-density` | decision: useful PHP analogue or reject | `SLOP-4` |
+| `defensive.async-noise` | decision: useful PHP analogue or reject | `SLOP-5` |
 
-`SLOP-3` and `SLOP-4` are blocked on `SLOP-13`: their upstream facts
-(`repo.testMockDuplication`, `file.exportSummary`) have no PHP counterpart.
+`SLOP-4` and `SLOP-5` may correctly end with **no PHP rule**. PHP has no
+re-export syntax and no language-level async. An adaptation should only land if
+a concrete PHP pattern carries the same review signal without becoming a broad
+style preference.
 
-`SLOP-4` and `SLOP-5` are the two ports that may not be worth making. PHP has
-no re-export syntax and no language-level async, so both need an analog chosen
-on purpose rather than translated. Upstream ranked them #8 and #7 of 11 by
-signal, and `barrel-density` fired on 5 of 5 mature OSS repositories, so a
-naive port would mostly produce noise. Record the decision on the card either
-way.
+`SLOP-3` needs a rule-specific repository fact for repeated PHPUnit mock/setup
+shapes. That fact should be built with the rule, not as a generic engine-parity
+project.
 
 ## Feature parity
 
@@ -71,14 +69,12 @@ features with no PHP counterpart:
 | A README per rule with examples and fix guidance | `src/rules/*/README.md`, `rule-signal-readme.ts` | `SLOP-12` |
 | Facts for the unported structure/test rules | `src/facts/exports.ts`, `test-mock-setups.ts`, `test-duplication.ts` | `SLOP-13` |
 
-`SLOP-9` deserves particular attention. It is what produces the
-"signal rank #2 of 9, hit rate 5/6 AI repos vs 2/5 mature OSS repos" figures in
-the upstream rule docs, and the priority order of the rule cards above was
-taken from those figures rather than measured here. `AGENTS.md` tells
-contributors not to tune heuristics to a single fixture or repository; this is
-the machinery that makes that instruction checkable.
+Those rows are an inventory, not a requirement that this fork become the same
+engine. The PHP fork already has useful behavior upstream does not, and feature
+work should be driven by an actual PHP consumer/problem rather than parity by
+itself.
 
-Where this fork is ahead of upstream, and no port is wanted:
+Where this fork is ahead of upstream, and no reverse port is wanted:
 
 - CLI surface. Upstream has `scan` and `delta` with `--json`, `--lint` and
   `--ignore`. This fork adds `stats`, `--github`, `--toon`, `--ndjson`,
@@ -89,7 +85,9 @@ Where this fork is ahead of upstream, and no port is wanted:
 - PHP-only heuristics: PHPDoc/native type disagreement, blanket and stacked
   static-analysis suppressions, debug-output leftovers, and `markdown.low-signal`.
 
-## Deviations in `php.generic-status-envelopes`
+## PHP adaptation choices
+
+### `php.generic-status-envelopes`
 
 Two upstream properties were changed on purpose:
 
@@ -99,18 +97,36 @@ Two upstream properties were changed on purpose:
   task, not in a rule port.
 - **Findings are per site, not one capped file score.** Upstream adds 2 points
   per envelope and caps the file at 8. Here each site is its own finding worth
-  2.0, matching `php.catch-default-fallbacks` and `php.magic-numbers`. A cap
-  would hide occurrences, and every occurrence needs its own delta identity for
-  baselines to work.
+  2.0, matching other PHP site-level rules and keeping each occurrence visible
+  to baselines.
 
-One upstream property was **not** carried over and is a genuine gap rather
-than a choice, tracked as `SLOP-7`: upstream inspects each literal's parent
-node and classifies the match as returned, assigned, or emitted through a
-`.json(...)` response call, then reports that kind as evidence. The PHP rule
-reports which keys matched but not where the envelope goes, so an envelope
-crossing an HTTP boundary reads the same as one assigned to a local.
+The upstream context signal is now carried over: evidence identifies a direct
+return, a direct `->json(...)` / `new JsonResponse(...)` boundary, or an
+assigned/local array. The PHP rule additionally accepts a boolean `status` key,
+which upstream does not, because `['status' => true, 'message' => ...]` is a
+common PHP spelling of the same shape. Requiring a literal `true`/`false` keeps
+`['status' => 'archived']` quiet.
 
-The rule additionally accepts a boolean `status` key, which upstream does not,
-because `['status' => true, 'message' => ...]` is a common PHP spelling of the
-same shape. Requiring a literal `true`/`false` keeps `['status' => 'archived']`
-quiet.
+### `php.generic-array-casts`
+
+The TypeScript rule recognizes `Record<string, unknown>` assertions on vague
+variables. PHP does not have the same assertion syntax. The adaptation therefore
+uses observable runtime conversions as the forcing signal:
+
+- `json_decode($raw, true)` or `json_decode($raw, associative: true)`;
+- `(array) $value`;
+- only when assigned to deliberately vague bag names such as `$data`, `$payload`,
+  `$parsed`, `$record`, `$result`, or `$config`.
+
+A domain-named variable remains quiet, and PHPDoc alone is not enough to fire
+the rule. This keeps the rule distinct from `php.type-escape-hotspots`, which is
+a file-density heuristic requiring concentrated `mixed` plus casts.
+
+### `php.catch-returns-exception-message`
+
+The existing direct-return behavior and evidence stay stable. The adaptation
+adds the two useful upstream contexts that PHP can express directly inside a
+`catch`: assignment to generic error/message variables and generic
+error/message array entries. Domain recovery calls and previous-preserving
+throws are not treated as stringification merely because they reference the
+caught exception.

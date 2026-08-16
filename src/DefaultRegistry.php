@@ -7,30 +7,31 @@ namespace SlopScan;
 use SlopScan\Fact\DirectoryMetricsFactProvider;
 use SlopScan\Fact\FunctionDuplicationFactProvider;
 use SlopScan\Fact\PhpStructureFactProvider;
-use SlopScan\Rule\LowSignalMarkdownRule;
 use SlopScan\Reporter\GithubReporter;
 use SlopScan\Reporter\JsonReporter;
 use SlopScan\Reporter\LintReporter;
 use SlopScan\Reporter\NdjsonReporter;
-use SlopScan\Reporter\ToonReporter;
 use SlopScan\Reporter\TextReporter;
+use SlopScan\Reporter\ToonReporter;
 use SlopScan\Rule\BlanketStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\CatchDefaultFallbacksRule;
 use SlopScan\Rule\CatchReturnsExceptionMessageRule;
 use SlopScan\Rule\CloneClusterRule;
 use SlopScan\Rule\CommentedOutCodeRule;
-use SlopScan\Rule\CatchDefaultFallbacksRule;
 use SlopScan\Rule\DebugOutputRule;
 use SlopScan\Rule\DirectoryFanoutHotspotRule;
 use SlopScan\Rule\DuplicateFunctionSignaturesRule;
 use SlopScan\Rule\EmptyCatchRule;
-use SlopScan\Rule\ExceptionWrapWithoutPreviousRule;
 use SlopScan\Rule\ErrorObscuringCatchRule;
 use SlopScan\Rule\ErrorSwallowingRule;
+use SlopScan\Rule\ExceptionWrapWithoutPreviousRule;
 use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\GenericArrayCastsRule;
 use SlopScan\Rule\GenericStatusEnvelopesRule;
-use SlopScan\Rule\MockHeavyTestsWithoutAssertionsRule;
+use SlopScan\Rule\LowSignalMarkdownRule;
 use SlopScan\Rule\MagicNumbersRule;
 use SlopScan\Rule\MisleadingPhpDocTypesRule;
+use SlopScan\Rule\MockHeavyTestsWithoutAssertionsRule;
 use SlopScan\Rule\OverFragmentationRule;
 use SlopScan\Rule\PassThroughWrappersRule;
 use SlopScan\Rule\PlaceholderCommentsRule;
@@ -61,6 +62,7 @@ final class DefaultRegistry
             new CatchDefaultFallbacksRule(),
             new CatchReturnsExceptionMessageRule(),
             new GenericStatusEnvelopesRule(),
+            new GenericArrayCastsRule(),
             new DebugOutputRule(),
             new MockHeavyTestsWithoutAssertionsRule(),
             new MagicNumbersRule(),
@@ -84,6 +86,7 @@ final class DefaultRegistry
         $registry->registerReporter(new NdjsonReporter());
         $registry->registerReporter(new LintReporter());
         $registry->registerReporter(new GithubReporter());
+
         return $registry;
     }
 }
