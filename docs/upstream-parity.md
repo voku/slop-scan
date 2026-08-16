@@ -8,7 +8,8 @@ that make no sense in TypeScript (PHPDoc/native type disagreement, blanket
 heuristics that need a real adaptation decision before they mean anything in
 PHP.
 
-This page records where the ports stand. Each open row has a board card; see
+This page records where the ports stand, for rules and for engine features.
+Each open row has a board card; see
 [the agent-loop workflow](agent-loop-workflow.md) for how to pick one up.
 
 ## Ported
@@ -46,12 +47,47 @@ counterpart.
 | `defensive.async-noise` | `php.await-noise` | `SLOP-5` |
 | `defensive.stringified-unknown-errors` | extend `php.catch-returns-exception-message` | `SLOP-6` |
 
+`SLOP-3` and `SLOP-4` are blocked on `SLOP-13`: their upstream facts
+(`repo.testMockDuplication`, `file.exportSummary`) have no PHP counterpart.
+
 `SLOP-4` and `SLOP-5` are the two ports that may not be worth making. PHP has
 no re-export syntax and no language-level async, so both need an analog chosen
 on purpose rather than translated. Upstream ranked them #8 and #7 of 11 by
 signal, and `barrel-density` fired on 5 of 5 mature OSS repositories, so a
 naive port would mostly produce noise. Record the decision on the card either
 way.
+
+## Feature parity
+
+Rules are not the only thing upstream has. These are engine and tooling
+features with no PHP counterpart:
+
+| Upstream | Where | Card |
+| --- | --- | --- |
+| Plugin system for third-party rule packs | `src/plugin.ts`, config `extends`/`plugins`, `Registry.registerPlugin` | `SLOP-8` |
+| Rule-signal benchmark against a pinned AI-vs-OSS cohort | `src/benchmarks/`, `scripts/benchmark-*.ts` | `SLOP-9` |
+| Self-scan compared against the last released binary | `scripts/self-scan-stable.ts`, `lint:self` | `SLOP-10` |
+| Per-rule delta strategy (`byPath` / `byLocations` / semantic keys) | `src/rule-delta.ts` | `SLOP-11` |
+| A README per rule with examples and fix guidance | `src/rules/*/README.md`, `rule-signal-readme.ts` | `SLOP-12` |
+| Facts for the unported structure/test rules | `src/facts/exports.ts`, `test-mock-setups.ts`, `test-duplication.ts` | `SLOP-13` |
+
+`SLOP-9` deserves particular attention. It is what produces the
+"signal rank #2 of 9, hit rate 5/6 AI repos vs 2/5 mature OSS repos" figures in
+the upstream rule docs, and the priority order of the rule cards above was
+taken from those figures rather than measured here. `AGENTS.md` tells
+contributors not to tune heuristics to a single fixture or repository; this is
+the machinery that makes that instruction checkable.
+
+Where this fork is ahead of upstream, and no port is wanted:
+
+- CLI surface. Upstream has `scan` and `delta` with `--json`, `--lint` and
+  `--ignore`. This fork adds `stats`, `--github`, `--toon`, `--ndjson`,
+  baselines, a reusable scan cache, `--config-file`, and `maxFindings` /
+  `minScore` / `pathFilters` scan defaults.
+- Suppressions. Inline `@slop-scan-ignore` directives, PHPStan-style
+  `ignoreErrors`, and per-path `overrides` have no upstream equivalent.
+- PHP-only heuristics: PHPDoc/native type disagreement, blanket and stacked
+  static-analysis suppressions, debug-output leftovers, and `markdown.low-signal`.
 
 ## Deviations in `php.generic-status-envelopes`
 
@@ -66,6 +102,13 @@ Two upstream properties were changed on purpose:
   2.0, matching `php.catch-default-fallbacks` and `php.magic-numbers`. A cap
   would hide occurrences, and every occurrence needs its own delta identity for
   baselines to work.
+
+One upstream property was **not** carried over and is a genuine gap rather
+than a choice, tracked as `SLOP-7`: upstream inspects each literal's parent
+node and classifies the match as returned, assigned, or emitted through a
+`.json(...)` response call, then reports that kind as evidence. The PHP rule
+reports which keys matched but not where the envelope goes, so an envelope
+crossing an HTTP boundary reads the same as one assigned to a local.
 
 The rule additionally accepts a boolean `status` key, which upstream does not,
 because `['status' => true, 'message' => ...]` is a common PHP spelling of the
