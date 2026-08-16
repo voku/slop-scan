@@ -70,15 +70,16 @@ final class MisleadingPhpDocTypesRule extends BaseRule
     /** @return array<string,true> */
     private static function localTypeAliases(string $text): array
     {
-        if (preg_match_all(
+        $count = preg_match_all(
             '/@(?:phpstan|psalm)-(?:type|import-type)\s+([A-Za-z_][A-Za-z0-9_]*)\b/',
             $text,
             $matches,
-        ) !== false && isset($matches[1])) {
-            return array_fill_keys($matches[1], true);
+        );
+        if ($count === false || $count === 0) {
+            return [];
         }
 
-        return [];
+        return array_fill_keys($matches[1], true);
     }
 
     /** @param array<string,true> $localTypeAliases */
