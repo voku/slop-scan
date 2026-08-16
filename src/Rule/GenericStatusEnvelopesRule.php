@@ -16,11 +16,7 @@ final class GenericStatusEnvelopesRule extends BaseRule
     public function scope(): string { return 'file'; }
     public function requires(): array
     {
-        return [
-            'file.statusEnvelopes',
-            'file.statusEnvelopeContexts',
-            'file.logicalLineCount',
-        ];
+        return ['file.statusEnvelopes', 'file.logicalLineCount'];
     }
 
     public function evaluate(ProviderContext $context): array
@@ -31,16 +27,10 @@ final class GenericStatusEnvelopesRule extends BaseRule
             return [];
         }
 
-        $contexts = [];
-        foreach ($context->runtime->store->getFileFact($context->file->path, 'file.statusEnvelopeContexts') ?? [] as $entry) {
-            $contexts[$entry['line'] . ':' . $entry['column']] = $entry['kind'];
-        }
-
         $findings = [];
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.statusEnvelopes') ?? [] as $envelope) {
-            $contextKey = $envelope['line'] . ':' . $envelope['column'];
             $evidence = [
-                'kind=' . ($contexts[$contextKey] ?? 'assigned-generic-status-envelope'),
+                'kind=' . $envelope['kind'],
                 'status=' . $envelope['statusKey'] . ':' . $envelope['statusValue'],
             ];
             foreach ($envelope['payloadKeys'] as $payloadKey) {

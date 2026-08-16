@@ -42,21 +42,6 @@ final class PhpFacts
         'underflowexception',
         'unexpectedvalueexception',
     ];
-    private const STATUS_ENVELOPE_STATUS_KEYS = ['ok', 'status', 'success'];
-    private const STATUS_ENVELOPE_PAYLOAD_KEYS = [
-        'data',
-        'detail',
-        'details',
-        'error',
-        'errors',
-        'info',
-        'message',
-        'payload',
-        'reason',
-        'result',
-        'results',
-        'rows',
-    ];
 
     /** @var null|callable():Parser */
     private static $parserFactory = null;
@@ -195,34 +180,6 @@ final class PhpFacts
         ));
 
         return ['mixedTypeCount' => $mixedCount, 'castCount' => $castCount];
-    }
-
-    /**
-     * @return list<array{statusKey:string,statusValue:string,payloadKeys:list<string>,line:int,column:int}>
-     */
-    public static function statusEnvelopes(string $text): array
-    {
-        $statements = self::parseStatements($text);
-        if ($statements === null) {
-            return [];
-        }
-
-        $envelopes = [];
-        foreach (self::nodeFinder()->findInstanceOf($statements, Expr\Array_::class) as $array) {
-            $envelope = self::statusEnvelopeCandidate($array, $text);
-            if ($envelope !== null) {
-                $envelopes[] = $envelope;
-            }
-        }
-
-        usort(
-            $envelopes,
-            static fn(array $left, array $right): int => ($left['line'] <=> $right['line'])
-                ?: ($left['column'] <=> $right['column'])
-                ?: strcmp($left['statusKey'], $right['statusKey'])
-        );
-
-        return $envelopes;
     }
 
     /** @return list<array{name:string,line:int}> */
@@ -920,60 +877,6 @@ final class PhpFacts
     private static function isSignedNumericChild(Node $node, ?Node $parent): bool
     {
         return ($parent instanceof Expr\UnaryMinus || $parent instanceof Expr\UnaryPlus) && $parent->expr === $node;
-    }
-
-    /**
-     * @return null|array{statusKey:string,statusValue:string,payloadKeys:list<string>,line:int,column:int}
-     */
-    private static function statusEnvelopeCandidate(Expr\Array_ $array, string $text): ?array
-    {
-        $statusKey = null;
-        $statusValue = null;
-        $payloadKeys = [];
-
-        foreach ($array->items as $item) {
-            if (!$item->key instanceof Node\Scalar\String_) {
-                continue;
-            }
-
-            $key = strtolower($item->key->value);
-            $booleanValue = self::booleanLiteralName($item->value);
-            if ($statusKey === null && $booleanValue !== null && in_array($key, self::STATUS_ENVELOPE_STATUS_KEYS, true)) {
-                $statusKey = $key;
-                $statusValue = $booleanValue;
-                continue;
-            }
-
-            if (in_array($key, self::STATUS_ENVELOPE_PAYLOAD_KEYS, true)) {
-                $payloadKeys[$key] = true;
-            }
-        }
-
-        if ($statusKey === null || $statusValue === null || $payloadKeys === []) {
-            return null;
-        }
-
-        $keys = array_keys($payloadKeys);
-        sort($keys);
-
-        return [
-            'statusKey' => $statusKey,
-            'statusValue' => $statusValue,
-            'payloadKeys' => $keys,
-            'line' => $array->getStartLine(),
-            'column' => self::nodeStartColumn($array, $text),
-        ];
-    }
-
-    private static function booleanLiteralName(Node $node): ?string
-    {
-        if (!$node instanceof Expr\ConstFetch) {
-            return null;
-        }
-
-        $name = strtolower($node->name->toString());
-
-        return in_array($name, ['true', 'false'], true) ? $name : null;
     }
 
     private static function normalizeNumericValue(string $value): ?string

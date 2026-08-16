@@ -1,13 +1,13 @@
 # SLOP-2: Port upstream types.generic-record-casts as php.generic-array-casts
 
 - **Ticket:** SLOP-2
-- **Lane:** READY
-- **Status:** Selected
+- **Lane:** VERIFY
+- **Status:** Done
 - **Domain:** rules
 - **Created:** 2026-08-16T00:21:58+00:00
-- **Updated:** 2026-08-16T00:46:37+00:00
+- **Updated:** 2026-08-16T14:05:24+00:00
 - **Summary:** Flag json_decode(..., true) and (array) casts landing in vague bag variables such as $data, $payload, $parsed.
-- **Next:** Decide overlap with php.type-escape-hotspots before implementing.
+- **Next:** Implemented and validated in PR #34.
 - **Validation:** composer run test && composer run analyse && composer run scan:self
 - **Priority:** 2
 - **Wave:** 1

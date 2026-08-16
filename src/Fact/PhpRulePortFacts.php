@@ -21,11 +21,11 @@ use PhpParser\ParserFactory;
  *
  * @phpstan-type GenericArrayCast array{variable:string,kind:string,line:int,column:int}
  * @phpstan-type CaughtExceptionNormalization array{kind:string,line:int,column:int}
- * @phpstan-type StatusEnvelopeContext array{line:int,column:int,kind:string}
+ * @phpstan-type StatusEnvelope array{statusKey:string,statusValue:string,payloadKeys:list<string>,kind:string,line:int,column:int}
  * @phpstan-type Summary array{
  *     genericArrayCasts:list<GenericArrayCast>,
  *     caughtExceptionNormalizations:list<CaughtExceptionNormalization>,
- *     statusEnvelopeContexts:list<StatusEnvelopeContext>
+ *     statusEnvelopes:list<StatusEnvelope>
  * }
  */
 final class PhpRulePortFacts
@@ -51,6 +51,22 @@ final class PhpRulePortFacts
         'reason',
     ];
 
+    private const STATUS_ENVELOPE_STATUS_KEYS = ['ok', 'status', 'success'];
+    private const STATUS_ENVELOPE_PAYLOAD_KEYS = [
+        'data',
+        'detail',
+        'details',
+        'error',
+        'errors',
+        'info',
+        'message',
+        'payload',
+        'reason',
+        'result',
+        'results',
+        'rows',
+    ];
+
     /** @return Summary */
     public static function summarize(string $text): array
     {
@@ -59,7 +75,7 @@ final class PhpRulePortFacts
             return [
                 'genericArrayCasts' => [],
                 'caughtExceptionNormalizations' => [],
-                'statusEnvelopeContexts' => [],
+                'statusEnvelopes' => [],
             ];
         }
 
@@ -79,13 +95,12 @@ final class PhpRulePortFacts
             }
         }
 
-        $statusEnvelopeContexts = [];
+        $statusEnvelopes = [];
         foreach ($finder->findInstanceOf($statements, Expr\Array_::class) as $array) {
-            $statusEnvelopeContexts[] = [
-                'line' => $array->getStartLine(),
-                'column' => self::nodeStartColumn($array, $text),
-                'kind' => self::statusEnvelopeContextKind($array),
-            ];
+            $envelope = self::statusEnvelope($array, $text);
+            if ($envelope !== null) {
+                $statusEnvelopes[] = $envelope;
+            }
         }
 
         usort(
@@ -101,15 +116,16 @@ final class PhpRulePortFacts
                 ?: strcmp($left['kind'], $right['kind']),
         );
         usort(
-            $statusEnvelopeContexts,
+            $statusEnvelopes,
             static fn (array $left, array $right): int => ($left['line'] <=> $right['line'])
-                ?: ($left['column'] <=> $right['column']),
+                ?: ($left['column'] <=> $right['column'])
+                ?: strcmp($left['statusKey'], $right['statusKey']),
         );
 
         return [
             'genericArrayCasts' => $genericArrayCasts,
             'caughtExceptionNormalizations' => self::uniqueNormalizations($caughtExceptionNormalizations),
-            'statusEnvelopeContexts' => $statusEnvelopeContexts,
+            'statusEnvelopes' => $statusEnvelopes,
         ];
     }
 
@@ -169,6 +185,59 @@ final class PhpRulePortFacts
     {
         return $node instanceof Expr\ConstFetch
             && strtolower($node->name->toString()) === 'true';
+    }
+
+    /** @return null|StatusEnvelope */
+    private static function statusEnvelope(Expr\Array_ $array, string $text): ?array
+    {
+        $statusKey = null;
+        $statusValue = null;
+        $payloadKeys = [];
+
+        foreach ($array->items as $item) {
+            if (!$item->key instanceof Node\Scalar\String_) {
+                continue;
+            }
+
+            $key = strtolower($item->key->value);
+            $booleanValue = self::booleanLiteralName($item->value);
+            if ($statusKey === null && $booleanValue !== null && in_array($key, self::STATUS_ENVELOPE_STATUS_KEYS, true)) {
+                $statusKey = $key;
+                $statusValue = $booleanValue;
+                continue;
+            }
+
+            if (in_array($key, self::STATUS_ENVELOPE_PAYLOAD_KEYS, true)) {
+                $payloadKeys[$key] = true;
+            }
+        }
+
+        if ($statusKey === null || $statusValue === null || $payloadKeys === []) {
+            return null;
+        }
+
+        $keys = array_keys($payloadKeys);
+        sort($keys);
+
+        return [
+            'statusKey' => $statusKey,
+            'statusValue' => $statusValue,
+            'payloadKeys' => $keys,
+            'kind' => self::statusEnvelopeContextKind($array),
+            'line' => $array->getStartLine(),
+            'column' => self::nodeStartColumn($array, $text),
+        ];
+    }
+
+    private static function booleanLiteralName(Node $node): ?string
+    {
+        if (!$node instanceof Expr\ConstFetch) {
+            return null;
+        }
+
+        $name = strtolower($node->name->toString());
+
+        return in_array($name, ['true', 'false'], true) ? $name : null;
     }
 
     private static function statusEnvelopeContextKind(Expr\Array_ $array): string

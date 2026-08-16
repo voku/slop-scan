@@ -26,7 +26,6 @@ final class PhpStructureFactProvider implements FactProvider
             'file.statusEnvelopes',
             'file.genericArrayCasts',
             'file.caughtExceptionNormalizations',
-            'file.statusEnvelopeContexts',
         ];
     }
     public function supports(ProviderContext $context): bool { return $context->file?->languageId === 'php'; }
@@ -45,10 +44,9 @@ final class PhpStructureFactProvider implements FactProvider
             'file.debugCalls' => PhpFacts::debugCalls($text),
             'file.testCallSummary' => PhpFacts::testCallSummary($text, $context->file->path),
             'file.typeEscapeSummary' => PhpFacts::typeEscapeSummary($text),
-            'file.statusEnvelopes' => PhpFacts::statusEnvelopes($text),
+            'file.statusEnvelopes' => $rulePortFacts['statusEnvelopes'],
             'file.genericArrayCasts' => $rulePortFacts['genericArrayCasts'],
             'file.caughtExceptionNormalizations' => $rulePortFacts['caughtExceptionNormalizations'],
-            'file.statusEnvelopeContexts' => $rulePortFacts['statusEnvelopeContexts'],
         ];
     }
 }
