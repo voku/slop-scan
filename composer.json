@@ -5,7 +5,7 @@
     "require": {
         "php": "^8.3",
         "nikic/php-parser": "^5.8",
-        "symfony/console": "^7.4",
+        "symfony/console": "^8.0",
         "voku/simple-php-code-parser": "^0.22.3",
         "helgesverre/toon": "^3.2"
     },
