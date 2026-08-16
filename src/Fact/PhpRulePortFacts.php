@@ -282,38 +282,117 @@ final class PhpRulePortFacts
     private static function testMockSetups(array $statements, NodeFinder $finder): array
     {
         $setups = [];
-        foreach ($finder->findInstanceOf($statements, Stmt\Expression::class) as $statement) {
-            $methods = [];
-            foreach ($finder->findInstanceOf([$statement->expr], Expr\MethodCall::class) as $call) {
-                if (!$call->name instanceof Identifier) {
+
+        foreach ($finder->findInstanceOf($statements, Stmt\ClassMethod::class) as $method) {
+            $mockVariables = [];
+
+            foreach ($method->stmts ?? [] as $statement) {
+                if (!$statement instanceof Stmt\Expression) {
                     continue;
                 }
 
-                $name = strtolower($call->name->toString());
-                if (in_array($name, ['method', 'willreturn', 'getmockbuilder', 'getmock'], true)) {
-                    $methods[$name] = true;
+                $assignedVariable = self::assignedVariableName($statement->expr);
+                if ($assignedVariable !== null) {
+                    if (self::createdMockVariable($statement->expr) !== null) {
+                        $mockVariables[$assignedVariable] = true;
+                    } else {
+                        unset($mockVariables[$assignedVariable]);
+                    }
                 }
-            }
 
-            $label = null;
-            if (isset($methods['method'], $methods['willreturn'])) {
-                $label = 'method|willReturn';
-            } elseif (isset($methods['getmockbuilder'], $methods['getmock'])) {
-                $label = 'getMockBuilder|getMock';
-            }
+                $label = null;
+                $configuredMockVariable = self::configuredMockVariable($statement->expr);
+                if ($configuredMockVariable !== null && isset($mockVariables[$configuredMockVariable])) {
+                    $label = 'method|willReturn';
+                } elseif (self::hasMockBuilderChain($statement->expr, $finder)) {
+                    $label = 'getMockBuilder|getMock';
+                }
 
-            if ($label === null) {
-                continue;
-            }
+                if ($label === null) {
+                    continue;
+                }
 
-            $setups[] = [
-                'label' => $label,
-                'fingerprint' => $label . '::' . AstNodeInspector::shapeFingerprint($statement, 5),
-                'line' => $statement->getStartLine(),
-            ];
+                $setups[] = [
+                    'label' => $label,
+                    'fingerprint' => $label . '::' . AstNodeInspector::shapeFingerprint($statement, 5),
+                    'line' => $statement->getStartLine(),
+                ];
+            }
         }
 
         return $setups;
+    }
+
+    private static function assignedVariableName(Expr $expr): ?string
+    {
+        if (!$expr instanceof Expr\Assign
+            || !$expr->var instanceof Expr\Variable
+            || !is_string($expr->var->name)
+        ) {
+            return null;
+        }
+
+        return $expr->var->name;
+    }
+
+    private static function createdMockVariable(Expr $expr): ?string
+    {
+        $variable = self::assignedVariableName($expr);
+        if ($variable === null || !$expr instanceof Expr\Assign || !$expr->expr instanceof Expr\MethodCall) {
+            return null;
+        }
+
+        $call = $expr->expr;
+        if (!$call->name instanceof Identifier
+            || strtolower($call->name->toString()) !== 'createmock'
+            || !$call->var instanceof Expr\Variable
+            || $call->var->name !== 'this'
+        ) {
+            return null;
+        }
+
+        return $variable;
+    }
+
+    private static function configuredMockVariable(Expr $expr): ?string
+    {
+        if (!$expr instanceof Expr\MethodCall
+            || !$expr->name instanceof Identifier
+            || strtolower($expr->name->toString()) !== 'willreturn'
+            || !$expr->var instanceof Expr\MethodCall
+            || !$expr->var->name instanceof Identifier
+            || strtolower($expr->var->name->toString()) !== 'method'
+        ) {
+            return null;
+        }
+
+        return self::rootVariableName($expr->var->var);
+    }
+
+    private static function rootVariableName(Expr $expr): ?string
+    {
+        while ($expr instanceof Expr\MethodCall) {
+            $expr = $expr->var;
+        }
+
+        return $expr instanceof Expr\Variable && is_string($expr->name) ? $expr->name : null;
+    }
+
+    private static function hasMockBuilderChain(Expr $expr, NodeFinder $finder): bool
+    {
+        $methods = [];
+        foreach ($finder->findInstanceOf([$expr], Expr\MethodCall::class) as $call) {
+            if (!$call->name instanceof Identifier) {
+                continue;
+            }
+
+            $name = strtolower($call->name->toString());
+            if ($name === 'getmockbuilder' || $name === 'getmock') {
+                $methods[$name] = true;
+            }
+        }
+
+        return isset($methods['getmockbuilder'], $methods['getmock']);
     }
 
     /** @return list<CaughtExceptionNormalization> */
