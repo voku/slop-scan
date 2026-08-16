@@ -11,6 +11,7 @@ use SlopScan\Analyzer;
 use SlopScan\Config;
 use SlopScan\DefaultRegistry;
 use SlopScan\Fact\PhpFacts;
+use SlopScan\Fact\PhpRulePortFacts;
 
 final class PhpStructureParseOnceTest extends TestCase
 {
@@ -50,6 +51,38 @@ PHP);
             PhpFacts::useParserFactoryForTesting(null);
             $this->remove($fixture);
         }
+    }
+
+    public function testSharedSyntaxKeepsResolvedAliasesForRulePortFacts(): void
+    {
+        $text = <<<'PHP'
+<?php
+
+namespace App;
+
+use Symfony\Component\HttpFoundation\JsonResponse as ApiResponse;
+use function json_decode as decode_json;
+
+function decode(string $raw): array
+{
+    $data = decode_json($raw, true);
+
+    return $data;
+}
+
+function response(array $rows): object
+{
+    return new ApiResponse(['ok' => true, 'data' => $rows]);
+}
+PHP;
+
+        $syntax = PhpFacts::parseSyntax($text);
+        self::assertNotNull($syntax['statements']);
+
+        $summary = PhpRulePortFacts::summarize($text, false, $syntax['statements']);
+
+        self::assertSame('json-decode-assoc', $summary['genericArrayCasts'][0]['kind'] ?? null);
+        self::assertSame('json-generic-status-envelope', $summary['statusEnvelopes'][0]['kind'] ?? null);
     }
 
     private function remove(string $path): void
