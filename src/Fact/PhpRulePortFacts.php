@@ -11,10 +11,7 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
-use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitor\ParentConnectingVisitor;
-use PhpParser\Parser;
-use PhpParser\ParserFactory;
+use voku\SimplePhpParser\Parsers\PhpCodeParser;
 
 /**
  * AST facts used only by PHP adaptations of upstream rules.
@@ -535,18 +532,12 @@ final class PhpRulePortFacts
     private static function parseStatementsWithParents(string $text): ?array
     {
         try {
-            $statements = self::parser()->parse($text) ?? [];
-            $withParents = (new NodeTraverser(new ParentConnectingVisitor()))->traverse($statements);
-            /** @var list<Stmt> $withParents */
-            return $withParents;
+            $statements = PhpCodeParser::getAstFromString($text);
+            /** @var list<Stmt> $statements */
+            return $statements;
         } catch (\Throwable) {
             return null;
         }
-    }
-
-    private static function parser(): Parser
-    {
-        return (new ParserFactory())->createForHostVersion();
     }
 
     private static function parent(Node $node): ?Node
