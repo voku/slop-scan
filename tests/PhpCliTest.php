@@ -22,6 +22,7 @@ use SlopScan\Delta;
 use SlopScan\Discoverer;
 use SlopScan\Fact\FactStore;
 use SlopScan\Fact\PhpFacts;
+use SlopScan\Fact\PhpRulePortFacts;
 use SlopScan\MarkdownLanguage;
 use SlopScan\Model\AnalysisResult;
 use SlopScan\Model\DirectoryRecord;
@@ -2688,7 +2689,7 @@ PHP);
         $this->remove($fixture);
     }
 
-    public function testPhpFactsStatusEnvelopesReportsSortedPayloadKeys(): void
+    public function testPhpRulePortFactsStatusEnvelopesReportSortedPayloadKeysAndContextKind(): void
     {
         $php = <<<'PHP'
 <?php
@@ -2699,12 +2700,29 @@ function respond(array $rows): array
 }
 PHP;
 
-        $envelopes = PhpFacts::statusEnvelopes($php);
+        $envelopes = PhpRulePortFacts::summarize($php)['statusEnvelopes'];
 
         self::assertCount(1, $envelopes);
         self::assertSame('ok', $envelopes[0]['statusKey']);
         self::assertSame('true', $envelopes[0]['statusValue']);
         self::assertSame(['message', 'rows'], $envelopes[0]['payloadKeys']);
+        self::assertSame('returned-generic-status-envelope', $envelopes[0]['kind']);
+    }
+
+    public function testPhpRulePortFactsIgnoreArrayLiteralsThatAreNotStatusEnvelopes(): void
+    {
+        $php = <<<'PHP'
+<?php
+
+function build(array $rows): array
+{
+    $meta = ['generated' => true, 'repository' => 'acme'];
+
+    return ['ok' => true, 'repository' => $rows, 'meta' => $meta];
+}
+PHP;
+
+        self::assertSame([], PhpRulePortFacts::summarize($php)['statusEnvelopes']);
     }
 
     public function testMagicNumbersRuleFlagsNumericValuesAndNumericStringsButIgnoresZeroAndOneByDefault(): void

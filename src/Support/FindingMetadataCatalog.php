@@ -62,9 +62,19 @@ final class FindingMetadataCatalog
             'confidence' => 'high',
         ],
         'php.catch-returns-exception-message' => [
-            'why' => 'Returning exception text as a normal value blurs success and failure paths.',
-            'suggestedAction' => 'Return a structured error result or throw instead of converting the exception to a plain string.',
+            'why' => 'Flattening caught exception text into ordinary return or payload data blurs success and failure paths and loses typed failure context.',
+            'suggestedAction' => 'Preserve the exception path or map it to a deliberate typed/domain error result instead of generic string data.',
             'confidence' => 'high',
+        ],
+        'php.generic-status-envelopes' => [
+            'why' => 'Generic boolean status envelopes often replace domain-specific outcomes with shallow transport-shaped success/error data.',
+            'suggestedAction' => 'Prefer a domain result, typed response shape, or exception boundary that makes the actual outcome explicit.',
+            'confidence' => 'medium',
+        ],
+        'php.generic-array-casts' => [
+            'why' => 'Runtime conversion into a vaguely named array bag erases structure at a boundary where the expected shape should usually be explicit.',
+            'suggestedAction' => 'Decode or map into a typed DTO/value object, or document and validate a precise array shape at the boundary.',
+            'confidence' => 'medium',
         ],
         'php.debug-output' => [
             'why' => 'Leftover debug output is usually accidental and can leak internal state.',

@@ -1,13 +1,13 @@
 # SLOP-6: Close php.catch-returns-exception-message parity gap with upstream defensive.stringified-unknown-errors
 
 - **Ticket:** SLOP-6
-- **Lane:** BACKLOG
-- **Status:** Selected
+- **Lane:** VERIFY
+- **Status:** Done
 - **Domain:** rules
 - **Created:** 2026-08-16T00:21:59+00:00
-- **Updated:** 2026-08-16T00:22:25+00:00
+- **Updated:** 2026-08-16T14:05:24+00:00
 - **Summary:** Upstream also flags getMessage() flattening assigned into variables and result-envelope keys, not only returned directly.
-- **Next:** Extend the existing rule rather than adding a new rule ID.
+- **Next:** Implemented and validated in PR #34.
 - **Validation:** composer run test && composer run analyse && composer run scan:self
 - **Priority:** 6
 - **Wave:** 3

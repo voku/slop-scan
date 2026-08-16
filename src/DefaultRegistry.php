@@ -27,6 +27,7 @@ use SlopScan\Rule\ExceptionWrapWithoutPreviousRule;
 use SlopScan\Rule\ErrorObscuringCatchRule;
 use SlopScan\Rule\ErrorSwallowingRule;
 use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\GenericArrayCastsRule;
 use SlopScan\Rule\GenericStatusEnvelopesRule;
 use SlopScan\Rule\MockHeavyTestsWithoutAssertionsRule;
 use SlopScan\Rule\MagicNumbersRule;
@@ -61,6 +62,7 @@ final class DefaultRegistry
             new CatchDefaultFallbacksRule(),
             new CatchReturnsExceptionMessageRule(),
             new GenericStatusEnvelopesRule(),
+            new GenericArrayCastsRule(),
             new DebugOutputRule(),
             new MockHeavyTestsWithoutAssertionsRule(),
             new MagicNumbersRule(),

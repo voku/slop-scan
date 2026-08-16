@@ -1,13 +1,13 @@
 # SLOP-7: Port the upstream match-kind classification into php.generic-status-envelopes
 
 - **Ticket:** SLOP-7
-- **Lane:** BACKLOG
-- **Status:** Selected
+- **Lane:** VERIFY
+- **Status:** Done
 - **Domain:** rules
 - **Created:** 2026-08-16T08:07:29+00:00
-- **Updated:** 2026-08-16T08:08:08+00:00
+- **Updated:** 2026-08-16T14:05:25+00:00
 - **Summary:** Upstream classifies each envelope as returned / json-response / assigned by inspecting the parent node; the PHP port reports which keys matched but not where the envelope goes.
-- **Next:** Extend the file.statusEnvelopes fact with the parent-node kind, then widen the rule evidence.
+- **Next:** Implemented and validated in PR #34.
 - **Validation:** composer run test && composer run analyse && composer run scan:self
 - **Priority:** 7
 - **Wave:** 3
