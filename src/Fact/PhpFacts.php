@@ -12,6 +12,8 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\NodeFinder;
 use PhpParser\Node\Stmt;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
@@ -58,10 +60,10 @@ final class PhpFacts
         return $comments;
     }
 
-    /** @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,magicNumbers:list<array{value:string,normalized:string,kind:string,line:int,column:int}>,classKind:?string,className:?string,namespaceName:?string}> */
-    public static function functions(string $text): array
+    /** @param null|list<Stmt> $statements @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,magicNumbers:list<array{value:string,normalized:string,kind:string,line:int,column:int}>,classKind:?string,className:?string,namespaceName:?string}> */
+    public static function functions(string $text, ?array $statements = null): array
     {
-        $statements = self::parseStatements($text);
+        $statements ??= self::parseStatements($text);
         if ($statements === null) {
             return [];
         }
@@ -72,6 +74,7 @@ final class PhpFacts
     }
 
     /**
+     * @param null|list<Stmt> $statements
      * @return list<array{
      *     line:int,
      *     body:string,
@@ -84,9 +87,9 @@ final class PhpFacts
      *     thrownExceptions:list<array{class:?string,isGeneric:bool,preservesPrevious:bool,usesCaughtVariable:bool}>
      * }>
      */
-    public static function tryCatches(string $text): array
+    public static function tryCatches(string $text, ?array $statements = null): array
     {
-        $statements = self::parseStatements($text);
+        $statements ??= self::parseStatements($text);
         if ($statements === null) {
             return [];
         }
@@ -151,11 +154,12 @@ final class PhpFacts
     }
 
     /**
+     * @param null|list<Stmt> $statements
      * @return array{mixedTypeCount:int,castCount:int}
      */
-    public static function typeEscapeSummary(string $text): array
+    public static function typeEscapeSummary(string $text, ?array $statements = null): array
     {
-        $statements = self::parseStatements($text);
+        $statements ??= self::parseStatements($text);
         if ($statements === null) {
             return ['mixedTypeCount' => 0, 'castCount' => 0];
         }
@@ -182,10 +186,10 @@ final class PhpFacts
         return ['mixedTypeCount' => $mixedCount, 'castCount' => $castCount];
     }
 
-    /** @return list<array{name:string,line:int}> */
-    public static function debugCalls(string $text): array
+    /** @param null|list<Stmt> $statements @return list<array{name:string,line:int}> */
+    public static function debugCalls(string $text, ?array $statements = null): array
     {
-        $statements = self::parseStatements($text);
+        $statements ??= self::parseStatements($text);
         if ($statements === null) {
             return [];
         }
@@ -210,10 +214,10 @@ final class PhpFacts
         return $calls;
     }
 
-    /** @return array{looksLikeTest:bool,testCount:int,mockCount:int,assertionCount:int,expectationCount:int} */
-    public static function testCallSummary(string $text, string $path): array
+    /** @param null|list<Stmt> $statements @return array{looksLikeTest:bool,testCount:int,mockCount:int,assertionCount:int,expectationCount:int} */
+    public static function testCallSummary(string $text, string $path, ?array $statements = null): array
     {
-        $statements = self::parseStatements($text);
+        $statements ??= self::parseStatements($text);
         if ($statements === null) {
             return [
                 'looksLikeTest' => false,
@@ -262,6 +266,39 @@ final class PhpFacts
         self::$parserFactory = $parserFactory;
     }
 
+    /** @return array{statements:null|list<Stmt>,error:?string} */
+    public static function parseSyntax(string $text): array
+    {
+        try {
+            if (self::$parserFactory !== null) {
+                $statements = self::parser()->parse($text) ?? [];
+                $statements = (new NodeTraverser(new ParentConnectingVisitor()))->traverse($statements);
+                /** @var list<Stmt> $statements */
+            } else {
+                $statements = PhpCodeParser::getAstFromString($text);
+                /** @var list<Stmt> $statements */
+            }
+
+            return ['statements' => $statements, 'error' => null];
+        } catch (\Throwable $exception) {
+            return ['statements' => null, 'error' => $exception->getMessage()];
+        }
+    }
+
+    /** @param list<Stmt> $statements @return array{available:bool,classCount:int,functionCount:int} */
+    public static function parserSummaryFromStatements(array $statements): array
+    {
+        $finder = self::nodeFinder();
+        $classCount = count($finder->find($statements, static fn(Node $node): bool => $node instanceof Stmt\Class_ || $node instanceof Stmt\Interface_ || $node instanceof Stmt\Trait_ || $node instanceof Stmt\Enum_));
+        $functionCount = count($finder->findInstanceOf($statements, Stmt\Function_::class));
+
+        return [
+            'available' => true,
+            'classCount' => $classCount,
+            'functionCount' => $functionCount,
+        ];
+    }
+
     /** @return array{available:bool,classCount:int,functionCount:int,error?:string} */
     public static function parserSummary(string $absolutePath): array
     {
@@ -274,20 +311,17 @@ final class PhpFacts
             return ['available' => true, 'classCount' => 0, 'functionCount' => 0, 'error' => 'Unable to read file'];
         }
 
-        try {
-            $statements = self::parser()->parse($text) ?? [];
-            $finder = self::nodeFinder();
-            $classCount = count($finder->find($statements, static fn(Node $node): bool => $node instanceof Stmt\Class_ || $node instanceof Stmt\Interface_ || $node instanceof Stmt\Trait_ || $node instanceof Stmt\Enum_));
-            $functionCount = count($finder->findInstanceOf($statements, Stmt\Function_::class));
-
+        $syntax = self::parseSyntax($text);
+        if ($syntax['statements'] === null) {
             return [
                 'available' => true,
-                'classCount' => $classCount,
-                'functionCount' => $functionCount,
+                'classCount' => 0,
+                'functionCount' => 0,
+                'error' => $syntax['error'] ?? 'Unable to parse PHP source',
             ];
-        } catch (\Throwable $exception) {
-            return ['available' => true, 'classCount' => 0, 'functionCount' => 0, 'error' => $exception->getMessage()];
         }
+
+        return self::parserSummaryFromStatements($syntax['statements']);
     }
 
     /** @param list<Stmt> $statements */
@@ -357,14 +391,10 @@ final class PhpFacts
         ];
     }
 
-    /** @return list<Stmt> */
+    /** @return null|list<Stmt> */
     private static function parseStatements(string $text): ?array
     {
-        try {
-            return self::parser()->parse($text) ?? [];
-        } catch (\Throwable) {
-            return null;
-        }
+        return self::parseSyntax($text)['statements'];
     }
 
     private static function parser(): Parser
