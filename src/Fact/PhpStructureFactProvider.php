@@ -26,6 +26,7 @@ final class PhpStructureFactProvider implements FactProvider
             'file.statusEnvelopes',
             'file.genericArrayCasts',
             'file.caughtExceptionNormalizations',
+            'file.testMockSetups',
         ];
     }
     public function supports(ProviderContext $context): bool { return $context->file?->languageId === 'php'; }
@@ -33,7 +34,8 @@ final class PhpStructureFactProvider implements FactProvider
     public function run(ProviderContext $context): array
     {
         $text = (string) $context->runtime->store->getFileFact($context->file->path, 'file.text');
-        $rulePortFacts = PhpRulePortFacts::summarize($text);
+        $testCallSummary = PhpFacts::testCallSummary($text, $context->file->path);
+        $rulePortFacts = PhpRulePortFacts::summarize($text, $testCallSummary['looksLikeTest']);
 
         return [
             'file.comments' => PhpFacts::comments($text),
@@ -42,11 +44,12 @@ final class PhpStructureFactProvider implements FactProvider
             'file.parserSummary' => PhpFacts::parserSummary($context->file->absolutePath),
             'file.phpDocTypeSummaries' => PhpFacts::phpDocTypeSummaries($context->file->absolutePath),
             'file.debugCalls' => PhpFacts::debugCalls($text),
-            'file.testCallSummary' => PhpFacts::testCallSummary($text, $context->file->path),
+            'file.testCallSummary' => $testCallSummary,
             'file.typeEscapeSummary' => PhpFacts::typeEscapeSummary($text),
             'file.statusEnvelopes' => $rulePortFacts['statusEnvelopes'],
             'file.genericArrayCasts' => $rulePortFacts['genericArrayCasts'],
             'file.caughtExceptionNormalizations' => $rulePortFacts['caughtExceptionNormalizations'],
+            'file.testMockSetups' => $rulePortFacts['testMockSetups'],
         ];
     }
 }

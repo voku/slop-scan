@@ -11,10 +11,8 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
-use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitor\ParentConnectingVisitor;
-use PhpParser\Parser;
-use PhpParser\ParserFactory;
+use voku\SimplePhpParser\Parsers\Helper\AstNodeInspector;
+use voku\SimplePhpParser\Parsers\PhpCodeParser;
 
 /**
  * AST facts used only by PHP adaptations of upstream rules.
@@ -22,10 +20,12 @@ use PhpParser\ParserFactory;
  * @phpstan-type GenericArrayCast array{variable:string,kind:string,line:int,column:int}
  * @phpstan-type CaughtExceptionNormalization array{kind:string,line:int,column:int}
  * @phpstan-type StatusEnvelope array{statusKey:string,statusValue:string,payloadKeys:list<string>,kind:string,line:int,column:int}
+ * @phpstan-type TestMockSetup array{label:string,fingerprint:string,line:int}
  * @phpstan-type Summary array{
  *     genericArrayCasts:list<GenericArrayCast>,
  *     caughtExceptionNormalizations:list<CaughtExceptionNormalization>,
- *     statusEnvelopes:list<StatusEnvelope>
+ *     statusEnvelopes:list<StatusEnvelope>,
+ *     testMockSetups:list<TestMockSetup>
  * }
  */
 final class PhpRulePortFacts
@@ -68,7 +68,7 @@ final class PhpRulePortFacts
     ];
 
     /** @return Summary */
-    public static function summarize(string $text): array
+    public static function summarize(string $text, bool $includeTestMockSetups = false): array
     {
         $statements = self::parseStatementsWithParents($text);
         if ($statements === null) {
@@ -76,6 +76,7 @@ final class PhpRulePortFacts
                 'genericArrayCasts' => [],
                 'caughtExceptionNormalizations' => [],
                 'statusEnvelopes' => [],
+                'testMockSetups' => [],
             ];
         }
 
@@ -103,6 +104,8 @@ final class PhpRulePortFacts
             }
         }
 
+        $testMockSetups = $includeTestMockSetups ? self::testMockSetups($statements, $finder) : [];
+
         usort(
             $genericArrayCasts,
             static fn (array $left, array $right): int => ($left['line'] <=> $right['line'])
@@ -121,11 +124,17 @@ final class PhpRulePortFacts
                 ?: ($left['column'] <=> $right['column'])
                 ?: strcmp($left['statusKey'], $right['statusKey']),
         );
+        usort(
+            $testMockSetups,
+            static fn (array $left, array $right): int => ($left['line'] <=> $right['line'])
+                ?: strcmp($left['fingerprint'], $right['fingerprint']),
+        );
 
         return [
             'genericArrayCasts' => $genericArrayCasts,
             'caughtExceptionNormalizations' => self::uniqueNormalizations($caughtExceptionNormalizations),
             'statusEnvelopes' => $statusEnvelopes,
+            'testMockSetups' => $testMockSetups,
         ];
     }
 
@@ -150,7 +159,7 @@ final class PhpRulePortFacts
             'variable' => '$' . $assign->var->name,
             'kind' => $kind,
             'line' => $assign->expr->getStartLine(),
-            'column' => self::nodeStartColumn($assign->expr, $text),
+            'column' => AstNodeInspector::startColumn($assign->expr, $text),
         ];
     }
 
@@ -225,7 +234,7 @@ final class PhpRulePortFacts
             'payloadKeys' => $keys,
             'kind' => self::statusEnvelopeContextKind($array),
             'line' => $array->getStartLine(),
-            'column' => self::nodeStartColumn($array, $text),
+            'column' => AstNodeInspector::startColumn($array, $text),
         ];
     }
 
@@ -267,6 +276,123 @@ final class PhpRulePortFacts
         }
 
         return 'assigned-generic-status-envelope';
+    }
+
+    /** @param list<Stmt> $statements @return list<TestMockSetup> */
+    private static function testMockSetups(array $statements, NodeFinder $finder): array
+    {
+        $setups = [];
+
+        foreach ($finder->findInstanceOf($statements, Stmt\ClassMethod::class) as $method) {
+            $mockVariables = [];
+
+            foreach ($method->stmts ?? [] as $statement) {
+                if (!$statement instanceof Stmt\Expression) {
+                    continue;
+                }
+
+                $assignedVariable = self::assignedVariableName($statement->expr);
+                if ($assignedVariable !== null) {
+                    if (self::createdMockVariable($statement->expr) !== null) {
+                        $mockVariables[$assignedVariable] = true;
+                    } else {
+                        unset($mockVariables[$assignedVariable]);
+                    }
+                }
+
+                $label = null;
+                $configuredMockVariable = self::configuredMockVariable($statement->expr);
+                if ($configuredMockVariable !== null && isset($mockVariables[$configuredMockVariable])) {
+                    $label = 'method|willReturn';
+                } elseif (self::hasMockBuilderChain($statement->expr, $finder)) {
+                    $label = 'getMockBuilder|getMock';
+                }
+
+                if ($label === null) {
+                    continue;
+                }
+
+                $setups[] = [
+                    'label' => $label,
+                    'fingerprint' => $label . '::' . AstNodeInspector::shapeFingerprint($statement, 5),
+                    'line' => $statement->getStartLine(),
+                ];
+            }
+        }
+
+        return $setups;
+    }
+
+    private static function assignedVariableName(Expr $expr): ?string
+    {
+        if (!$expr instanceof Expr\Assign
+            || !$expr->var instanceof Expr\Variable
+            || !is_string($expr->var->name)
+        ) {
+            return null;
+        }
+
+        return $expr->var->name;
+    }
+
+    private static function createdMockVariable(Expr $expr): ?string
+    {
+        $variable = self::assignedVariableName($expr);
+        if ($variable === null || !$expr instanceof Expr\Assign || !$expr->expr instanceof Expr\MethodCall) {
+            return null;
+        }
+
+        $call = $expr->expr;
+        if (!$call->name instanceof Identifier
+            || strtolower($call->name->toString()) !== 'createmock'
+            || !$call->var instanceof Expr\Variable
+            || $call->var->name !== 'this'
+        ) {
+            return null;
+        }
+
+        return $variable;
+    }
+
+    private static function configuredMockVariable(Expr $expr): ?string
+    {
+        if (!$expr instanceof Expr\MethodCall
+            || !$expr->name instanceof Identifier
+            || strtolower($expr->name->toString()) !== 'willreturn'
+            || !$expr->var instanceof Expr\MethodCall
+            || !$expr->var->name instanceof Identifier
+            || strtolower($expr->var->name->toString()) !== 'method'
+        ) {
+            return null;
+        }
+
+        return self::rootVariableName($expr->var->var);
+    }
+
+    private static function rootVariableName(Expr $expr): ?string
+    {
+        while ($expr instanceof Expr\MethodCall) {
+            $expr = $expr->var;
+        }
+
+        return $expr instanceof Expr\Variable && is_string($expr->name) ? $expr->name : null;
+    }
+
+    private static function hasMockBuilderChain(Expr $expr, NodeFinder $finder): bool
+    {
+        $methods = [];
+        foreach ($finder->findInstanceOf([$expr], Expr\MethodCall::class) as $call) {
+            if (!$call->name instanceof Identifier) {
+                continue;
+            }
+
+            $name = strtolower($call->name->toString());
+            if ($name === 'getmockbuilder' || $name === 'getmock') {
+                $methods[$name] = true;
+            }
+        }
+
+        return isset($methods['getmockbuilder'], $methods['getmock']);
     }
 
     /** @return list<CaughtExceptionNormalization> */
@@ -434,7 +560,7 @@ final class PhpRulePortFacts
         return [
             'kind' => $kind,
             'line' => $expr->getStartLine(),
-            'column' => self::nodeStartColumn($expr, $text),
+            'column' => AstNodeInspector::startColumn($expr, $text),
         ];
     }
 
@@ -457,18 +583,12 @@ final class PhpRulePortFacts
     private static function parseStatementsWithParents(string $text): ?array
     {
         try {
-            $statements = self::parser()->parse($text) ?? [];
-            $withParents = (new NodeTraverser(new ParentConnectingVisitor()))->traverse($statements);
-            /** @var list<Stmt> $withParents */
-            return $withParents;
+            $statements = PhpCodeParser::getAstFromString($text);
+            /** @var list<Stmt> $statements */
+            return $statements;
         } catch (\Throwable) {
             return null;
         }
-    }
-
-    private static function parser(): Parser
-    {
-        return (new ParserFactory())->createForHostVersion();
     }
 
     private static function parent(Node $node): ?Node
@@ -476,18 +596,5 @@ final class PhpRulePortFacts
         $parent = $node->getAttribute('parent');
 
         return $parent instanceof Node ? $parent : null;
-    }
-
-    private static function nodeStartColumn(Node $node, string $text): int
-    {
-        $start = $node->getStartFilePos();
-        if ($start < 0) {
-            return 1;
-        }
-
-        $prefix = substr($text, 0, $start);
-        $lineStart = strrpos($prefix, "\n");
-
-        return $lineStart === false ? $start + 1 : $start - $lineStart;
     }
 }

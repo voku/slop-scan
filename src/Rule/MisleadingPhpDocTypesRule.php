@@ -13,14 +13,20 @@ final class MisleadingPhpDocTypesRule extends BaseRule
     public function family(): string { return 'documentation'; }
     public function severity(): string { return 'weak'; }
     public function scope(): string { return 'file'; }
-    public function requires(): array { return ['file.phpDocTypeSummaries']; }
+    public function requires(): array { return ['file.phpDocTypeSummaries', 'file.text']; }
 
     public function evaluate(ProviderContext $context): array
     {
         $findings = [];
+        $text = $context->runtime->store->getFileFact($context->file->path, 'file.text');
+        $localTypeAliases = is_string($text) ? self::localTypeAliases($text) : [];
 
         foreach ($context->runtime->store->getFileFact($context->file->path, 'file.phpDocTypeSummaries') ?? [] as $entry) {
             foreach ($entry['annotations'] as $annotation) {
+                if (self::usesLocalTypeAlias($annotation['phpDocRaw'], $localTypeAliases)) {
+                    continue;
+                }
+
                 $issue = self::issueForTypes(
                     $annotation['nativeType'],
                     $annotation['phpDocResolvedType'] ?? $annotation['phpDocType'],
@@ -59,6 +65,46 @@ final class MisleadingPhpDocTypesRule extends BaseRule
         }
 
         return $findings;
+    }
+
+    /** @return array<string,true> */
+    private static function localTypeAliases(string $text): array
+    {
+        $count = preg_match_all(
+            '/@(?:phpstan|psalm)-(?:type|import-type)\s+([A-Za-z_][A-Za-z0-9_]*)\b/',
+            $text,
+            $matches,
+        );
+        if ($count === false || $count === 0) {
+            return [];
+        }
+
+        return array_fill_keys($matches[1], true);
+    }
+
+    /** @param array<string,true> $localTypeAliases */
+    private static function usesLocalTypeAlias(?string $phpDocRaw, array $localTypeAliases): bool
+    {
+        if ($phpDocRaw === null || $localTypeAliases === []) {
+            return false;
+        }
+
+        $parts = preg_split('/\s+/', trim($phpDocRaw), 2);
+        $typeExpression = $parts[0] ?? '';
+        if ($typeExpression === '') {
+            return false;
+        }
+
+        foreach (array_keys($localTypeAliases) as $alias) {
+            if (preg_match(
+                '/(?:^|[|&?(<,])\\\\?' . preg_quote($alias, '/') . '(?:$|[|&?)>\[\],])/',
+                $typeExpression,
+            ) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return null|array{kind:string,reason:string} */
