@@ -171,7 +171,7 @@ final class PhpRulePortFacts
 
         if (!$expr instanceof Expr\FuncCall
             || !$expr->name instanceof Name
-            || strtolower(ltrim($expr->name->toString(), '\\')) !== 'json_decode'
+            || strtolower(ltrim(self::resolvedName($expr->name), '\\')) !== 'json_decode'
         ) {
             return null;
         }
@@ -270,12 +270,19 @@ final class PhpRulePortFacts
 
         if ($call instanceof Expr\New_
             && $call->class instanceof Name
-            && str_ends_with(strtolower($call->class->toString()), 'jsonresponse')
+            && str_ends_with(strtolower(self::resolvedName($call->class)), 'jsonresponse')
         ) {
             return 'json-generic-status-envelope';
         }
 
         return 'assigned-generic-status-envelope';
+    }
+
+    private static function resolvedName(Name $name): string
+    {
+        $resolved = $name->getAttribute('resolvedName');
+
+        return $resolved instanceof Name ? $resolved->toString() : $name->toString();
     }
 
     /** @param list<Stmt> $statements @return list<TestMockSetup> */
