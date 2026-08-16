@@ -1,0 +1,15 @@
+<?php
+
+function fetch_repository(string $name): array
+{
+    if ($name === '') {
+        return ['ok' => false];
+    }
+
+    return ['ok' => true, 'repository' => load_repository($name)];
+}
+
+function describe_repository(string $name): array
+{
+    return ['status' => 'archived', 'message' => describe($name)];
+}

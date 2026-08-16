@@ -8,7 +8,7 @@ final class ScanCache
 {
     private const FORMAT_VERSION = 1;
     private const PROVIDER_SCHEMA_VERSIONS = [
-        'php.structure' => 2,
+        'php.structure' => 3,
     ];
 
     /** @var array<string,array<string,array{fingerprint:string,facts:array<string,mixed>}>> */

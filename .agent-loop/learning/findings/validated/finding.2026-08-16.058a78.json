@@ -1,0 +1,28 @@
+{
+    "id": "finding.2026-08-16.058a78",
+    "task_id": "SLOP-1",
+    "session": "2026-08-16-slop-1-2",
+    "created_at": "2026-08-16T00:45:00+00:00",
+    "created_by": "Claude",
+    "scope": [
+        ".agent-loop/todo/board.md",
+        "vendor/voku/agent-loop/docs/quick-start.md"
+    ],
+    "observation": "The published agent-loop README documents `init scaffold --prefix=PROJECT` and `init scaffold --demo`, but 0.16.3 rejects both with `[FAIL] init scaffold: supported option is --dry-run.` and exit code 1. There is no supported way to scaffold a board under a real project prefix. Setting one means hand-editing `- **Project prefix:** DEMO` in `.agent-loop/todo/board.md`, after which `board verify` fails with `[ERROR] invalid-project-prefix: Card DEMO-1 has prefix \"DEMO\", expected \"SLOP\".` and exit code 4 until the generated DEMO-1 card and its task file are deleted by hand. The first thing a new consumer repository does with the tool is therefore a manual edit plus a manual delete that no command documents.",
+    "evidence": [
+        {
+            "type": "manual_verification",
+            "summary": "`vendor/bin/agent-loop init scaffold --prefix=SLOP` printed `[FAIL] init scaffold: supported option is --dry-run.` and exited 1, while the README fetched from the repository main branch lists `--prefix=PROJECT` and `--demo` in its initialization section."
+        },
+        {
+            "type": "manual_verification",
+            "summary": "After editing the prefix to SLOP by hand, `vendor/bin/agent-loop board verify` exited 4 with `invalid-project-prefix` for the scaffolded DEMO-1 card. Deleting `.agent-loop/todo/cards/DEMO-1.md` and `.agent-loop/tasks/DEMO-1.md` restored `Board verification passed.`"
+        }
+    ],
+    "hypothesis": "The scaffold was designed around a demo-first walkthrough, so the prefix was never a first-class input. The README describes an intended interface that the shipped command does not implement, and nobody noticed because the demo path never needs a prefix.",
+    "validated_conclusion": "Bootstrap is the one step every consumer repository runs exactly once, with no prior knowledge of the tool, so it is the step least able to absorb an undocumented manual fix-up. Either `init scaffold` accepts `--prefix` and emits a matching first card, or the README stops advertising an option the command rejects. A verifier that correctly refuses the state a scaffold just produced is a sign the scaffold and the verifier disagree about what a fresh repository looks like.",
+    "confidence": "high",
+    "validation_status": "validated",
+    "status": "validated",
+    "sensitivity": "public"
+}

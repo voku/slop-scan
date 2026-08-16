@@ -10,3 +10,16 @@ autoresearch.md
 autoresearch.sh
 autoresearch.checks.sh
 autoresearch.ideas.md
+
+# agent-loop workflow state.
+# The board, task briefs, contracts and durable learning are tracked on purpose;
+# generated indexes and run-local working memory are not.
+.agent-map/
+.agent-loop/map/
+.agent-loop/recall/
+.agent-loop/runs/
+.agent-loop/sessions/
+.agent-loop/edit/
+.agent-loop/risks/
+.agent-loop/tool-inventory.json
+.agent-loop/learning/history/

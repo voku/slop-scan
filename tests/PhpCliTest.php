@@ -787,6 +787,7 @@ PHP);
             'return constant stub' => ['return-constant-stub.fixture', 'src/ReturnConstantStub.php', 'php.return-constant-stub'],
             'placeholder method body' => ['placeholder-method-body.fixture', 'src/PlaceholderMethodBody.php', 'php.placeholder-method-bodies'],
             'type escape hotspot' => ['type-escape-hotspot.fixture', 'src/TypeEscapeHotspot.php', 'php.type-escape-hotspots'],
+            'generic status envelope' => ['generic-status-envelope.fixture', 'src/GenericStatusEnvelope.php', 'php.generic-status-envelopes'],
             'low-signal markdown' => ['low-signal-markdown.fixture', 'docs/implementation-summary.md', 'markdown.low-signal'],
         ];
     }
@@ -816,6 +817,7 @@ PHP);
             'exception wrap with previous' => ['exception-wrap-with-previous.fixture', 'src/ExceptionWrapWithPrevious.php'],
             'error wrapping with previous' => ['error-wrapping-with-previous.fixture', 'src/ErrorWrappingWithPrevious.php'],
             'test with mocks and assertions' => ['test-with-mocks-and-real-assertions.fixture', 'tests/MockAssertionsTest.php'],
+            'domain shaped results' => ['domain-shaped-results.fixture', 'src/DomainShapedResults.php'],
             'helpful phpdoc types' => ['helpful-phpdoc-types.fixture', 'src/HelpfulPhpDoc.php'],
             'aliased phpdoc types' => ['aliased-phpdoc-types.fixture', 'src/AliasedPhpDoc.php'],
             'installation markdown' => ['installation-guide-markdown.fixture', 'docs/installation.md'],
@@ -2600,6 +2602,109 @@ PHP);
         self::assertNotContains('php.type-escape-hotspots', $this->ruleIds($result->findings));
 
         $this->remove($fixture);
+    }
+
+    public function testGenericStatusEnvelopesRuleFlagsBooleanStatusPairedWithGenericPayload(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Envelopes.php', <<<'PHP'
+<?php
+
+function reject(string $reason): array
+{
+    return ['success' => false, 'error' => $reason];
+}
+
+function accept(array $rows): array
+{
+    return ['ok' => true, 'rows' => $rows, 'message' => 'loaded'];
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertSame(2, $this->countForRule($result->findings, 'php.generic-status-envelopes'));
+        $evidence = $this->firstEvidenceForRule($result->findings, 'php.generic-status-envelopes');
+        self::assertContains('status=success:false', $evidence);
+        self::assertContains('payload=error', $evidence);
+
+        $this->remove($fixture);
+    }
+
+    public function testGenericStatusEnvelopesRuleIgnoresLoneStatusKeysAndDomainShapedPayloads(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/DomainResults.php', <<<'PHP'
+<?php
+
+function lookup(string $name): array
+{
+    if ($name === '') {
+        return ['ok' => false];
+    }
+
+    return ['ok' => true, 'repository' => load($name)];
+}
+
+function describe(string $name): array
+{
+    return ['status' => 'archived', 'message' => summarize($name)];
+}
+
+function failure(string $reason): array
+{
+    return ['error' => $reason];
+}
+PHP);
+
+        $result = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
+
+        self::assertNotContains('php.generic-status-envelopes', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testGenericStatusEnvelopesRuleSkipsFilesOverTheConfiguredLineBudget(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Bundled.php', <<<'PHP'
+<?php
+
+function reject(string $reason): array
+{
+    return ['success' => false, 'error' => $reason];
+}
+PHP);
+        $config = Config::defaults();
+        $config['rules']['php.generic-status-envelopes'] = ['options' => ['maxFileLines' => 1]];
+
+        $result = (new Analyzer())->analyze($fixture, $config, DefaultRegistry::create());
+
+        self::assertNotContains('php.generic-status-envelopes', $this->ruleIds($result->findings));
+
+        $this->remove($fixture);
+    }
+
+    public function testPhpFactsStatusEnvelopesReportsSortedPayloadKeys(): void
+    {
+        $php = <<<'PHP'
+<?php
+
+function respond(array $rows): array
+{
+    return ['ok' => true, 'rows' => $rows, 'message' => 'done'];
+}
+PHP;
+
+        $envelopes = PhpFacts::statusEnvelopes($php);
+
+        self::assertCount(1, $envelopes);
+        self::assertSame('ok', $envelopes[0]['statusKey']);
+        self::assertSame('true', $envelopes[0]['statusValue']);
+        self::assertSame(['message', 'rows'], $envelopes[0]['payloadKeys']);
     }
 
     public function testMagicNumbersRuleFlagsNumericValuesAndNumericStringsButIgnoresZeroAndOneByDefault(): void

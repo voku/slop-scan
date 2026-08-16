@@ -1,0 +1,9 @@
+# Keep agent tooling out of Composer/Git archives and release tarballs.
+/.agent-loop export-ignore
+/.agents export-ignore
+/.claude export-ignore
+/.codex export-ignore
+/.github export-ignore
+/.ai export-ignore
+/tests export-ignore
+/docs export-ignore

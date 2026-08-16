@@ -29,6 +29,7 @@ It also scans Markdown docs:
 | `php.commented-out-code` | Comments that look like disabled code | Dead code in comments adds noise and creates doubt about what is still relevant. |
 | `php.catch-default-fallbacks` | `catch` blocks that return empty literals such as `null`, `[]`, `''`, `false`, or `0` | Default fallbacks can silently turn real failures into misleading “success” values. |
 | `php.catch-returns-exception-message` | `catch` blocks that return the caught exception message or string form as a normal value | Turning failures into returned error text can blur success and failure paths and leak internal details. |
+| `php.generic-status-envelopes` | Array literals that pair a boolean `success`/`ok`/`status` key with a generic payload key such as `message`, `error`, `data`, `rows`, or `result` | Wrapping every operation in a shallow boolean envelope describes transport status instead of domain meaning, and is a common shape in generated service glue. |
 | `php.debug-output` | Calls like `var_dump()`, `print_r()`, `dd()`, or `ray()` left in source | Debug leftovers usually should not ship in production code. |
 | `php.mock-heavy-tests-without-assertions` | Tests that mostly build mocks but do not assert behavior | These tests look busy but often do not protect behavior. |
 | `php.magic-numbers` | Inline numeric literals and numeric strings inside function or method bodies, except configured ignored values like `0` and `1` | Unnamed numbers hide intent and are harder to review or change safely. |
@@ -47,5 +48,7 @@ It also scans Markdown docs:
 For `markdown.low-signal`, repository-specific anchors include inline code, Markdown links, file paths such as `src/Analyzer.php`, and concrete commands such as `composer run test` or `php bin/slop-scan.php scan .`.
 
 The rule is intentionally conservative: checklist-heavy docs should stay quiet when they also include at least two descriptive prose lines or enough concrete repository anchors to explain what a maintainer should actually do next.
+
+For `php.generic-status-envelopes`, the status key must carry a literal `true` or `false`, so `['status' => 'archived', 'message' => $text]` stays quiet. A status key on its own (`['ok' => false]`) and a domain-named payload (`['ok' => true, 'repository' => $repo]`) also stay quiet. Bundled or generated files longer than the `maxFileLines` option (default `5000`) are skipped.
 
 The tool is intentionally heuristic: a finding is a prompt for review, not a verdict.

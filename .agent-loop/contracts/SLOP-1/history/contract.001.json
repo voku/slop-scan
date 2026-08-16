@@ -1,0 +1,40 @@
+{
+    "acceptance_criteria": [
+        "php.generic-status-envelopes appears in the registry and in docs/rules.md.",
+        "A new test asserts the rule fires on a generic envelope and stays quiet on a lone ok key and on a domain-named payload.",
+        "composer run test, composer run analyse and composer run lint stay green."
+    ],
+    "approved_at": "2026-08-16T00:27:35+00:00",
+    "approved_by": "Claude",
+    "base_commit": null,
+    "behavior_anchors": [
+        "PHP source file under scan -> slop-scan finding list (rule id, evidence, score)"
+    ],
+    "created_at": "2026-08-16T00:27:31+00:00",
+    "goal": "Port the upstream api.generic-status-envelopes check to a deterministic PHP rule php.generic-status-envelopes that flags associative array literals pairing a boolean success/ok key with a generic payload key.",
+    "kind": "task_contract",
+    "non_goals": [
+        "Do not change scoring or evidence for any existing rule.",
+        "Do not port the remaining upstream checks in this task; they stay on the board as SLOP-2..SLOP-6."
+    ],
+    "operating_prompt_manifest": null,
+    "operating_prompts": [],
+    "planned_by": "Claude",
+    "revision": 1,
+    "schema_version": "1.0",
+    "scope": [
+        "src/Rule",
+        "tests",
+        "docs"
+    ],
+    "status": "superseded",
+    "tags": [],
+    "task_id": "SLOP-1",
+    "updated_at": "2026-08-16T00:40:46+00:00",
+    "validation": [
+        "composer run lint",
+        "composer run analyse",
+        "composer run test",
+        "composer run scan:self"
+    ]
+}

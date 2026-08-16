@@ -92,6 +92,8 @@ When present, those config values act as defaults for `scan`. Explicit CLI flags
 - [Configuration and suppressions](docs/configuration.md)
 - [Report shape](docs/report-shape.md)
 - [Development and validation](docs/development.md)
+- [Upstream rule parity](docs/upstream-parity.md)
+- [The agent-loop workflow and board](docs/agent-loop-workflow.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Local development quick start

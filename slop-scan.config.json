@@ -4,7 +4,14 @@
     "**/.git/**",
     "**/build/**",
     "**/coverage/**",
-    "**/*.generated.*"
+    "**/*.generated.*",
+    "**/.agent-map/**",
+    "**/.agent-loop/**",
+    "**/.agents/**",
+    "**/.claude/**",
+    "**/.codex/**",
+    "**/.github/agents/**",
+    "**/.github/skills/**"
   ],
   "rules": {
     "php.directory-fanout-hotspot": {

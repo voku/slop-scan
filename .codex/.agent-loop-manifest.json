@@ -1,0 +1,10 @@
+{
+    "version": 1,
+    "kind": "hooks",
+    "agent": "codex",
+    "entries": [
+        "hooks.json",
+        "hooks/context.php",
+        "hooks/pre_tool_use_policy.php"
+    ]
+}

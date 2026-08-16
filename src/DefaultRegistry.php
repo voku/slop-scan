@@ -27,6 +27,7 @@ use SlopScan\Rule\ExceptionWrapWithoutPreviousRule;
 use SlopScan\Rule\ErrorObscuringCatchRule;
 use SlopScan\Rule\ErrorSwallowingRule;
 use SlopScan\Rule\ExcessiveStaticAnalysisSuppressionsRule;
+use SlopScan\Rule\GenericStatusEnvelopesRule;
 use SlopScan\Rule\MockHeavyTestsWithoutAssertionsRule;
 use SlopScan\Rule\MagicNumbersRule;
 use SlopScan\Rule\MisleadingPhpDocTypesRule;
@@ -59,6 +60,7 @@ final class DefaultRegistry
             new CommentedOutCodeRule(),
             new CatchDefaultFallbacksRule(),
             new CatchReturnsExceptionMessageRule(),
+            new GenericStatusEnvelopesRule(),
             new DebugOutputRule(),
             new MockHeavyTestsWithoutAssertionsRule(),
             new MagicNumbersRule(),

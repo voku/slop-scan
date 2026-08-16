@@ -1,0 +1,28 @@
+{
+    "id": "finding.2026-08-16.0cafd3",
+    "task_id": "SLOP-1",
+    "session": "2026-08-16-slop-1-2",
+    "created_at": "2026-08-16T00:45:00+00:00",
+    "created_by": "Claude",
+    "scope": [
+        ".agent-loop/contracts/SLOP-1/contract.json",
+        ".agent-loop/sessions/"
+    ],
+    "observation": "Correcting an under-scoped Contract mid-run costs the run. Contract revision 1 for SLOP-1 approved `src/Rule, tests, docs`; implementing the rule also required a new fact in `src/Fact/`, registry wiring in `src/DefaultRegistry.php` and a fact-provider schema bump in `src/Support/ScanCache.php`. `workflow report` correctly reported `Changed files outside Contract scope`, but `workflow plan` then refused the revision with `Cannot revise Contract for SLOP-1 while a governed Session is active. Finish or drop that Run before changing durable intent.` The only path forward was `session close --status dropped`, re-plan, re-approve, and re-record all four validation observations against revision 2. agent-loop's own validated finding.2026-08-14.999429 records the same trap from the runner side, so this is a second independent encounter rather than a new discovery.",
+    "evidence": [
+        {
+            "type": "manual_verification",
+            "summary": "`workflow report SLOP-1` under revision 1 listed `Changed files outside Contract scope: src/Fact/PhpFacts.php, src/Fact/PhpStructureFactProvider.php, src/DefaultRegistry.php, src/Support/ScanCache.php`; under revision 2 the same file list reported `all supplied paths are within Contract scope`."
+        },
+        {
+            "type": "manual_verification",
+            "summary": "`workflow plan SLOP-1 ...` with the corrected scope failed while session 2026-08-16-slop-1 was active, and succeeded only after `session close 2026-08-16-slop-1 --status dropped`, producing a second session 2026-08-16-slop-1-2 with an empty validation ledger."
+        }
+    ],
+    "hypothesis": "Contract immutability during a Run protects the approval, and mid-run scope discovery was treated as a planning failure rather than the normal case it is for a first-of-its-kind change. Because the escape hatch is a drop, the cheap response is to under-report the scope instead of revising it.",
+    "validated_conclusion": "A governance gate that is expensive to obey teaches people to route around it, and dropping a Run to widen its scope by two directories is expensive in exactly that way. The gate that detects scope drift and the command that fixes it should be reachable from the same state: an in-run `workflow plan --revise` that re-enters approval while carrying validation evidence forward preserves the approval boundary at a price an honest agent will actually pay. That this repeats a finding agent-loop already validated for its own runner is the strongest argument that a note is no longer the right response.",
+    "confidence": "high",
+    "validation_status": "validated",
+    "status": "validated",
+    "sensitivity": "public"
+}

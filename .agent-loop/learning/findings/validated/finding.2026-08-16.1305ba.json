@@ -1,0 +1,29 @@
+{
+    "id": "finding.2026-08-16.1305ba",
+    "task_id": "SLOP-1",
+    "session": "2026-08-16-slop-1-2",
+    "created_at": "2026-08-16T00:45:00+00:00",
+    "created_by": "Claude",
+    "scope": [
+        "composer.json",
+        "vendor/voku/agent-map/composer.json"
+    ],
+    "observation": "`voku/agent-map` declares `phpstan/phpstan` under `require`, not `require-dev`, so `composer require --dev voku/agent-loop` pulls PHPStan into the dependency graph as a hard runtime requirement of the loop. PHPStan is distributed dist-only: its Packagist entries carry a `dist` zipball URL and a null `source`. In any environment that cannot fetch GitHub archive endpoints, the entire agent-loop install fails at `Could not authenticate against github.com` with no fallback, because `--prefer-source` has no source to prefer. Installing here required standing up a local Composer path repository built from the raw phpstan.phar.",
+    "evidence": [
+        {
+            "type": "manual_verification",
+            "summary": "Walking composer.lock for packages requiring phpstan/phpstan showed every other dependent listing it under require-dev; `voku/agent-map` was the only `require -> ^2.2`."
+        },
+        {
+            "type": "test_result",
+            "command": "composer require --dev voku/agent-loop --prefer-source",
+            "summary": "Failed with `[403] https://api.github.com/repos/phpstan/phpstan/zipball/...` followed by `Could not authenticate against github.com`. `https://repo.packagist.org/p2/phpstan/phpstan.json` confirmed `\"source\": null` for 2.2.8, so `--prefer-source` cannot help."
+        }
+    ],
+    "hypothesis": "agent-map shells out to PHPStan to build its symbol map, so declaring it under `require` looks correct from inside the package. From outside, it makes a static-analysis binary a runtime dependency of every consumer of the loop, and inherits PHPStan's dist-only packaging as an install-time single point of failure.",
+    "validated_conclusion": "A tool that invokes another tool is not the same as a library that links it. When the dependency is a dist-only binary, `require` converts its packaging constraints into your consumers' install constraints, and a consumer that could otherwise build everything from source has no way out. Either declare it under `require-dev` with a runtime check and a clear error, or make the PHPStan-backed indexing path optional and degrade to a parser-only map.",
+    "confidence": "high",
+    "validation_status": "validated",
+    "status": "validated",
+    "sensitivity": "public"
+}
