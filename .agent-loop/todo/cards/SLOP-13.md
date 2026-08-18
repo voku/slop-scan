@@ -1,17 +1,17 @@
-# SLOP-13: Add the fact-layer prerequisites for the unported structure and test rules
+# SLOP-13: Add the export/re-export fact behind a possible php.reexport-barrel rule
 
 - **Ticket:** SLOP-13
 - **Lane:** BACKLOG
 - **Status:** Selected
 - **Domain:** facts
 - **Created:** 2026-08-16T08:07:29+00:00
-- **Updated:** 2026-08-16T08:08:08+00:00
-- **Summary:** Upstream exports.ts, test-mock-setups.ts and test-duplication.ts have no PHP counterpart; SLOP-3 and SLOP-4 cannot start until the facts exist.
-- **Next:** Blocks SLOP-3 and SLOP-4; do this before either.
+- **Updated:** 2026-08-18T18:00:00+00:00
+- **Summary:** Upstream exports.ts has no PHP counterpart. This is now scoped to SLOP-4 only; the test-side facts it also claimed turned out not to be needed.
+- **Next:** Do not start before SLOP-4 decides whether a PHP barrel analogue is worth a rule at all.
 - **Validation:** composer run test && composer run analyse
 - **Priority:** 6
 - **Wave:** 2
 - **Format version:** 1
 
 ## Agent Task Brief
-Upstream facts with no PHP counterpart: exports.ts (file.exportSummary, required by structure.barrel-density), test-mock-setups.ts (repo.testMockDuplication, required by tests.duplicate-mock-setup) and test-duplication.ts. SLOP-3 and SLOP-4 are rule cards that cannot start until the facts exist, and both are repo-scope facts rather than file-scope, so they also need a fact provider at that scope. Doing this first keeps SLOP-3/SLOP-4 as rule work instead of hiding fact-layer design inside them.
+Originally filed as a generic fact-parity prerequisite covering exports.ts, test-mock-setups.ts and test-duplication.ts, and asserted to block SLOP-3 and SLOP-4. That was wrong for the test side: SLOP-3 shipped with no new provider, adding file.testMockSetups to the existing php.structure provider and repo.duplicateMockSetups to the existing FunctionDuplicationFactProvider. Only the export/re-export fact remains genuinely absent, and it is only worth building if SLOP-4 first decides a PHP barrel analogue carries real review signal. Build it with that rule, on an existing fact owner, rather than as a standalone parity layer.
