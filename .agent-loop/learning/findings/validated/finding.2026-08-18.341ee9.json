@@ -1,0 +1,38 @@
+{
+    "id": "finding.2026-08-18.341ee9",
+    "task_id": "SLOP-3",
+    "session": "2026-08-16-slop-1-2",
+    "created_at": "2026-08-18T09:00:00+00:00",
+    "created_by": "Claude",
+    "scope": [
+        ".agent-loop/contracts/",
+        ".agent-loop/todo/cards/SLOP-3.md",
+        "docs/upstream-parity.md"
+    ],
+    "observation": "php.duplicate-mock-setup was implemented, reviewed and merged to main as PR #35 while its governed Contract never left candidate state and never reached main at all. main carries .agent-loop/contracts/SLOP-1 and nothing else; the SLOP-3 contract at revision 2, status candidate, approved_by null, survives only on the orphaned branch agent/duplicate-mock-setup, which the squash-merge of #33 cut off from main's history. For two days after the merge the board still showed SLOP-3 in BACKLOG with a Next action instructing the next agent to add the repo-scope fact provider that the revision-2 contract had explicitly rejected, and docs/rules.md had no entry for the shipped rule at all. Nothing failed: composer run test, scan:self and agent-loop verify were all green throughout, because verify is scoped to a task id and checks the artifacts that exist rather than noticing a merged rule with no governed Run behind it.",
+    "evidence": [
+        {
+            "type": "manual_verification",
+            "summary": "`ls .agent-loop/contracts/` on main returned only SLOP-1. `git show origin/agent/duplicate-mock-setup:.agent-loop/contracts/SLOP-3/contract.json` reported revision 2, status candidate, approved_by null."
+        },
+        {
+            "type": "manual_verification",
+            "summary": "After #35 merged, .agent-loop/todo/cards/SLOP-3.md still read `Lane: BACKLOG` with `Next: Add a repo-scope fact provider for test mock setup fingerprints`, while src/Rule/DuplicateMockSetupRule.php was registered in DefaultRegistry and firing."
+        },
+        {
+            "type": "manual_verification",
+            "summary": "`grep -c duplicate-mock-setup docs/rules.md` returned 0 on main: the rule shipped entirely undocumented for users."
+        },
+        {
+            "type": "test_result",
+            "command": "composer run agent-loop:verify",
+            "summary": "Reported `Board verification passed.` against the drifted board, because board verification checks card/lane/prefix integrity rather than whether a card's claim matches the merged code."
+        }
+    ],
+    "hypothesis": "The workflow governs a task while an agent is holding it, and stops governing at the branch boundary. Merge is the moment intent becomes reality, and it is the one moment no gate observes: the board, contracts and docs live in the repository but nothing links a merged diff back to the card that authorised it.",
+    "validated_conclusion": "A governance record that a merge can silently invalidate is a record of intentions, not of state, and the first thing it teaches is that stale state is acceptable. Two cheap checks would have caught all three symptoms: fail when a registered rule id has no row in docs/rules.md, and fail when a card whose implementation paths appear in the merged diff is still in an unstarted lane. The deeper point is that a squash-merge deletes the commits a stacked contract was anchored to, so durable workflow state must land on the default branch with the change it governs, not trail behind on the branch that produced it.",
+    "confidence": "high",
+    "validation_status": "validated",
+    "status": "validated",
+    "sensitivity": "public"
+}
