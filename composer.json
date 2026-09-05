@@ -10,7 +10,7 @@
         "helgesverre/toon": "^3.2"
     },
     "require-dev": {
-        "infection/infection": "^0.34.2",
+        "infection/infection": "^0.35.0",
         "phpstan/phpstan": "^2.2.8",
         "phpunit/phpunit": "^12.5",
         "voku/agent-loop": "^0.16.5"
