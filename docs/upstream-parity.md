@@ -28,6 +28,7 @@ AST shapes or adding engine architecture merely because upstream has it.
 | `structure.pass-through-wrappers` | `php.pass-through-wrappers` | |
 | `types.generic-record-casts` | `php.generic-array-casts` | PHP adaptation flags explicit runtime conversion (`json_decode(..., true)` / `(array)`) only when assigned to vague bag variables. PHPDoc-only declarations are intentionally not treated as runtime evidence. |
 | `api.generic-status-envelopes` | `php.generic-status-envelopes` | Ported under `SLOP-1`; context classification from `SLOP-7` distinguishes returned, JSON-response, and assigned/local envelopes. |
+| `tests.duplicate-mock-setup` | `php.duplicate-mock-setup` | Ported under `SLOP-3`. Repo scope: a setup shape must appear in three or more test files and bind to a PHPUnit mock or stub. |
 
 `php.commented-out-code`, `php.blanket-static-analysis-suppressions`,
 `php.excessive-static-analysis-suppressions`,
@@ -42,7 +43,6 @@ counterpart.
 
 | Upstream rule | Proposed PHP rule | Card |
 | --- | --- | --- |
-| `tests.duplicate-mock-setup` | `php.duplicate-mock-setup` | `SLOP-3` |
 | `structure.barrel-density` | decision: useful PHP analogue or reject | `SLOP-4` |
 | `defensive.async-noise` | decision: useful PHP analogue or reject | `SLOP-5` |
 
@@ -51,9 +51,14 @@ re-export syntax and no language-level async. An adaptation should only land if
 a concrete PHP pattern carries the same review signal without becoming a broad
 style preference.
 
-`SLOP-3` needs a rule-specific repository fact for repeated PHPUnit mock/setup
-shapes. That fact should be built with the rule, not as a generic engine-parity
-project.
+An earlier revision of this page said `SLOP-3` was blocked on a fact-layer
+prerequisite (`SLOP-13`). That was wrong, and worth recording rather than
+quietly deleting: `php.duplicate-mock-setup` shipped with no new provider at
+all. `file.testMockSetups` was added to the existing `php.structure` provider
+and `repo.duplicateMockSetups` to the existing `FunctionDuplicationFactProvider`.
+The upstream file-fact/repo-fact topology was not a requirement, only upstream's
+shape. Check whether an existing owner can carry a new fact before proposing a
+new provider.
 
 ## Feature parity
 
@@ -67,7 +72,7 @@ features with no PHP counterpart:
 | Self-scan compared against the last released binary | `scripts/self-scan-stable.ts`, `lint:self` | `SLOP-10` |
 | Per-rule delta strategy (`byPath` / `byLocations` / semantic keys) | `src/rule-delta.ts` | `SLOP-11` |
 | A README per rule with examples and fix guidance | `src/rules/*/README.md`, `rule-signal-readme.ts` | `SLOP-12` |
-| Facts for the unported structure/test rules | `src/facts/exports.ts`, `test-mock-setups.ts`, `test-duplication.ts` | `SLOP-13` |
+| Export/re-export fact behind `structure.barrel-density` | `src/facts/exports.ts` | `SLOP-13` |
 
 Those rows are an inventory, not a requirement that this fork become the same
 engine. The PHP fork already has useful behavior upstream does not, and feature

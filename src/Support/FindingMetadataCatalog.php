@@ -86,6 +86,11 @@ final class FindingMetadataCatalog
             'suggestedAction' => 'Assert observable behavior or simplify the test to the boundary you actually care about.',
             'confidence' => 'medium',
         ],
+        'php.duplicate-mock-setup' => [
+            'why' => 'The same mock wiring repeated across test files makes every test restate plumbing instead of the case under test.',
+            'suggestedAction' => 'Move the shared setup into a fixture, factory, or scenario builder so tests vary only the interesting values.',
+            'confidence' => 'medium',
+        ],
         'php.misleading-phpdoc-types' => [
             'why' => 'Misaligned or redundant PHPDoc reduces trust in the type contract and adds maintenance noise.',
             'suggestedAction' => 'Keep only PHPDoc that adds information beyond the native signature.',
@@ -114,6 +119,11 @@ final class FindingMetadataCatalog
         'php.duplicate-function-signatures' => [
             'why' => 'Repeated signatures can point to copy-paste design or missed shared abstractions.',
             'suggestedAction' => 'Review the repeated API shape and decide whether a common contract or helper is warranted.',
+            'confidence' => 'low',
+        ],
+        'php.magic-numbers' => [
+            'why' => 'An unexplained literal hides the rule it encodes, so the next reader cannot tell what changing it would break.',
+            'suggestedAction' => 'Name the value as a constant, or take it from configuration where it is genuinely tunable.',
             'confidence' => 'low',
         ],
         'php.return-constant-stub' => [

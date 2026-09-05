@@ -1,13 +1,13 @@
 # SLOP-14: Make rule metadata part of the rule contract instead of a parallel catalog
 
 - **Ticket:** SLOP-14
-- **Lane:** BACKLOG
-- **Status:** Selected
+- **Lane:** VERIFY
+- **Status:** Done
 - **Domain:** engine
 - **Created:** 2026-08-16T14:14:13+00:00
-- **Updated:** 2026-08-16T14:14:13+00:00
+- **Updated:** 2026-08-18T18:04:14+00:00
 - **Summary:** A rule can be registered and emit findings with no FindingMetadataCatalog entry and nothing reports it; php.magic-numbers has been missing one since before this backlog existed.
-- **Next:** Land as its own change; adding the invariant to a feature branch turns that branch into a debt repair.
+- **Next:** Landed as its own change: both entries added plus a completeness invariant.
 - **Validation:** composer run test && composer run analyse
 - **Priority:** 7
 - **Wave:** 5
