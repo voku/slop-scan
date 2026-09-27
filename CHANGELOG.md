@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.1.9 - 2026-09-27
 
 - Fail baseline-aware scans closed when the active rule surface or explicit rule-semantics compatibility version differs from the baseline, instead of misclassifying scanner-introduced findings as candidate additions.
 - Persist baseline compatibility metadata and require legacy baselines without it to be reviewed and regenerated explicitly; generic report-to-report `delta` remains unchanged.
