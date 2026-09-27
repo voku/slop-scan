@@ -183,7 +183,7 @@ final class MisleadingPhpDocTypesRule extends BaseRule
             $candidate,
             $matches,
         );
-        $members = array_map('trim', $matches[1] ?? []);
+        $members = array_map('trim', $matches[1]);
         if ($members === []) {
             return false;
         }
