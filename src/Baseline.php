@@ -14,14 +14,19 @@ final class Baseline
     {
         $metadata = $report['metadata'] ?? [];
 
+        $baselineMetadata = [
+            'schemaVersion' => $metadata['schemaVersion'] ?? 1,
+            'kind' => 'baseline',
+            'tool' => $metadata['tool'] ?? ['name' => 'slop-scan-php', 'version' => '0.1.0'],
+            'configHash' => $metadata['configHash'] ?? '',
+            'findingFingerprintVersion' => $metadata['findingFingerprintVersion'] ?? 1,
+        ];
+        if (is_array($metadata['baselineCompatibility'] ?? null)) {
+            $baselineMetadata['baselineCompatibility'] = $metadata['baselineCompatibility'];
+        }
+
         return [
-            'metadata' => [
-                'schemaVersion' => $metadata['schemaVersion'] ?? 1,
-                'kind' => 'baseline',
-                'tool' => $metadata['tool'] ?? ['name' => 'slop-scan-php', 'version' => '0.1.0'],
-                'configHash' => $metadata['configHash'] ?? '',
-                'findingFingerprintVersion' => $metadata['findingFingerprintVersion'] ?? 1,
-            ],
+            'metadata' => $baselineMetadata,
             'summary' => [
                 'findingCount' => count($report['findings'] ?? []),
             ],

@@ -43,6 +43,8 @@ php bin/slop-scan.php scan . --github
 
 The generated baseline is intentionally compact: it stores only finding metadata and fingerprints needed to suppress existing findings, not the full scanned file inventory.
 
+Baseline metadata also records the effective active rule IDs and an explicit rule-semantics compatibility version. Baseline-aware `scan` fails closed before classifying a delta when that surface no longer matches, because scanner changes must not be reported as findings introduced by the candidate. A legacy baseline without compatibility metadata must be reviewed and regenerated explicitly. Generic `delta` comparisons remain independent from this baseline guard.
+
 ## Fail on selected delta statuses
 
 ```bash

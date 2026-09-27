@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SlopScan\Console;
 
 use SlopScan\Analyzer;
+use SlopScan\BaselineCompatibility;
 use SlopScan\Config;
 use SlopScan\DefaultRegistry;
 use SlopScan\Model\AnalysisResult;
@@ -139,6 +140,7 @@ final class CommandSupport
             $report['summary']['findingCountBeforeFilters'] = $originalFindingCount ?? $result->summary['findingCount'];
         }
         $report['metadata']['configHash'] = hash('sha256', Json::encode($report['config']));
+        $report['metadata']['baselineCompatibility'] = BaselineCompatibility::metadata($result->config, $selection);
 
         return $report;
     }
