@@ -102,14 +102,29 @@ final class Policy
     {
         return 1;
     }
+
+    /** @return 'ask'|int */
+    public function mixedIncompatibleUnion(): string
+    {
+        return 'ask';
+    }
 }
 PHP,
         ]);
 
         $findings = $this->forRule($result->findings, 'php.misleading-phpdoc-types');
 
-        self::assertCount(1, $findings);
-        self::assertContains('native=int', $findings[0]->evidence);
+        self::assertCount(2, $findings);
+        $nativeEvidence = array_map(
+            static fn(Finding $finding): string => current(array_values(array_filter(
+                $finding->evidence,
+                static fn(string $evidence): bool => str_starts_with($evidence, 'native='),
+            ))) ?: '',
+            $findings,
+        );
+        sort($nativeEvidence, SORT_STRING);
+
+        self::assertSame(['native=int', 'native=string'], $nativeEvidence);
     }
 
     /** @param array<string,string> $files */
