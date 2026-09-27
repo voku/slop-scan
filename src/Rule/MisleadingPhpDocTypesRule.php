@@ -184,15 +184,14 @@ final class MisleadingPhpDocTypesRule extends BaseRule
             $matches,
         );
         $members = array_map('trim', $matches[1] ?? []);
-        if ($members === [] || !array_any(
-            $members,
-            static fn(string $member): bool => self::isQuotedStringLiteral($member),
-        )) {
+        if ($members === []) {
             return false;
         }
 
+        $hasLiteral = false;
         foreach ($members as $member) {
             if (self::isQuotedStringLiteral($member)) {
+                $hasLiteral = true;
                 continue;
             }
             if (!in_array($member, $nativeParts, true)) {
@@ -200,7 +199,7 @@ final class MisleadingPhpDocTypesRule extends BaseRule
             }
         }
 
-        return true;
+        return $hasLiteral;
     }
 
     private static function isQuotedStringLiteral(string $type): bool
