@@ -126,7 +126,7 @@ final class MisleadingPhpDocTypesRule extends BaseRule
                 : ['kind' => 'redundant', 'reason' => 'phpdoc-repeats-native-type'];
         }
 
-        if (self::hasAdditionalTypeValue($phpDocRaw, $phpDocExtendedType)) {
+        if (self::hasAdditionalTypeValue($phpDocRaw, $phpDocExtendedType, $native)) {
             return null;
         }
 
@@ -159,12 +159,58 @@ final class MisleadingPhpDocTypesRule extends BaseRule
         return implode('|', array_values(array_unique($parts)));
     }
 
-    private static function hasAdditionalTypeValue(string $phpDocRaw, ?string $phpDocExtendedType): bool
-    {
+    private static function hasAdditionalTypeValue(
+        string $phpDocRaw,
+        ?string $phpDocExtendedType,
+        ?string $nativeType = null,
+    ): bool {
         $candidate = strtolower(trim($phpDocExtendedType ?: $phpDocRaw));
 
         return preg_match('/[<>{}\\[\\](),:&]/', $candidate) === 1
-            || preg_match('/\b(array-key|callable-string|class-string|closed-resource|int-mask|key-of|list|literal-string|negative-int|non-empty-array|non-empty-string|numeric-string|positive-int|resource|scalar|trait-string|value-of)\b/', $candidate) === 1;
+            || preg_match('/\b(array-key|callable-string|class-string|closed-resource|int-mask|key-of|list|literal-string|negative-int|non-empty-array|non-empty-string|numeric-string|positive-int|resource|scalar|trait-string|value-of)\b/', $candidate) === 1
+            || ($nativeType !== null && self::isLiteralStringRefinement($candidate, $nativeType));
+    }
+
+    private static function isLiteralStringRefinement(string $candidate, string $nativeType): bool
+    {
+        $nativeParts = explode('|', $nativeType);
+        if (!in_array('string', $nativeParts, true)) {
+            return false;
+        }
+
+        preg_match_all(
+            '/(?:^|\\|)\\s*(\'[^\']*\'|"[^"]*"|[^|]+)\\s*(?=\\||$)/',
+            $candidate,
+            $matches,
+        );
+        $members = array_map('trim', $matches[1]);
+        if ($members === []) {
+            return false;
+        }
+
+        $hasLiteral = false;
+        foreach ($members as $member) {
+            if (self::isQuotedStringLiteral($member)) {
+                $hasLiteral = true;
+                continue;
+            }
+            if (!in_array($member, $nativeParts, true)) {
+                return false;
+            }
+        }
+
+        return $hasLiteral;
+    }
+
+    private static function isQuotedStringLiteral(string $type): bool
+    {
+        $length = strlen($type);
+        if ($length < 2) {
+            return false;
+        }
+
+        return ($type[0] === "'" && $type[$length - 1] === "'")
+            || ($type[0] === '"' && $type[$length - 1] === '"');
     }
 
     private static function hasDescriptionText(?string $phpDocRaw, ?string $paramName): bool

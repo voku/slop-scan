@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.8 - 2026-09-27
+
+- Fixed `php.misleading-phpdoc-types` so quoted literal-string unions such as `'ask'|'generate'|'skip'` are treated as useful refinements of native `string` instead of as type disagreements.
+- Kept incompatible native types visible: the same literal-string PHPDoc on native `int` remains a finding.
+- Added a focused consumer-derived regression from `voku/agent-loop#636`; repository CI, PHPStan, self-scan, and PHAR verification cover the release candidate.
+
 ## 0.1.7 - 2026-08-13
 
 - Fixed PHAR packaging so runtime dependencies are resolved against PHP 8.3.0, the package's minimum supported PHP line, instead of inheriting the release runner's PHP version.

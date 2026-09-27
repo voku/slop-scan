@@ -83,6 +83,50 @@ PHP,
         self::assertSame([], $this->forRule($result->findings, 'php.misleading-phpdoc-types'));
     }
 
+    public function testMisleadingPhpDocTypesAllowsLiteralStringUnionRefinementOnlyForNativeString(): void
+    {
+        $result = $this->analyzeFiles([
+            'src/Policy.php' => <<<'PHP'
+<?php
+
+final class Policy
+{
+    /** @return 'ask'|'generate'|'skip' */
+    public function behavior(): string
+    {
+        return 'ask';
+    }
+
+    /** @return 'ask'|'skip' */
+    public function wrongNative(): int
+    {
+        return 1;
+    }
+
+    /** @return 'ask'|int */
+    public function mixedIncompatibleUnion(): string
+    {
+        return 'ask';
+    }
+}
+PHP,
+        ]);
+
+        $findings = $this->forRule($result->findings, 'php.misleading-phpdoc-types');
+
+        self::assertCount(2, $findings);
+        $nativeEvidence = array_map(
+            static fn(Finding $finding): string => current(array_values(array_filter(
+                $finding->evidence,
+                static fn(string $evidence): bool => str_starts_with($evidence, 'native='),
+            ))) ?: '',
+            $findings,
+        );
+        sort($nativeEvidence, SORT_STRING);
+
+        self::assertSame(['native=int', 'native=string'], $nativeEvidence);
+    }
+
     /** @param array<string,string> $files */
     private function analyzeFiles(array $files): AnalysisResult
     {
