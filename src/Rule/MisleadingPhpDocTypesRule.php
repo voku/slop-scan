@@ -126,7 +126,7 @@ final class MisleadingPhpDocTypesRule extends BaseRule
                 : ['kind' => 'redundant', 'reason' => 'phpdoc-repeats-native-type'];
         }
 
-        if (self::hasAdditionalTypeValue($phpDocRaw, $phpDocExtendedType)) {
+        if (self::hasAdditionalTypeValue($phpDocRaw, $phpDocExtendedType, $native)) {
             return null;
         }
 
@@ -159,12 +159,18 @@ final class MisleadingPhpDocTypesRule extends BaseRule
         return implode('|', array_values(array_unique($parts)));
     }
 
-    private static function hasAdditionalTypeValue(string $phpDocRaw, ?string $phpDocExtendedType): bool
-    {
+    private static function hasAdditionalTypeValue(
+        string $phpDocRaw,
+        ?string $phpDocExtendedType,
+        ?string $nativeType = null,
+    ): bool {
         $candidate = strtolower(trim($phpDocExtendedType ?: $phpDocRaw));
 
         return preg_match('/[<>{}\\[\\](),:&]/', $candidate) === 1
-            || preg_match('/\b(array-key|callable-string|class-string|closed-resource|int-mask|key-of|list|literal-string|negative-int|non-empty-array|non-empty-string|numeric-string|positive-int|resource|scalar|trait-string|value-of)\b/', $candidate) === 1;
+            || preg_match('/\b(array-key|callable-string|class-string|closed-resource|int-mask|key-of|list|literal-string|negative-int|non-empty-array|non-empty-string|numeric-string|positive-int|resource|scalar|trait-string|value-of)\b/', $candidate) === 1
+            || ($nativeType !== null
+                && in_array('string', explode('|', $nativeType), true)
+                && preg_match('/(?:^|\\|)\\s*(?:\'[^\']*\'|"[^"]*")\\s*(?:\\||$)/', $candidate) === 1);
     }
 
     private static function hasDescriptionText(?string $phpDocRaw, ?string $paramName): bool
