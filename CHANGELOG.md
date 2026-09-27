@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Fail baseline-aware scans closed when the active rule surface or explicit rule-semantics compatibility version differs from the baseline, instead of misclassifying scanner-introduced findings as candidate additions.
+- Persist baseline compatibility metadata and require legacy baselines without it to be reviewed and regenerated explicitly; generic report-to-report `delta` remains unchanged.
+
 ## 0.1.8 - 2026-09-27
 
 - Fixed `php.misleading-phpdoc-types` so quoted literal-string unions such as `'ask'|'generate'|'skip'` are treated as useful refinements of native `string` instead of as type disagreements.

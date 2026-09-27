@@ -11,6 +11,7 @@ use PhpParser\Parser;
 use PhpParser\ParserFactory;
 use SlopScan\Analyzer;
 use SlopScan\Baseline;
+use SlopScan\BaselineCompatibility;
 use SlopScan\Config;
 use SlopScan\Console\CommandSupport;
 use SlopScan\Console\DeltaCommand;
@@ -1403,6 +1404,8 @@ PHP);
         self::assertFileExists($baselineFile);
         self::assertSame(['metadata', 'summary', 'findings'], array_keys($baselineDecoded));
         self::assertSame('baseline', $baselineDecoded['metadata']['kind']);
+        self::assertSame(BaselineCompatibility::RULE_SEMANTICS_VERSION, $baselineDecoded['metadata']['baselineCompatibility']['ruleSemanticsVersion']);
+        self::assertContains('php.empty-catch', $baselineDecoded['metadata']['baselineCompatibility']['activeRuleIds']);
         self::assertSame(count($baselineDecoded['findings']), $baselineDecoded['summary']['findingCount']);
         self::assertSame(1, $jsonExit);
         $decoded = json_decode($jsonOutput, true, 512, JSON_THROW_ON_ERROR);
@@ -1414,6 +1417,41 @@ PHP);
         self::assertSame(1, $lintExit);
         self::assertStringContainsString('php.empty-catch', $lintOutput);
         self::assertStringNotContainsString('php.placeholder-comments', $lintOutput);
+
+        $this->remove($fixture);
+    }
+
+    public function testCliScanLegacyBaselineWithoutCompatibilityMetadataFailsClosed(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/A.php', "<?php\n// TODO baseline\n");
+        $baselineFile = $fixture . '/slop-baseline.json';
+
+        [$generateExit] = $this->runCommand([
+            'scan',
+            $fixture,
+            '--baseline-file',
+            $baselineFile,
+            '--generate-baseline',
+        ]);
+        $baseline = json_decode((string) file_get_contents($baselineFile), true, 512, JSON_THROW_ON_ERROR);
+        unset($baseline['metadata']['baselineCompatibility']);
+        file_put_contents($baselineFile, Json::encode($baseline));
+
+        [$scanExit, $scanOutput, $scanError] = $this->runCommandDetailed([
+            'scan',
+            $fixture,
+            '--baseline-file',
+            $baselineFile,
+            '--lint',
+        ]);
+
+        self::assertSame(0, $generateExit);
+        self::assertSame(1, $scanExit);
+        self::assertSame('', $scanOutput);
+        self::assertStringContainsString('Baseline compatibility metadata is missing', $scanError);
+        self::assertStringNotContainsString('new findings', $scanError);
 
         $this->remove($fixture);
     }

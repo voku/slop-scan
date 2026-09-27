@@ -6,6 +6,7 @@ namespace SlopScan\Console;
 
 use SlopScan\Analyzer;
 use SlopScan\Baseline;
+use SlopScan\BaselineCompatibility;
 use SlopScan\Config;
 use SlopScan\DefaultRegistry;
 use SlopScan\Delta;
@@ -74,6 +75,7 @@ final class ScanCommand extends Command
             if ($baselineFile !== null && $baselineFile !== '') {
                 $currentReport = CommandSupport::reportFromResult($result, $selection, $originalFindingCount);
                 $baselineReport = Baseline::readReport($baselineFile);
+                BaselineCompatibility::assertCompatible($baselineReport, $currentReport);
                 $delta = Delta::diff($baselineReport, $currentReport);
                 $newFindings = Baseline::addedFindings($result->findings, $delta);
 
