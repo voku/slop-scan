@@ -1439,7 +1439,7 @@ PHP);
         unset($baseline['metadata']['baselineCompatibility']);
         file_put_contents($baselineFile, Json::encode($baseline));
 
-        [$scanExit, $scanOutput] = $this->runCommand([
+        [$scanExit, $scanOutput, $scanError] = $this->runCommandDetailed([
             'scan',
             $fixture,
             '--baseline-file',
@@ -1449,8 +1449,9 @@ PHP);
 
         self::assertSame(0, $generateExit);
         self::assertSame(1, $scanExit);
-        self::assertStringContainsString('Baseline compatibility metadata is missing', $scanOutput);
-        self::assertStringNotContainsString('new findings', $scanOutput);
+        self::assertSame('', $scanOutput);
+        self::assertStringContainsString('Baseline compatibility metadata is missing', $scanError);
+        self::assertStringNotContainsString('new findings', $scanError);
 
         $this->remove($fixture);
     }
