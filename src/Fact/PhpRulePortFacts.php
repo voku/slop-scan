@@ -154,6 +154,9 @@ final class PhpRulePortFacts
         if ($kind === null) {
             return null;
         }
+        if ($kind === 'json-decode-assoc' && self::hasImmediateValidatedJsonBoundary($assign)) {
+            return null;
+        }
 
         return [
             'variable' => '$' . $assign->var->name,
@@ -194,6 +197,185 @@ final class PhpRulePortFacts
     {
         return $node instanceof Expr\ConstFetch
             && strtolower($node->name->toString()) === 'true';
+    }
+
+    private static function hasImmediateValidatedJsonBoundary(Expr\Assign $assign): bool
+    {
+        if (!$assign->var instanceof Expr\Variable
+            || !is_string($assign->var->name)
+            || !self::jsonDecodeThrowsOnError($assign->expr)
+        ) {
+            return false;
+        }
+
+        $guard = self::nextStatementAfter($assign);
+        if (!$guard instanceof Stmt\If_
+            || !$guard->cond instanceof Expr\BinaryOp\BooleanOr
+            || !self::guardTerminates($guard)
+        ) {
+            return false;
+        }
+
+        $operands = self::booleanOrOperands($guard->cond);
+        $hasArrayGuard = false;
+        $hasKeyGuard = false;
+        foreach ($operands as $operand) {
+            $hasArrayGuard = $hasArrayGuard || self::isNegatedIsArrayGuard($operand, $assign->var->name);
+            $hasKeyGuard = $hasKeyGuard || self::isInvalidLiteralKeyGuard($operand, $assign->var->name);
+        }
+
+        return $hasArrayGuard && $hasKeyGuard;
+    }
+
+    private static function jsonDecodeThrowsOnError(Expr $expr): bool
+    {
+        if (!$expr instanceof Expr\FuncCall
+            || !$expr->name instanceof Name
+            || strtolower(ltrim(self::resolvedName($expr->name), '\\')) !== 'json_decode'
+        ) {
+            return false;
+        }
+
+        foreach ($expr->getArgs() as $index => $arg) {
+            $argumentName = strtolower($arg->name?->toString() ?? '');
+            if ($argumentName !== 'flags' && !($arg->name === null && $index === 3)) {
+                continue;
+            }
+
+            return self::expressionContainsConstant($arg->value, 'json_throw_on_error');
+        }
+
+        return false;
+    }
+
+    private static function expressionContainsConstant(Node $node, string $constant): bool
+    {
+        return (new NodeFinder())->findFirst(
+            [$node],
+            static fn (Node $candidate): bool => $candidate instanceof Expr\ConstFetch
+                && strtolower(ltrim($candidate->name->toString(), '\\')) === $constant,
+        ) !== null;
+    }
+
+    /** @return list<Expr> */
+    private static function booleanOrOperands(Expr $condition): array
+    {
+        if (!$condition instanceof Expr\BinaryOp\BooleanOr) {
+            return [$condition];
+        }
+
+        return [
+            ...self::booleanOrOperands($condition->left),
+            ...self::booleanOrOperands($condition->right),
+        ];
+    }
+
+    private static function isNegatedIsArrayGuard(Expr $expr, string $variable): bool
+    {
+        return $expr instanceof Expr\BooleanNot
+            && self::isArrayCallForVariable($expr->expr, $variable);
+    }
+
+    private static function isArrayCallForVariable(Expr $expr, string $variable): bool
+    {
+        if (!$expr instanceof Expr\FuncCall
+            || !$expr->name instanceof Name
+            || strtolower(ltrim(self::resolvedName($expr->name), '\\')) !== 'is_array'
+            || count($expr->getArgs()) !== 1
+        ) {
+            return false;
+        }
+
+        $value = $expr->getArgs()[0]->value;
+
+        return $value instanceof Expr\Variable && $value->name === $variable;
+    }
+
+    private static function isInvalidLiteralKeyGuard(Expr $expr, string $variable): bool
+    {
+        if (!self::hasLiteralKeyAccess($expr, $variable)) {
+            return false;
+        }
+
+        return $expr instanceof Expr\BooleanNot
+            || $expr instanceof Expr\BinaryOp\NotIdentical
+            || $expr instanceof Expr\BinaryOp\NotEqual;
+    }
+
+    private static function hasLiteralKeyAccess(Expr $expr, string $variable): bool
+    {
+        foreach ((new NodeFinder())->findInstanceOf([$expr], Expr\ArrayDimFetch::class) as $fetch) {
+            if ($fetch->var instanceof Expr\Variable
+                && $fetch->var->name === $variable
+                && $fetch->dim instanceof Node\Scalar\String_
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function guardTerminates(Stmt\If_ $guard): bool
+    {
+        $last = $guard->stmts[array_key_last($guard->stmts)] ?? null;
+
+        return $last instanceof Stmt\Return_
+            || ($last instanceof Stmt\Expression && $last->expr instanceof Expr\Throw_);
+    }
+
+    private static function nextStatementAfter(Node $node): ?Stmt
+    {
+        $cursor = $node;
+        while (($parent = self::parent($cursor)) !== null) {
+            if ($cursor instanceof Stmt) {
+                $statements = self::statementChildren($parent);
+                if ($statements !== null) {
+                    foreach ($statements as $index => $statement) {
+                        if ($statement !== $cursor) {
+                            continue;
+                        }
+
+                        if (isset($statements[$index + 1])) {
+                            return $statements[$index + 1];
+                        }
+
+                        if ($parent instanceof Stmt\TryCatch && in_array($cursor, $parent->stmts, true)) {
+                            break;
+                        }
+
+                        return null;
+                    }
+                }
+            }
+
+            $cursor = $parent;
+        }
+
+        return null;
+    }
+
+    /** @return null|list<Stmt> */
+    private static function statementChildren(Node $node): ?array
+    {
+        if ($node instanceof Stmt\ClassMethod
+            || $node instanceof Stmt\Function_
+            || $node instanceof Expr\Closure
+            || $node instanceof Stmt\TryCatch
+            || $node instanceof Stmt\Catch_
+            || $node instanceof Stmt\If_
+            || $node instanceof Stmt\ElseIf_
+            || $node instanceof Stmt\Else_
+            || $node instanceof Stmt\For_
+            || $node instanceof Stmt\Foreach_
+            || $node instanceof Stmt\While_
+            || $node instanceof Stmt\Do_
+            || $node instanceof Stmt\Case_
+        ) {
+            return $node->stmts ?? [];
+        }
+
+        return null;
     }
 
     /** @return null|StatusEnvelope */

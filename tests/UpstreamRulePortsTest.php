@@ -45,6 +45,138 @@ PHP);
         );
     }
 
+    public function testGenericArrayCastsIgnoresImmediateValidatedJsonBoundary(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function load(string $json): string
+{
+    try {
+        $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException $exception) {
+        throw new RuntimeException('invalid json', 0, $exception);
+    }
+
+    if (
+        !is_array($data)
+        || ($data['schema_version'] ?? null) !== '1.0'
+        || ($data['kind'] ?? null) !== 'execution_state'
+    ) {
+        throw new RuntimeException('unsupported state');
+    }
+
+    return (string) $data['task_id'];
+}
+PHP);
+
+        self::assertSame([], $this->forRule($result->findings, 'php.generic-array-casts'));
+    }
+
+    public function testGenericArrayCastsIgnoresValidatedProjectionPayload(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function project(string $json): void
+{
+    $payload = json_decode($json, true, 64, JSON_THROW_ON_ERROR);
+    if (!is_array($payload) || !isset($payload['status'])) {
+        return;
+    }
+
+    consume($payload['status']);
+}
+PHP);
+
+        self::assertSame([], $this->forRule($result->findings, 'php.generic-array-casts'));
+    }
+
+    public function testGenericArrayCastsStillFlagsUncheckedOrLateValidation(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function unchecked(string $json): void
+{
+    $data = json_decode($json, true, 64, JSON_THROW_ON_ERROR);
+    consume($data);
+}
+
+function late(string $json): void
+{
+    $payload = json_decode($json, true, 64, JSON_THROW_ON_ERROR);
+    audit();
+    if (!is_array($payload) || !isset($payload['status'])) {
+        return;
+    }
+}
+
+function noThrowFlag(string $json): void
+{
+    $result = json_decode($json, true);
+    if (!is_array($result) || !isset($result['status'])) {
+        return;
+    }
+}
+PHP);
+
+        $evidence = array_map(
+            static fn (Finding $finding): string => implode('|', $finding->evidence),
+            $this->forRule($result->findings, 'php.generic-array-casts'),
+        );
+        sort($evidence, SORT_STRING);
+
+        self::assertSame(
+            [
+                'variable=$data|kind=json-decode-assoc',
+                'variable=$payload|kind=json-decode-assoc',
+                'variable=$result|kind=json-decode-assoc',
+            ],
+            $evidence,
+        );
+    }
+
+    public function testGenericArrayCastsDoesNotEscapeConditionalScopeOrTrustPositiveKeyCheck(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function conditional(string $json, bool $enabled): void
+{
+    if ($enabled) {
+        $data = json_decode($json, true, 64, JSON_THROW_ON_ERROR);
+    }
+
+    if (!is_array($data) || !isset($data['status'])) {
+        return;
+    }
+}
+
+function backwardsGuard(string $json): void
+{
+    $payload = json_decode($json, true, 64, JSON_THROW_ON_ERROR);
+    if (!is_array($payload) || isset($payload['status'])) {
+        return;
+    }
+}
+PHP);
+
+        $evidence = array_map(
+            static fn (Finding $finding): string => implode('|', $finding->evidence),
+            $this->forRule($result->findings, 'php.generic-array-casts'),
+        );
+        sort($evidence, SORT_STRING);
+
+        self::assertSame(
+            [
+                'variable=$data|kind=json-decode-assoc',
+                'variable=$payload|kind=json-decode-assoc',
+            ],
+            $evidence,
+        );
+    }
+
     public function testGenericArrayCastsRespectsLogicalLineBudget(): void
     {
         $config = Config::defaults();
