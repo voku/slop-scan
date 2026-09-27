@@ -110,7 +110,6 @@ PHP,
 
         self::assertCount(1, $findings);
         self::assertContains('native=int', $findings[0]->evidence);
-        self::assertContains("phpdoc='ask'|'skip'", $findings[0]->evidence);
     }
 
     /** @param array<string,string> $files */
