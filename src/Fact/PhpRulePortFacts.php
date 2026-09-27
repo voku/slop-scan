@@ -216,8 +216,15 @@ final class PhpRulePortFacts
             return false;
         }
 
-        return self::hasNegatedIsArrayGuard($guard->cond, $assign->var->name)
-            && self::hasLiteralKeyAccess($guard->cond, $assign->var->name);
+        $operands = self::booleanOrOperands($guard->cond);
+        $hasArrayGuard = false;
+        $hasKeyGuard = false;
+        foreach ($operands as $operand) {
+            $hasArrayGuard = $hasArrayGuard || self::isNegatedIsArrayGuard($operand, $assign->var->name);
+            $hasKeyGuard = $hasKeyGuard || self::isInvalidLiteralKeyGuard($operand, $assign->var->name);
+        }
+
+        return $hasArrayGuard && $hasKeyGuard;
     }
 
     private static function jsonDecodeThrowsOnError(Expr $expr): bool
@@ -250,15 +257,23 @@ final class PhpRulePortFacts
         ) !== null;
     }
 
-    private static function hasNegatedIsArrayGuard(Expr $condition, string $variable): bool
+    /** @return list<Expr> */
+    private static function booleanOrOperands(Expr $condition): array
     {
-        foreach ((new NodeFinder())->findInstanceOf([$condition], Expr\BooleanNot::class) as $not) {
-            if (self::isArrayCallForVariable($not->expr, $variable)) {
-                return true;
-            }
+        if (!$condition instanceof Expr\BinaryOp\BooleanOr) {
+            return [$condition];
         }
 
-        return false;
+        return [
+            ...self::booleanOrOperands($condition->left),
+            ...self::booleanOrOperands($condition->right),
+        ];
+    }
+
+    private static function isNegatedIsArrayGuard(Expr $expr, string $variable): bool
+    {
+        return $expr instanceof Expr\BooleanNot
+            && self::isArrayCallForVariable($expr->expr, $variable);
     }
 
     private static function isArrayCallForVariable(Expr $expr, string $variable): bool
@@ -276,9 +291,20 @@ final class PhpRulePortFacts
         return $value instanceof Expr\Variable && $value->name === $variable;
     }
 
-    private static function hasLiteralKeyAccess(Expr $condition, string $variable): bool
+    private static function isInvalidLiteralKeyGuard(Expr $expr, string $variable): bool
     {
-        foreach ((new NodeFinder())->findInstanceOf([$condition], Expr\ArrayDimFetch::class) as $fetch) {
+        if (!self::hasLiteralKeyAccess($expr, $variable)) {
+            return false;
+        }
+
+        return $expr instanceof Expr\BooleanNot
+            || $expr instanceof Expr\BinaryOp\NotIdentical
+            || $expr instanceof Expr\BinaryOp\NotEqual;
+    }
+
+    private static function hasLiteralKeyAccess(Expr $expr, string $variable): bool
+    {
+        foreach ((new NodeFinder())->findInstanceOf([$expr], Expr\ArrayDimFetch::class) as $fetch) {
             if ($fetch->var instanceof Expr\Variable
                 && $fetch->var->name === $variable
                 && $fetch->dim instanceof Node\Scalar\String_
@@ -314,7 +340,11 @@ final class PhpRulePortFacts
                             return $statements[$index + 1];
                         }
 
-                        break;
+                        if ($parent instanceof Stmt\TryCatch && in_array($cursor, $parent->stmts, true)) {
+                            break;
+                        }
+
+                        return null;
                     }
                 }
             }
