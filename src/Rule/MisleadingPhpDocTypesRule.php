@@ -168,9 +168,50 @@ final class MisleadingPhpDocTypesRule extends BaseRule
 
         return preg_match('/[<>{}\\[\\](),:&]/', $candidate) === 1
             || preg_match('/\b(array-key|callable-string|class-string|closed-resource|int-mask|key-of|list|literal-string|negative-int|non-empty-array|non-empty-string|numeric-string|positive-int|resource|scalar|trait-string|value-of)\b/', $candidate) === 1
-            || ($nativeType !== null
-                && in_array('string', explode('|', $nativeType), true)
-                && preg_match('/(?:^|\\|)\\s*(?:\'[^\']*\'|"[^"]*")\\s*(?:\\||$)/', $candidate) === 1);
+            || ($nativeType !== null && self::isLiteralStringRefinement($candidate, $nativeType));
+    }
+
+    private static function isLiteralStringRefinement(string $candidate, string $nativeType): bool
+    {
+        $nativeParts = explode('|', $nativeType);
+        if (!in_array('string', $nativeParts, true)) {
+            return false;
+        }
+
+        preg_match_all(
+            '/(?:^|\\|)\\s*(\'[^\']*\'|"[^"]*"|[^|]+)\\s*(?=\\||$)/',
+            $candidate,
+            $matches,
+        );
+        $members = array_map('trim', $matches[1] ?? []);
+        if ($members === [] || !array_any(
+            $members,
+            static fn(string $member): bool => self::isQuotedStringLiteral($member),
+        )) {
+            return false;
+        }
+
+        foreach ($members as $member) {
+            if (self::isQuotedStringLiteral($member)) {
+                continue;
+            }
+            if (!in_array($member, $nativeParts, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function isQuotedStringLiteral(string $type): bool
+    {
+        $length = strlen($type);
+        if ($length < 2) {
+            return false;
+        }
+
+        return ($type[0] === "'" && $type[$length - 1] === "'")
+            || ($type[0] === '"' && $type[$length - 1] === '"');
     }
 
     private static function hasDescriptionText(?string $phpDocRaw, ?string $paramName): bool
