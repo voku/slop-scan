@@ -663,7 +663,7 @@ final class PhpRulePortFacts
         }
 
         foreach ($array->items as $sibling) {
-            if ($sibling === null || $sibling === $item || !$sibling->key instanceof Node\Scalar\String_) {
+            if ($sibling === $item || !$sibling->key instanceof Node\Scalar\String_) {
                 continue;
             }
 
