@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.1.10 - 2026-09-27
 
 - Refined `php.generic-array-casts` so a short-lived associative JSON bag stays quiet when `JSON_THROW_ON_ERROR` is followed immediately by a terminating structural guard with `!is_array()` and literal-key validation; unchecked, late-validated, non-throwing, and `(array)` conversions still report.
 - Bumped the baseline rule-semantics compatibility version because this intentionally changes the finding surface of an existing rule ID.
