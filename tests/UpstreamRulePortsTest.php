@@ -268,6 +268,30 @@ PHP);
         self::assertSame([], $this->forRule($result->findings, 'php.catch-returns-exception-message'));
     }
 
+    public function testCatchRuleStillFlagsMessageBesideOrdinaryPayloadData(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function payload(): array
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        return [
+            'data' => [],
+            'message' => $exception->getMessage(),
+        ];
+    }
+}
+PHP);
+
+        $findings = $this->forRule($result->findings, 'php.catch-returns-exception-message');
+
+        self::assertCount(1, $findings);
+        self::assertSame(['normalization=property-caught-message'], $findings[0]->evidence);
+    }
+
     public function testCatchRuleLineBudgetLimitsOnlyNewAdaptation(): void
     {
         $config = Config::defaults();
