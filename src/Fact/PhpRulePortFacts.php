@@ -51,6 +51,21 @@ final class PhpRulePortFacts
         'reason',
     ];
 
+    private const STRUCTURED_FAILURE_CONTEXT_KEYS = [
+        'code',
+        'command',
+        'exit_code',
+        'gate',
+        'hook',
+        'kind',
+        'owner',
+        'result',
+        'scenario',
+        'source',
+        'state',
+        'status',
+    ];
+
     private const STATUS_ENVELOPE_STATUS_KEYS = ['ok', 'status', 'success'];
     private const STATUS_ENVELOPE_PAYLOAD_KEYS = [
         'data',
@@ -652,7 +667,7 @@ final class PhpRulePortFacts
                 continue;
             }
 
-            if (!in_array(strtolower($sibling->key->value), self::GENERIC_ERROR_VARIABLES, true)) {
+            if (in_array(strtolower($sibling->key->value), self::STRUCTURED_FAILURE_CONTEXT_KEYS, true)) {
                 return true;
             }
         }
