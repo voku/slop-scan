@@ -236,6 +236,38 @@ PHP);
         );
     }
 
+    public function testCatchRuleIgnoresStructuredFailureRecords(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function structuredFailures(): array
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        $diagnostic = [
+            'code' => 'session.unreadable',
+            'owner' => 'agent-session',
+            'message' => $exception->getMessage(),
+        ];
+        $state = [
+            'state' => 'invalid',
+            'reason' => $exception->getMessage(),
+        ];
+        $status = [
+            'status' => 'error',
+            'error' => $exception->getMessage(),
+        ];
+
+        return [$diagnostic, $state, $status];
+    }
+}
+PHP);
+
+        self::assertSame([], $this->forRule($result->findings, 'php.catch-returns-exception-message'));
+    }
+
     public function testCatchRuleLineBudgetLimitsOnlyNewAdaptation(): void
     {
         $config = Config::defaults();
