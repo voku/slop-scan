@@ -6,7 +6,7 @@ namespace SlopScan;
 
 final class BaselineCompatibility
 {
-    public const RULE_SEMANTICS_VERSION = 2;
+    public const RULE_SEMANTICS_VERSION = 3;
 
     /**
      * @param array<string, mixed> $config

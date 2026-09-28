@@ -51,6 +51,21 @@ final class PhpRulePortFacts
         'reason',
     ];
 
+    private const STRUCTURED_FAILURE_CONTEXT_KEYS = [
+        'code',
+        'command',
+        'exit_code',
+        'gate',
+        'hook',
+        'kind',
+        'owner',
+        'result',
+        'scenario',
+        'source',
+        'state',
+        'status',
+    ];
+
     private const STATUS_ENVELOPE_STATUS_KEYS = ['ok', 'status', 'success'];
     private const STATUS_ENVELOPE_PAYLOAD_KEYS = [
         'data',
@@ -628,6 +643,7 @@ final class PhpRulePortFacts
             if ($node instanceof Node\ArrayItem
                 && $node->key instanceof Node\Scalar\String_
                 && in_array(strtolower($node->key->value), self::GENERIC_ERROR_VARIABLES, true)
+                && !self::belongsToStructuredFailureRecord($node)
             ) {
                 $kind = self::caughtValueKind($node->value, $catchVariable, $catch);
                 if ($kind !== null) {
@@ -637,6 +653,26 @@ final class PhpRulePortFacts
         }
 
         return $matches;
+    }
+
+    private static function belongsToStructuredFailureRecord(Node\ArrayItem $item): bool
+    {
+        $array = self::parent($item);
+        if (!$array instanceof Expr\Array_) {
+            return false;
+        }
+
+        foreach ($array->items as $sibling) {
+            if ($sibling === $item || !$sibling->key instanceof Node\Scalar\String_) {
+                continue;
+            }
+
+            if (in_array(strtolower($sibling->key->value), self::STRUCTURED_FAILURE_CONTEXT_KEYS, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function belongsToCatch(Node $node, Stmt\Catch_ $catch): bool

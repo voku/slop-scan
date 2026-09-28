@@ -236,6 +236,62 @@ PHP);
         );
     }
 
+    public function testCatchRuleIgnoresStructuredFailureRecords(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function structuredFailures(): array
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        $diagnostic = [
+            'code' => 'session.unreadable',
+            'owner' => 'agent-session',
+            'message' => $exception->getMessage(),
+        ];
+        $state = [
+            'state' => 'invalid',
+            'reason' => $exception->getMessage(),
+        ];
+        $status = [
+            'status' => 'error',
+            'error' => $exception->getMessage(),
+        ];
+
+        return [$diagnostic, $state, $status];
+    }
+}
+PHP);
+
+        self::assertSame([], $this->forRule($result->findings, 'php.catch-returns-exception-message'));
+    }
+
+    public function testCatchRuleStillFlagsMessageBesideOrdinaryPayloadData(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function payload(): array
+{
+    try {
+        risky();
+    } catch (Throwable $exception) {
+        return [
+            'data' => [],
+            'message' => $exception->getMessage(),
+        ];
+    }
+}
+PHP);
+
+        $findings = $this->forRule($result->findings, 'php.catch-returns-exception-message');
+
+        self::assertCount(1, $findings);
+        self::assertSame(['normalization=property-caught-message'], $findings[0]->evidence);
+    }
+
     public function testCatchRuleLineBudgetLimitsOnlyNewAdaptation(): void
     {
         $config = Config::defaults();

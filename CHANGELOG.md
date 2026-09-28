@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Refined `php.catch-returns-exception-message` so deliberate structured failure/diagnostic records with non-generic context keys no longer look like exception text flattened into ordinary payload data; bare generic `{error,message}` payloads and direct returns remain findings.
+- Bumped baseline rule-semantics compatibility because the existing rule ID now has a narrower finding surface.
+
 ## 0.1.10 - 2026-09-27
 
 - Refined `php.generic-array-casts` so a short-lived associative JSON bag stays quiet when `JSON_THROW_ON_ERROR` is followed immediately by a terminating structural guard with `!is_array()` and literal-key validation; unchecked, late-validated, non-throwing, and `(array)` conversions still report.
