@@ -170,6 +170,27 @@ function weakBag(string $json): array
 
     return is_array($data) ? $data : [];
 }
+
+function ignoredProjection(string $json): void
+{
+    $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+    $schema = is_array($data) ? ($data['schema_version'] ?? null) : null;
+    if (!is_array($data) || ($data['kind'] ?? null) !== 'receipt') {
+        throw new RuntimeException('unsupported receipt');
+    }
+
+    consume($schema, $data);
+}
+
+function repeatedNonThrowingKey(string $json): void
+{
+    $data = json_decode($json, true);
+    if (!is_array($data) || ($data['kind'] ?? null) !== 'receipt' || ($data['kind'] ?? null) !== 'run') {
+        return;
+    }
+
+    consume($data);
+}
 PHP);
 
         $evidence = array_map(
@@ -180,6 +201,8 @@ PHP);
 
         self::assertSame(
             [
+                'variable=$data|kind=json-decode-assoc',
+                'variable=$data|kind=json-decode-assoc',
                 'variable=$data|kind=json-decode-assoc',
                 'variable=$payload|kind=json-decode-assoc',
             ],
