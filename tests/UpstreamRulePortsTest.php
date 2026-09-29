@@ -92,6 +92,101 @@ PHP);
         self::assertSame([], $this->forRule($result->findings, 'php.generic-array-casts'));
     }
 
+    public function testGenericArrayCastsIgnoresConsumerValidatedBoundaryShapes(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function receipt(string $json): void
+{
+    try {
+        $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException $exception) {
+        throw new RuntimeException('invalid json', 0, $exception);
+    }
+
+    $schema = is_array($data) ? ($data['schema_version'] ?? null) : null;
+    if (!is_array($data) || !in_array($schema, ['1.0', '1.1'], true) || ($data['kind'] ?? null) !== 'receipt') {
+        throw new RuntimeException('unsupported receipt');
+    }
+
+    consume($data);
+}
+
+function projectedStatus(string $json): void
+{
+    $payload = json_decode($json, true, 32, JSON_THROW_ON_ERROR);
+    if (!is_array($payload)) {
+        return;
+    }
+
+    $status = $payload['status'] ?? null;
+    if (!is_string($status) || !in_array($status, ['ready', 'failed'], true)) {
+        return;
+    }
+
+    consume($payload);
+}
+
+function optionalBaseline(string $json, string $taskId): ?array
+{
+    $data = json_decode($json, true);
+    if (
+        !is_array($data)
+        || ($data['schema_version'] ?? null) !== '1.0'
+        || ($data['task_id'] ?? null) !== $taskId
+        || !is_array($data['entries'] ?? null)
+    ) {
+        return null;
+    }
+
+    return $data['entries'];
+}
+PHP);
+
+        self::assertSame([], $this->forRule($result->findings, 'php.generic-array-casts'));
+    }
+
+    public function testGenericArrayCastsKeepsWeakTransportAndReturnedBagsVisible(): void
+    {
+        $result = $this->analyze(<<<'PHP'
+<?php
+
+function transport(string $json): void
+{
+    $payload = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+    if (!is_array($payload)) {
+        return;
+    }
+
+    $taskId = $payload['task_id'] ?? null;
+    $nextAction = $payload['next_action'] ?? null;
+    consume($taskId, $nextAction, $payload);
+}
+
+function weakBag(string $json): array
+{
+    $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+
+    return is_array($data) ? $data : [];
+}
+PHP);
+
+        $evidence = array_map(
+            static fn (Finding $finding): string => implode('|', $finding->evidence),
+            $this->forRule($result->findings, 'php.generic-array-casts'),
+        );
+        sort($evidence, SORT_STRING);
+
+        self::assertSame(
+            [
+                'variable=$data|kind=json-decode-assoc',
+                'variable=$payload|kind=json-decode-assoc',
+            ],
+            $evidence,
+        );
+    }
+
     public function testGenericArrayCastsStillFlagsUncheckedOrLateValidation(): void
     {
         $result = $this->analyze(<<<'PHP'

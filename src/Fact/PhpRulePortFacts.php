@@ -169,7 +169,7 @@ final class PhpRulePortFacts
         if ($kind === null) {
             return null;
         }
-        if ($kind === 'json-decode-assoc' && self::hasImmediateValidatedJsonBoundary($assign)) {
+        if ($kind === 'json-decode-assoc' && self::hasValidatedJsonBoundary($assign)) {
             return null;
         }
 
@@ -214,32 +214,194 @@ final class PhpRulePortFacts
             && strtolower($node->name->toString()) === 'true';
     }
 
-    private static function hasImmediateValidatedJsonBoundary(Expr\Assign $assign): bool
+    private static function hasValidatedJsonBoundary(Expr\Assign $assign): bool
     {
-        if (!$assign->var instanceof Expr\Variable
-            || !is_string($assign->var->name)
-            || !self::jsonDecodeThrowsOnError($assign->expr)
-        ) {
+        if (!$assign->var instanceof Expr\Variable || !is_string($assign->var->name)) {
             return false;
         }
 
-        $guard = self::nextStatementAfter($assign);
-        if (!$guard instanceof Stmt\If_
-            || !$guard->cond instanceof Expr\BinaryOp\BooleanOr
-            || !self::guardTerminates($guard)
-        ) {
+        $variable = $assign->var->name;
+        $throwsOnError = self::jsonDecodeThrowsOnError($assign->expr);
+        $first = self::nextStatementAfter($assign);
+        if ($first === null) {
             return false;
         }
 
-        $operands = self::booleanOrOperands($guard->cond);
+        if (self::isCombinedJsonBoundaryGuard($first, $variable, $throwsOnError ? 1 : 2)) {
+            return true;
+        }
+
+        if (!$throwsOnError) {
+            return false;
+        }
+
+        if (self::isValidatedKeyProjectionPreparation($first, $variable)) {
+            $guard = self::nextStatementAfter($first);
+
+            return $guard !== null && self::isCombinedJsonBoundaryGuard($guard, $variable, 1);
+        }
+
+        if (!self::isArrayOnlyBoundaryGuard($first, $variable)) {
+            return false;
+        }
+
+        $projection = self::nextStatementAfter($first);
+        if ($projection === null) {
+            return false;
+        }
+        $derivedVariable = self::literalKeyProjectionVariable($projection, $variable);
+        if ($derivedVariable === null) {
+            return false;
+        }
+
+        $validation = self::nextStatementAfter($projection);
+
+        return $validation instanceof Stmt\If_
+            && self::guardTerminates($validation)
+            && self::hasScalarTypeAndBoundedMembershipGuard($validation->cond, $derivedVariable);
+    }
+
+    private static function isCombinedJsonBoundaryGuard(Stmt $statement, string $variable, int $minimumKeyGuards): bool
+    {
+        if (!$statement instanceof Stmt\If_ || !self::guardTerminates($statement)) {
+            return false;
+        }
+
         $hasArrayGuard = false;
-        $hasKeyGuard = false;
-        foreach ($operands as $operand) {
-            $hasArrayGuard = $hasArrayGuard || self::isNegatedIsArrayGuard($operand, $assign->var->name);
-            $hasKeyGuard = $hasKeyGuard || self::isInvalidLiteralKeyGuard($operand, $assign->var->name);
+        $keyGuards = 0;
+        foreach (self::booleanOrOperands($statement->cond) as $operand) {
+            $hasArrayGuard = $hasArrayGuard || self::isNegatedIsArrayGuard($operand, $variable);
+            if (self::isInvalidLiteralKeyGuard($operand, $variable)) {
+                ++$keyGuards;
+            }
         }
 
-        return $hasArrayGuard && $hasKeyGuard;
+        return $hasArrayGuard && $keyGuards >= $minimumKeyGuards;
+    }
+
+    private static function isArrayOnlyBoundaryGuard(Stmt $statement, string $variable): bool
+    {
+        if (!$statement instanceof Stmt\If_ || !self::guardTerminates($statement)) {
+            return false;
+        }
+
+        $operands = self::booleanOrOperands($statement->cond);
+
+        return count($operands) === 1 && self::isNegatedIsArrayGuard($operands[0], $variable);
+    }
+
+    private static function isValidatedKeyProjectionPreparation(Stmt $statement, string $variable): bool
+    {
+        if (!$statement instanceof Stmt\Expression
+            || !$statement->expr instanceof Expr\Assign
+            || !$statement->expr->var instanceof Expr\Variable
+            || !is_string($statement->expr->var->name)
+            || !$statement->expr->expr instanceof Expr\Ternary
+        ) {
+            return false;
+        }
+
+        $ternary = $statement->expr->expr;
+
+        return self::isArrayCallForVariable($ternary->cond, $variable)
+            && $ternary->if instanceof Expr
+            && self::isNullableLiteralKeyProjection($ternary->if, $variable)
+            && self::isNullLiteral($ternary->else);
+    }
+
+    private static function literalKeyProjectionVariable(Stmt $statement, string $sourceVariable): ?string
+    {
+        if (!$statement instanceof Stmt\Expression
+            || !$statement->expr instanceof Expr\Assign
+            || !$statement->expr->var instanceof Expr\Variable
+            || !is_string($statement->expr->var->name)
+            || $statement->expr->var->name === $sourceVariable
+            || !self::isNullableLiteralKeyProjection($statement->expr->expr, $sourceVariable)
+        ) {
+            return null;
+        }
+
+        return $statement->expr->var->name;
+    }
+
+    private static function isNullableLiteralKeyProjection(Expr $expr, string $variable): bool
+    {
+        if (self::isLiteralKeyFetchForVariable($expr, $variable)) {
+            return true;
+        }
+
+        return $expr instanceof Expr\BinaryOp\Coalesce
+            && self::isLiteralKeyFetchForVariable($expr->left, $variable)
+            && self::isNullLiteral($expr->right);
+    }
+
+    private static function isLiteralKeyFetchForVariable(Expr $expr, string $variable): bool
+    {
+        return $expr instanceof Expr\ArrayDimFetch
+            && $expr->var instanceof Expr\Variable
+            && $expr->var->name === $variable
+            && $expr->dim instanceof Node\Scalar\String_;
+    }
+
+    private static function isNullLiteral(Expr $expr): bool
+    {
+        return $expr instanceof Expr\ConstFetch && strtolower($expr->name->toString()) === 'null';
+    }
+
+    private static function hasScalarTypeAndBoundedMembershipGuard(Expr $condition, string $variable): bool
+    {
+        $hasTypeGuard = false;
+        $hasMembershipGuard = false;
+        foreach (self::booleanOrOperands($condition) as $operand) {
+            $hasTypeGuard = $hasTypeGuard || self::isNegatedScalarTypeGuard($operand, $variable);
+            $hasMembershipGuard = $hasMembershipGuard || self::isNegatedBoundedMembershipGuard($operand, $variable);
+        }
+
+        return $hasTypeGuard && $hasMembershipGuard;
+    }
+
+    private static function isNegatedScalarTypeGuard(Expr $expr, string $variable): bool
+    {
+        if (!$expr instanceof Expr\BooleanNot || !$expr->expr instanceof Expr\FuncCall) {
+            return false;
+        }
+
+        $call = $expr->expr;
+        if (!$call->name instanceof Name || count($call->getArgs()) !== 1) {
+            return false;
+        }
+
+        $name = strtolower(ltrim(self::resolvedName($call->name), '\\'));
+        if (!in_array($name, ['is_bool', 'is_float', 'is_int', 'is_string'], true)) {
+            return false;
+        }
+
+        $value = $call->getArgs()[0]->value;
+
+        return $value instanceof Expr\Variable && $value->name === $variable;
+    }
+
+    private static function isNegatedBoundedMembershipGuard(Expr $expr, string $variable): bool
+    {
+        if (!$expr instanceof Expr\BooleanNot || !$expr->expr instanceof Expr\FuncCall) {
+            return false;
+        }
+
+        $call = $expr->expr;
+        if (!$call->name instanceof Name
+            || strtolower(ltrim(self::resolvedName($call->name), '\\')) !== 'in_array'
+            || count($call->getArgs()) !== 3
+        ) {
+            return false;
+        }
+
+        $arguments = $call->getArgs();
+        $value = $arguments[0]->value;
+
+        return $value instanceof Expr\Variable
+            && $value->name === $variable
+            && $arguments[1]->value instanceof Expr\Array_
+            && self::isTrueLiteral($arguments[2]->value);
     }
 
     private static function jsonDecodeThrowsOnError(Expr $expr): bool
