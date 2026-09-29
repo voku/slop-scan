@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.1.12 - 2026-09-29
 
 - Refined `php.generic-array-casts` for three consumer-proven deserialization boundaries: an intermediate schema-key projection before a terminating shape guard, a two-phase throwing decode with strict scalar status validation, and a strong immediate non-throwing identity/shape guard. Weak transport bags and directly returned decoded arrays remain findings.
 - Bumped baseline rule-semantics compatibility because the existing rule ID now has a narrower finding surface.
