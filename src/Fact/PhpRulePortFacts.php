@@ -235,10 +235,13 @@ final class PhpRulePortFacts
             return false;
         }
 
-        if (self::isValidatedKeyProjectionPreparation($first, $variable)) {
+        $projectedVariable = self::validatedKeyProjectionVariable($first, $variable);
+        if ($projectedVariable !== null) {
             $guard = self::nextStatementAfter($first);
 
-            return $guard !== null && self::isCombinedJsonBoundaryGuard($guard, $variable, 1);
+            return $guard instanceof Stmt\If_
+                && self::isCombinedJsonBoundaryGuard($guard, $variable, 1)
+                && self::hasNegatedBoundedMembershipGuard($guard->cond, $projectedVariable);
         }
 
         if (!self::isArrayOnlyBoundaryGuard($first, $variable)) {
@@ -268,15 +271,19 @@ final class PhpRulePortFacts
         }
 
         $hasArrayGuard = false;
-        $keyGuards = 0;
+        $guardedKeys = [];
         foreach (self::booleanOrOperands($statement->cond) as $operand) {
             $hasArrayGuard = $hasArrayGuard || self::isNegatedIsArrayGuard($operand, $variable);
-            if (self::isInvalidLiteralKeyGuard($operand, $variable)) {
-                ++$keyGuards;
+            if (!self::isInvalidLiteralKeyGuard($operand, $variable)) {
+                continue;
+            }
+
+            foreach (self::literalKeyAccesses($operand, $variable) as $key) {
+                $guardedKeys[$key] = true;
             }
         }
 
-        return $hasArrayGuard && $keyGuards >= $minimumKeyGuards;
+        return $hasArrayGuard && count($guardedKeys) >= $minimumKeyGuards;
     }
 
     private static function isArrayOnlyBoundaryGuard(Stmt $statement, string $variable): bool
@@ -290,7 +297,7 @@ final class PhpRulePortFacts
         return count($operands) === 1 && self::isNegatedIsArrayGuard($operands[0], $variable);
     }
 
-    private static function isValidatedKeyProjectionPreparation(Stmt $statement, string $variable): bool
+    private static function validatedKeyProjectionVariable(Stmt $statement, string $variable): ?string
     {
         if (!$statement instanceof Stmt\Expression
             || !$statement->expr instanceof Expr\Assign
@@ -298,15 +305,19 @@ final class PhpRulePortFacts
             || !is_string($statement->expr->var->name)
             || !$statement->expr->expr instanceof Expr\Ternary
         ) {
-            return false;
+            return null;
         }
 
         $ternary = $statement->expr->expr;
+        if (!self::isArrayCallForVariable($ternary->cond, $variable)
+            || !$ternary->if instanceof Expr
+            || !self::isNullableLiteralKeyProjection($ternary->if, $variable)
+            || !self::isNullLiteral($ternary->else)
+        ) {
+            return null;
+        }
 
-        return self::isArrayCallForVariable($ternary->cond, $variable)
-            && $ternary->if instanceof Expr
-            && self::isNullableLiteralKeyProjection($ternary->if, $variable)
-            && self::isNullLiteral($ternary->else);
+        return $statement->expr->var->name;
     }
 
     private static function literalKeyProjectionVariable(Stmt $statement, string $sourceVariable): ?string
@@ -379,6 +390,17 @@ final class PhpRulePortFacts
         $value = $call->getArgs()[0]->value;
 
         return $value instanceof Expr\Variable && $value->name === $variable;
+    }
+
+    private static function hasNegatedBoundedMembershipGuard(Expr $condition, string $variable): bool
+    {
+        foreach (self::booleanOrOperands($condition) as $operand) {
+            if (self::isNegatedBoundedMembershipGuard($operand, $variable)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function isNegatedBoundedMembershipGuard(Expr $expr, string $variable): bool
@@ -481,16 +503,23 @@ final class PhpRulePortFacts
 
     private static function hasLiteralKeyAccess(Expr $expr, string $variable): bool
     {
+        return self::literalKeyAccesses($expr, $variable) !== [];
+    }
+
+    /** @return list<string> */
+    private static function literalKeyAccesses(Expr $expr, string $variable): array
+    {
+        $keys = [];
         foreach ((new NodeFinder())->findInstanceOf([$expr], Expr\ArrayDimFetch::class) as $fetch) {
             if ($fetch->var instanceof Expr\Variable
                 && $fetch->var->name === $variable
                 && $fetch->dim instanceof Node\Scalar\String_
             ) {
-                return true;
+                $keys[$fetch->dim->value] = true;
             }
         }
 
-        return false;
+        return array_keys($keys);
     }
 
     private static function guardTerminates(Stmt\If_ $guard): bool
