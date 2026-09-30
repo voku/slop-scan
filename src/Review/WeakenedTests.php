@@ -32,12 +32,14 @@ final class WeakenedTests
         sort($paths, SORT_STRING);
 
         foreach ($paths as $path) {
-            $before = $beforeByPath[$path] ?? [];
-            $after = $afterByPath[$path] ?? [];
-
-            if ($before === null || $after === null) {
+            if ((array_key_exists($path, $beforeByPath) && $beforeByPath[$path] === null)
+                || (array_key_exists($path, $afterByPath) && $afterByPath[$path] === null)
+            ) {
                 continue;
             }
+
+            $before = $beforeByPath[$path] ?? [];
+            $after = $afterByPath[$path] ?? [];
 
             foreach (self::compareInventories($path, $before, $after) as $finding) {
                 $findings[] = $finding;
