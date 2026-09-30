@@ -2132,7 +2132,7 @@ PHP;
         self::assertSame(['callee' => 'keep', 'args' => ['$value']], $functions[0]['passThroughCall']);
         self::assertTrue($catches[0]['hasReturn']);
         self::assertSame([], $catches[0]['defaultReturnKinds']);
-        self::assertStringContainsString('return fallback', $catches[0]['body']);
+        self::assertMatchesRegularExpression('/return \\?fallback/', $catches[0]['body']);
     }
 
     public function testCatchDefaultFallbackRuleDetectsLiteralFallbacksOnly(): void
