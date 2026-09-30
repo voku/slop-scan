@@ -165,6 +165,32 @@ PHP);
         self::assertSame(1.0, $result->repoScore);
     }
 
+    public function testPlaceholderCommentsKeepDirectiveMarkersThatMentionRemoval(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Notes.php', <<<'PHP'
+<?php
+// TODO: remove the deleted-user branch
+// The resolved TODO docblock was removed by hand
+// FIXME handle the removed flag
+PHP);
+
+        try {
+            $result = (new Analyzer())->analyze($fixture, Config::load($fixture), DefaultRegistry::create());
+            $lines = [];
+            foreach ($result->findings as $finding) {
+                if ($finding->ruleId === 'php.placeholder-comments') {
+                    $lines[] = $finding->locations[0]['line'];
+                }
+            }
+
+            self::assertSame([2, 4], $lines);
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
     public function testConfigIgnoreErrorsCountLeavesAdditionalMatchesVisible(): void
     {
         $fixture = $this->makeFixture();
@@ -816,6 +842,7 @@ PHP);
     {
         return [
             'handled catch with return' => ['handled-catch-return.fixture', 'src/HandledCatch.php'],
+            'resolved todo described historically' => ['resolved-todo-comment.fixture', 'src/ResolvedTodo.php'],
             'exception wrap with previous' => ['exception-wrap-with-previous.fixture', 'src/ExceptionWrapWithPrevious.php'],
             'error wrapping with previous' => ['error-wrapping-with-previous.fixture', 'src/ErrorWrappingWithPrevious.php'],
             'test with mocks and assertions' => ['test-with-mocks-and-real-assertions.fixture', 'tests/MockAssertionsTest.php'],

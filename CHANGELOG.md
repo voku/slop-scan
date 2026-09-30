@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Refined `php.placeholder-comments` so prose that explains an already resolved/removed/deleted TODO no longer reads as deferred work; comments that open with `TODO`/`FIXME`/`HACK`/`XXX` still report, even when they mention removal.
+- Bumped baseline rule-semantics compatibility because the existing rule ID now has a narrower finding surface.
+
 ## 0.1.12 - 2026-09-29
 
 - Refined `php.generic-array-casts` for three consumer-proven deserialization boundaries: an intermediate schema-key projection before a terminating shape guard, a two-phase throwing decode with strict scalar status validation, and a strong immediate non-throwing identity/shape guard. Weak transport bags and directly returned decoded arrays remain findings.
