@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SlopScan\Console;
 
 use SlopScan\Delta;
+use SlopScan\Review\WeakenedTests;
 use SlopScan\Support\Json;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
