@@ -138,7 +138,7 @@ describe('totals', function (): void {
 PHP;
 
         $messages = array_map(
-            static fn ($finding): string => $finding->message,
+            static fn (Finding $finding): string => $finding->message,
             $this->compare($before, $after),
         );
 
