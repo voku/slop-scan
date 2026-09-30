@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SlopScan\Tests;
 
 use PHPUnit\Framework\TestCase;
+use SlopScan\Model\Finding;
 use SlopScan\Review\TestInventory;
 use SlopScan\Review\WeakenedTests;
 
