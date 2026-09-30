@@ -1,0 +1,36 @@
+<?php
+
+interface Hook
+{
+    public function run(): void;
+}
+
+abstract class BaseJob
+{
+    public function run(): void
+    {
+        throw new \LogicException('Not implemented');
+    }
+}
+
+final class NullHook implements Hook
+{
+    public function run(): void
+    {
+        return;
+    }
+}
+
+final class PdfExporter
+{
+    public function export(int $invoiceId): string
+    {
+        throw new \RuntimeException('PDF export needs the wkhtmltopdf binary, which is not installed');
+    }
+
+    public function describe(): string
+    {
+        // The rest of the code path lives in the renderer; this method only names the format.
+        return 'pdf';
+    }
+}

@@ -1,0 +1,9 @@
+<?php
+
+final class InvoiceExporter
+{
+    public function export(int $invoiceId): string
+    {
+        throw new \RuntimeException('Not implemented yet');
+    }
+}

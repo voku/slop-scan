@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Extended `php.placeholder-method-bodies` with explicit unfinished-implementation evidence (issue #59): not-implemented-only exception bodies, short elision comments inside a method, and a leading `TODO`/`FIXME`/`XXX` comment on an empty or constant-return body. Concrete-reason exceptions, interface/abstract/trait methods, test files and test doubles, and marker words inside explanatory prose stay quiet. Idea inspired by Heyosseus/sloppy `SL112` (MIT); no code was copied.
+- Bumped the `php.structure` cache schema and baseline rule-semantics compatibility because the function summaries gained facts and the rule's finding surface widened.
+
 - Refined `php.placeholder-comments` so prose that explains an already resolved/removed/deleted TODO no longer reads as deferred work; comments that open with `TODO`/`FIXME`/`HACK`/`XXX` still report, even when they mention removal.
 - Bumped baseline rule-semantics compatibility because the existing rule ID now has a narrower finding surface.
 

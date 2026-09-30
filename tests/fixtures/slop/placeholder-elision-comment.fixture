@@ -1,0 +1,16 @@
+<?php
+
+final class InvoiceTotals
+{
+    public function total(array $lines): int
+    {
+        $sum = 0;
+        foreach ($lines as $line) {
+            $sum += $line['amount'];
+        }
+
+        // ... existing code ...
+
+        return $sum;
+    }
+}
