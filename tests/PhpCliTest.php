@@ -3199,11 +3199,12 @@ PHP);
             ], $unavailable);
         }
 
+        /** @var ?string $parseError */
         $parseError = null;
         PhpFacts::useAstLoaderForTesting(
             /** @return list<Stmt> */
             static function (string $text) use (&$parseError): array {
-                if ($parseError !== null) {
+                if (is_string($parseError)) {
                     throw new \RuntimeException($parseError);
                 }
 
@@ -3438,25 +3439,6 @@ MD);
     }
 }
 
-final class ParserStub implements Parser
-{
-    /** @var list<\PhpParser\Node\Stmt> */
-    public static array $statements = [];
-    public static ?string $exceptionMessage = null;
-
-    public function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler = null): array
-    {
-        if (self::$exceptionMessage !== null) {
-            throw new \RuntimeException(self::$exceptionMessage);
-        }
-        return self::$statements;
-    }
-
-    public function getTokens(): array
-    {
-        return [];
-    }
-}
 
 final class ConsoleOutputStub extends BufferedOutput implements \Symfony\Component\Console\Output\ConsoleOutputInterface
 {
