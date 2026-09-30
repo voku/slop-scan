@@ -200,6 +200,38 @@ PHP;
         self::assertStringContainsString('down from 2', $findings[0]->message);
     }
 
+    public function testCodeceptionCestTracksNewSkipAttribute(): void
+    {
+        $path = 'Acceptance/CheckoutCest.php';
+        $before = <<<'PHP'
+<?php
+final class CheckoutCest
+{
+    public function checkout(AcceptanceTester $I): void
+    {
+        $I->see('Checkout');
+    }
+}
+PHP;
+        $after = <<<'PHP'
+<?php
+final class CheckoutCest
+{
+    #[Skip('temporarily disabled')]
+    public function checkout(AcceptanceTester $I): void
+    {
+        $I->see('Checkout');
+    }
+}
+PHP;
+
+        $findings = $this->compare($before, $after, $path);
+
+        self::assertCount(1, $findings);
+        self::assertSame('high', $findings[0]->confidence);
+        self::assertStringContainsString('is now skipped', $findings[0]->message);
+    }
+
     public function testDeletedTestWithoutReplacementIsReported(): void
     {
         $before = <<<'PHP'

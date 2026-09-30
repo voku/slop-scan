@@ -83,6 +83,7 @@ final class TestInventory
                 continue;
             }
 
+            $cestClassBlocked = $cestClass && $this->hasCestBlockedMetadata($class);
             $methods = $class->getMethods();
             $this->helpers = [];
 
@@ -100,7 +101,8 @@ final class TestInventory
 
                 $name = $className . '::' . $method->name->toString();
                 $actorVariables = $cestClass ? $this->cestActorVariables($method) : [];
-                $tests[$name] = $this->body($name, $method, $method->stmts ?? [], false, $actorVariables);
+                $blocked = $cestClassBlocked || ($cestClass && $this->hasCestBlockedMetadata($method));
+                $tests[$name] = $this->body($name, $method, $method->stmts ?? [], $blocked, $actorVariables);
             }
         }
 
@@ -266,6 +268,19 @@ final class TestInventory
         }
 
         return $count;
+    }
+
+    private function hasCestBlockedMetadata(Stmt\Class_|Stmt\ClassMethod $node): bool
+    {
+        foreach ($node->attrGroups as $group) {
+            foreach ($group->attrs as $attribute) {
+                if (in_array(strtolower($attribute->name->getLast()), ['skip', 'incomplete'], true)) {
+                    return true;
+                }
+            }
+        }
+
+        return preg_match('/@(skip|incomplete)\b/i', $node->getDocComment()?->getText() ?? '') === 1;
     }
 
     /** @param list<string> $actors */
