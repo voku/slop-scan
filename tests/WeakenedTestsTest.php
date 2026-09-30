@@ -303,6 +303,35 @@ PHP;
         }
     }
 
+    public function testTestMovedUnchangedToAnotherFileIsNotReportedAsDeleted(): void
+    {
+        $base = sys_get_temp_dir() . '/slop-scan-weakened-base-' . bin2hex(random_bytes(4));
+        $head = sys_get_temp_dir() . '/slop-scan-weakened-head-' . bin2hex(random_bytes(4));
+        mkdir($base . '/tests', 0777, true);
+        mkdir($head . '/tests', 0777, true);
+
+        $body = '$this->assertSame(120, Invoice::make(100)->total());';
+        file_put_contents($base . '/tests/InvoiceTest.php', $this->phpUnitTest($body));
+        file_put_contents(
+            $head . '/tests/InvoiceTotalsTest.php',
+            str_replace('InvoiceTest', 'InvoiceTotalsTest', $this->phpUnitTest($body)),
+        );
+
+        try {
+            self::assertSame([], WeakenedTests::comparePaths($base, $head));
+        } finally {
+            $this->remove($base);
+            $this->remove($head);
+        }
+    }
+
+    public function testNoExceptionSmokeTestWithAssertionCountIsNotTrivial(): void
+    {
+        $after = $this->phpUnitTest("Invoice::make(1)->total();\n\$this->addToAssertionCount(1);");
+
+        self::assertSame([], $this->compare(null, $after));
+    }
+
     private function phpUnitTest(string $body, string $name = 'testTotals'): string
     {
         return <<<PHP

@@ -249,12 +249,14 @@ final class TestInventory
     private function trivialAssertionsIn(array $statements): int
     {
         $count = 0;
-        foreach ($this->calls($statements) as $call) {
+        $calls = $this->calls($statements);
+        $exercisesCode = $this->exercisesCode($calls);
+        foreach ($calls as $call) {
             $name = strtolower($this->callName($call) ?? '');
             $arguments = $this->argumentValues($call);
 
             $trivial = match (true) {
-                $name === 'addtoassertioncount' => true,
+                $name === 'addtoassertioncount' => !$exercisesCode,
                 $name === 'asserttrue' => $this->isConstant($arguments[0] ?? null, 'true'),
                 $name === 'assertfalse' => $this->isConstant($arguments[0] ?? null, 'false'),
                 $name === 'assertnull' => $this->isConstant($arguments[0] ?? null, 'null'),
@@ -268,6 +270,23 @@ final class TestInventory
         }
 
         return $count;
+    }
+
+    /**
+     * `addToAssertionCount()` after a call under test is the "must not throw" idiom, not an empty test.
+     *
+     * @param iterable<Node> $calls
+     */
+    private function exercisesCode(iterable $calls): bool
+    {
+        foreach ($calls as $call) {
+            $name = strtolower($this->callName($call) ?? '');
+            if ($name !== '' && !str_starts_with($name, 'assert') && !str_starts_with($name, 'expect') && $name !== 'addtoassertioncount') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function hasCestBlockedMetadata(Stmt\Class_|Stmt\ClassMethod $node): bool

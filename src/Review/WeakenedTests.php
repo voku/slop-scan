@@ -29,6 +29,7 @@ final class WeakenedTests
         $beforeByPath = self::inventories($basePath, $ignore, $baseConfigFile);
         $afterByPath = self::inventories($headPath, $ignore, $headConfigFile);
         $findings = [];
+        $relocations = self::addedTests($beforeByPath, $afterByPath);
 
         $paths = array_values(array_unique(array_merge(array_keys($beforeByPath), array_keys($afterByPath))));
         sort($paths, SORT_STRING);
@@ -43,7 +44,7 @@ final class WeakenedTests
             $before = $beforeByPath[$path] ?? [];
             $after = $afterByPath[$path] ?? [];
 
-            foreach (self::compareInventories($path, $before, $after) as $finding) {
+            foreach (self::compareInventories($path, $before, $after, $relocations) as $finding) {
                 $findings[] = $finding;
             }
         }
@@ -62,9 +63,10 @@ final class WeakenedTests
     /**
      * @param array<string,TestBody> $before
      * @param array<string,TestBody> $after
+     * @param array<string,TestBody> $relocations Tests added in any file, keyed by "path\0name"; matched entries are consumed
      * @return list<Finding>
      */
-    public static function compareInventories(string $path, array $before, array $after): array
+    public static function compareInventories(string $path, array $before, array $after, array &$relocations = []): array
     {
         $findings = [];
 
@@ -122,7 +124,7 @@ final class WeakenedTests
             }
         }
 
-        foreach (self::deletedFindings($path, $before, $after) as $finding) {
+        foreach (self::deletedFindings($path, $before, $after, $relocations) as $finding) {
             $findings[] = $finding;
         }
 
@@ -161,9 +163,10 @@ final class WeakenedTests
     /**
      * @param array<string,TestBody> $before
      * @param array<string,TestBody> $after
+     * @param array<string,TestBody> $relocations
      * @return list<Finding>
      */
-    private static function deletedFindings(string $path, array $before, array $after): array
+    private static function deletedFindings(string $path, array $before, array $after, array &$relocations): array
     {
         if ($before === []) {
             return [];
@@ -182,7 +185,13 @@ final class WeakenedTests
 
             $replacement = self::replacementFor($test, $added);
             if ($replacement !== null) {
-                unset($added[$replacement]);
+                unset($added[$replacement], $relocations[$path . "\0" . $replacement]);
+                continue;
+            }
+
+            $moved = self::movedTo($test, $path, $relocations);
+            if ($moved !== null) {
+                unset($relocations[$moved]);
                 continue;
             }
 
@@ -199,6 +208,42 @@ final class WeakenedTests
         }
 
         return $findings;
+    }
+
+    /**
+     * A test whose body moved unchanged into another test file is relocated, not weakened.
+     *
+     * @param array<string,TestBody> $relocations
+     */
+    private static function movedTo(TestBody $removed, string $path, array $relocations): ?string
+    {
+        foreach ($relocations as $key => $candidate) {
+            if (!str_starts_with($key, $path . "\0") && $candidate->hash === $removed->hash) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string,null|array<string,TestBody>> $beforeByPath
+     * @param array<string,null|array<string,TestBody>> $afterByPath
+     * @return array<string,TestBody>
+     */
+    private static function addedTests(array $beforeByPath, array $afterByPath): array
+    {
+        $added = [];
+
+        foreach ($afterByPath as $path => $tests) {
+            foreach ($tests ?? [] as $name => $test) {
+                if (!isset($beforeByPath[$path][$name])) {
+                    $added[$path . "\0" . $name] = $test;
+                }
+            }
+        }
+
+        return $added;
     }
 
     /**
