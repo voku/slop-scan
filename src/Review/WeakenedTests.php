@@ -12,6 +12,8 @@ use SlopScan\Model\Finding;
 final class WeakenedTests
 {
     private const RULE_ID = 'php.weakened-tests';
+    private const WEAK_SCORE = 1.25;
+    private const MEDIUM_SCORE = 2.0;
 
     /**
      * @param list<string> $ignore
@@ -242,7 +244,7 @@ final class WeakenedTests
             scope: 'file',
             message: $message,
             evidence: array_merge(['test=' . $test->name, 'kind=' . $kind], $evidence),
-            score: $severity === 'weak' ? 1.25 : 2.0,
+            score: $severity === 'weak' ? self::WEAK_SCORE : self::MEDIUM_SCORE,
             locations: [['path' => $path, 'line' => max(1, $test->line), 'column' => 1]],
             path: $path,
             deltaIdentity: [
