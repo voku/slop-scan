@@ -39,20 +39,30 @@ final class DeltaCommand extends Command
             $ignore = $this->stringListOption($input, 'ignore');
             $base = $this->stringOption($input, 'base') ?? $this->stringArgument($input, 'base-path');
             $head = $this->stringOption($input, 'head') ?? $this->stringArgument($input, 'head-path') ?? '.';
+            $baseReport = $this->stringOption($input, 'base-report');
+            $headReport = $this->stringOption($input, 'head-report');
+            $baseConfigFile = $this->stringOption($input, 'base-config-file');
+            $headConfigFile = $this->stringOption($input, 'head-config-file');
+
             $delta = Delta::diff(
-                CommandSupport::reportInput(
-                    $this->stringOption($input, 'base-report'),
-                    $base,
-                    $ignore,
-                    $this->stringOption($input, 'base-config-file')
-                ),
-                CommandSupport::reportInput(
-                    $this->stringOption($input, 'head-report'),
-                    $head,
-                    $ignore,
-                    $this->stringOption($input, 'head-config-file')
-                ),
+                CommandSupport::reportInput($baseReport, $base, $ignore, $baseConfigFile),
+                CommandSupport::reportInput($headReport, $head, $ignore, $headConfigFile),
             );
+
+            $usesReportInput = ($baseReport !== null && $baseReport !== '')
+                || ($headReport !== null && $headReport !== '');
+            if (!$usesReportInput && $base !== null && $base !== '') {
+                $delta = Delta::withAddedFindings(
+                    $delta,
+                    WeakenedTests::comparePaths(
+                        $base,
+                        $head,
+                        $ignore,
+                        $baseConfigFile,
+                        $headConfigFile,
+                    ),
+                );
+            }
 
             $output->writeln(
                 (bool) $input->getOption('json')

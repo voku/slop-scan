@@ -43,6 +43,40 @@ final class DeltaTest extends TestCase
         self::assertCount(4, $delta['changes']);
     }
 
+    public function testAdditionalFindingsJoinDeltaAsAddedChanges(): void
+    {
+        $finding = new Finding(
+            ruleId: 'php.weakened-tests',
+            family: 'tests',
+            severity: 'medium',
+            scope: 'file',
+            message: 'InvoiceTest::testTotals() makes 1 assertion, down from 3',
+            evidence: ['test=InvoiceTest::testTotals', 'kind=assertions'],
+            score: 2.0,
+            locations: [['path' => 'tests/InvoiceTest.php', 'line' => 10, 'column' => 1]],
+            path: 'tests/InvoiceTest.php',
+            deltaIdentity: [
+                'fingerprintVersion' => 1,
+                'occurrences' => [[
+                    'fingerprint' => 'semantic-test-fingerprint',
+                    'path' => 'tests/InvoiceTest.php',
+                    'line' => 10,
+                    'column' => 1,
+                ]],
+            ],
+        );
+
+        $delta = Delta::withAddedFindings(
+            ['summary' => ['added' => 0, 'resolved' => 0], 'changes' => []],
+            [$finding],
+        );
+
+        self::assertSame(['added' => 1, 'resolved' => 0], $delta['summary']);
+        self::assertSame('added', $delta['changes'][0]['status']);
+        self::assertSame('semantic-test-fingerprint', $delta['changes'][0]['fingerprint']);
+        self::assertSame('php.weakened-tests', $delta['changes'][0]['finding']['ruleId']);
+    }
+
     /** @return array<string, mixed> */
     private function finding(int $line, string $evidence = 'return=null'): array
     {

@@ -43,6 +43,41 @@ final class Delta
     }
 
     /**
+     * @param array<string,mixed> $delta
+     * @param list<Finding> $findings
+     * @return array<string,mixed>
+     */
+    public static function withAddedFindings(array $delta, array $findings): array
+    {
+        foreach ($findings as $finding) {
+            $report = $finding->toReport();
+            foreach ($report['deltaIdentity']['occurrences'] ?? [] as $occurrence) {
+                $fingerprint = (string) ($occurrence['fingerprint'] ?? '');
+                if ($fingerprint === '') {
+                    continue;
+                }
+
+                $delta['changes'][] = [
+                    'status' => 'added',
+                    'fingerprint' => $fingerprint,
+                    'finding' => $report,
+                ];
+                $delta['summary']['added'] = (int) ($delta['summary']['added'] ?? 0) + 1;
+            }
+        }
+
+        usort(
+            $delta['changes'],
+            static fn (array $left, array $right): int => strcmp(
+                (string) ($left['fingerprint'] ?? ''),
+                (string) ($right['fingerprint'] ?? ''),
+            ),
+        );
+
+        return $delta;
+    }
+
+    /**
      * @param array<string,array{finding:array<string,mixed>,occurrence:array<string,mixed>}> $resolved
      * @param array<string,array{finding:array<string,mixed>,occurrence:array<string,mixed>}> $added
      * @return array{
