@@ -80,7 +80,7 @@ final class WeakenedTests
                 continue;
             }
 
-            if ($test->trivial > ($old?->trivial ?? 0)) {
+            if ($test->trivial > ($old->trivial ?? 0)) {
                 $existing = $old instanceof TestBody;
                 $findings[] = self::finding(
                     $path,
@@ -91,7 +91,7 @@ final class WeakenedTests
                     $existing
                         ? self::label($name) . ' gained an assertion that cannot fail'
                         : self::label($name) . ' contains an assertion that cannot fail',
-                    ['trivial-before=' . ($old?->trivial ?? 0), 'trivial-after=' . $test->trivial],
+                    ['trivial-before=' . ($old->trivial ?? 0), 'trivial-after=' . $test->trivial],
                     'Assert an observable result instead of a condition that is true by construction.',
                 );
                 continue;
