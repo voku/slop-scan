@@ -278,6 +278,31 @@ PHP;
         return WeakenedTests::compareInventories($path, $beforeInventory, $afterInventory);
     }
 
+    public function testDeletedTestFileIsReported(): void
+    {
+        $base = sys_get_temp_dir() . '/slop-scan-weakened-base-' . bin2hex(random_bytes(4));
+        $head = sys_get_temp_dir() . '/slop-scan-weakened-head-' . bin2hex(random_bytes(4));
+        mkdir($base . '/tests/Feature', 0777, true);
+        mkdir($head . '/tests/Feature', 0777, true);
+
+        file_put_contents(
+            $base . '/tests/Feature/InvoiceTest.php',
+            $this->phpUnitTest('$this->assertSame(120, Invoice::make(100)->total());'),
+        );
+
+        try {
+            $findings = WeakenedTests::comparePaths($base, $head);
+
+            self::assertCount(1, $findings);
+            self::assertSame('php.weakened-tests', $findings[0]->ruleId);
+            self::assertStringContainsString('testTotals()', $findings[0]->message);
+            self::assertStringContainsString('was deleted', $findings[0]->message);
+        } finally {
+            $this->remove($base);
+            $this->remove($head);
+        }
+    }
+
     private function phpUnitTest(string $body, string $name = 'testTotals'): string
     {
         return <<<PHP
@@ -290,6 +315,28 @@ final class InvoiceTest extends TestCase
     }
 }
 PHP;
+    }
+
+    private function remove(string $path): void
+    {
+        if (!file_exists($path)) {
+            return;
+        }
+
+        if (is_file($path)) {
+            unlink($path);
+            return;
+        }
+
+        foreach (scandir($path) ?: [] as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+
+            $this->remove($path . DIRECTORY_SEPARATOR . $item);
+        }
+
+        rmdir($path);
     }
 
     /** @param list<string> $messages */

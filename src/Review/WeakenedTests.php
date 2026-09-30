@@ -28,16 +28,17 @@ final class WeakenedTests
         $afterByPath = self::inventories($headPath, $ignore, $headConfigFile);
         $findings = [];
 
-        foreach ($afterByPath as $path => $after) {
-            if ($after === null) {
-                continue;
-            }
+        $paths = array_values(array_unique(array_merge(array_keys($beforeByPath), array_keys($afterByPath))));
+        sort($paths, SORT_STRING);
 
-            if (array_key_exists($path, $beforeByPath) && $beforeByPath[$path] === null) {
-                continue;
-            }
-
+        foreach ($paths as $path) {
             $before = $beforeByPath[$path] ?? [];
+            $after = $afterByPath[$path] ?? [];
+
+            if ($before === null || $after === null) {
+                continue;
+            }
+
             foreach (self::compareInventories($path, $before, $after) as $finding) {
                 $findings[] = $finding;
             }
