@@ -13,9 +13,10 @@ use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
 use PhpParser\PrettyPrinter\Standard;
 use SlopScan\Fact\PhpFacts;
+use SlopScan\Support\ParentNode;
 
 /**
- * Reduces PHPUnit/Pest source to deterministic per-test comparison facts.
+ * Reduces PHPUnit/Pest/Codeception source to deterministic per-test comparison facts.
  *
  * The comparison semantics are an independent port inspired by Heyosseus/sloppy
  * SL503 at b9775b9bf3162f36cc8b3c490660593ca862b821 (MIT), as tracked in #60.
@@ -25,6 +26,7 @@ final class TestInventory
     private const SKIP_METHODS = ['marktestskipped', 'marktestincomplete'];
     private const PEST_SKIP_METHODS = ['skip', 'todo'];
     private const MOCK_EXPECTATIONS = ['shouldreceive', 'shouldhavereceived', 'shouldnothavereceived'];
+    private const CODECEPTION_ASSERTION_PREFIXES = ['see', 'dontsee', 'cansee', 'cantsee'];
 
     /** @var array<string,int> */
     private array $helpers = [];
@@ -49,41 +51,56 @@ final class TestInventory
             return null;
         }
 
-        return (new self())->collect($statements);
+        return (new self())->collect($statements, self::isCestPath($path));
     }
 
     public static function isTestPath(string $path): bool
     {
         $normalized = str_replace('\\', '/', $path);
 
-        return str_ends_with(strtolower($normalized), 'test.php')
+        $lower = strtolower($normalized);
+
+        return str_ends_with($lower, 'cest.php')
+            || str_ends_with($lower, 'test.php')
             || preg_match('#(?:^|/)(?:tests?|spec)(?:/|$)#i', $normalized) === 1;
     }
 
+    private static function isCestPath(string $path): bool
+    {
+        return str_ends_with(strtolower(str_replace('\\', '/', $path)), 'cest.php');
+    }
+
     /** @param list<Stmt> $statements @return array<string,TestBody> */
-    private function collect(array $statements): array
+    private function collect(array $statements, bool $cestFile): array
     {
         $tests = [];
         $finder = new NodeFinder();
 
         foreach ($finder->findInstanceOf($statements, Stmt\Class_::class) as $class) {
             $className = $class->name?->toString() ?? 'class';
+            $cestClass = $cestFile && str_ends_with(strtolower($className), 'cest');
+            if ($cestClass && $class->isAbstract()) {
+                continue;
+            }
+
             $methods = $class->getMethods();
             $this->helpers = [];
 
             foreach ($methods as $method) {
-                if (!$this->isTestMethod($method) && $method->stmts !== null) {
-                    $this->helpers[strtolower($method->name->toString())] = $this->assertionsIn($method->stmts);
+                if (!$this->isTestMethod($method, $cestClass) && $method->stmts !== null) {
+                    $actorVariables = $cestClass ? $this->cestActorVariables($method) : [];
+                    $this->helpers[strtolower($method->name->toString())] = $this->assertionsIn($method->stmts, $actorVariables);
                 }
             }
 
             foreach ($methods as $method) {
-                if (!$this->isTestMethod($method)) {
+                if (!$this->isTestMethod($method, $cestClass)) {
                     continue;
                 }
 
                 $name = $className . '::' . $method->name->toString();
-                $tests[$name] = $this->body($name, $method, $method->stmts ?? [], false);
+                $actorVariables = $cestClass ? $this->cestActorVariables($method) : [];
+                $tests[$name] = $this->body($name, $method, $method->stmts ?? [], false, $actorVariables);
             }
         }
 
@@ -114,10 +131,14 @@ final class TestInventory
         return $tests;
     }
 
-    private function isTestMethod(Stmt\ClassMethod $method): bool
+    private function isTestMethod(Stmt\ClassMethod $method, bool $cestClass = false): bool
     {
         if ($method->stmts === null || !$method->isPublic()) {
             return false;
+        }
+
+        if ($cestClass) {
+            return !str_starts_with($method->name->toString(), '_');
         }
 
         if (str_starts_with($method->name->toString(), 'test')) {
@@ -135,13 +156,18 @@ final class TestInventory
         return str_contains($method->getDocComment()?->getText() ?? '', '@test');
     }
 
-    /** @param list<Stmt> $statements */
-    private function body(string $name, Node $node, array $statements, bool $skippedByChain): TestBody
-    {
+    /** @param list<Stmt> $statements @param list<string> $codeceptionActors */
+    private function body(
+        string $name,
+        Node $node,
+        array $statements,
+        bool $skippedByChain,
+        array $codeceptionActors = [],
+    ): TestBody {
         return new TestBody(
             name: $name,
             line: max(1, $node->getStartLine()),
-            assertions: $this->assertionsIn($statements),
+            assertions: $this->assertionsIn($statements, $codeceptionActors),
             skipped: $skippedByChain || $this->callsAny($statements, self::SKIP_METHODS),
             trivial: $this->trivialAssertionsIn($statements),
             hash: hash('sha256', $this->printer->prettyPrint($statements)),
@@ -161,7 +187,7 @@ final class TestInventory
         }
 
         $name = $function === 'it' ? 'it ' . $description : $description;
-        $parent = $this->parent($call);
+        $parent = ParentNode::of($call);
         while ($parent !== null) {
             if ($parent instanceof Expr\FuncCall
                 && $this->functionName($parent) === 'describe'
@@ -169,7 +195,7 @@ final class TestInventory
             ) {
                 $name = $prefix . ' > ' . $name;
             }
-            $parent = $this->parent($parent);
+            $parent = ParentNode::of($parent);
         }
 
         return $name;
@@ -178,7 +204,7 @@ final class TestInventory
     private function pestChainIsSkipped(Expr\FuncCall $call): bool
     {
         $cursor = $call;
-        while (($parent = $this->parent($cursor)) instanceof Expr\MethodCall && $parent->var === $cursor) {
+        while (($parent = ParentNode::of($cursor)) instanceof Expr\MethodCall && $parent->var === $cursor) {
             $name = $this->callName($parent);
             if ($name !== null && in_array(strtolower($name), self::PEST_SKIP_METHODS, true)) {
                 return true;
@@ -189,8 +215,8 @@ final class TestInventory
         return false;
     }
 
-    /** @param list<Stmt> $statements */
-    private function assertionsIn(array $statements): int
+    /** @param list<Stmt> $statements @param list<string> $codeceptionActors */
+    private function assertionsIn(array $statements, array $codeceptionActors = []): int
     {
         $count = 0;
         foreach ($this->calls($statements) as $call) {
@@ -208,6 +234,7 @@ final class TestInventory
                 || str_starts_with($name, 'expectexception')
                 || in_array($name, self::MOCK_EXPECTATIONS, true)
                 || $this->isPestMatcher($call)
+                || $this->isCodeceptionAssertion($call, $codeceptionActors)
             ) {
                 ++$count;
             }
@@ -239,6 +266,50 @@ final class TestInventory
         }
 
         return $count;
+    }
+
+    /** @param list<string> $actors */
+    private function isCodeceptionAssertion(Node $call, array $actors): bool
+    {
+        if (!$call instanceof Expr\MethodCall
+            || !$call->var instanceof Expr\Variable
+            || !is_string($call->var->name)
+            || !in_array($call->var->name, $actors, true)
+        ) {
+            return false;
+        }
+
+        $name = strtolower($this->callName($call) ?? '');
+        foreach (self::CODECEPTION_ASSERTION_PREFIXES as $prefix) {
+            if (str_starts_with($name, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return list<string> */
+    private function cestActorVariables(Stmt\ClassMethod $method): array
+    {
+        $variables = [];
+        foreach ($method->params as $parameter) {
+            $name = $parameter->var->name;
+            if (!is_string($name)) {
+                continue;
+            }
+
+            $type = $parameter->type;
+            $typeName = $type instanceof Name
+                ? $type->getLast()
+                : ($type instanceof Node\NullableType && $type->type instanceof Name ? $type->type->getLast() : null);
+
+            if ($name === 'I' || ($typeName !== null && str_ends_with(strtolower($typeName), 'tester'))) {
+                $variables[] = $name;
+            }
+        }
+
+        return $variables;
     }
 
     private function isPestMatcher(Node $call): bool
@@ -391,10 +462,4 @@ final class TestInventory
             && $this->printer->prettyPrintExpr($left) === $this->printer->prettyPrintExpr($right);
     }
 
-    private function parent(Node $node): ?Node
-    {
-        $parent = $node->getAttribute('parent');
-
-        return $parent instanceof Node ? $parent : null;
-    }
 }

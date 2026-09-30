@@ -11,6 +11,7 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
+use SlopScan\Support\ParentNode;
 use voku\SimplePhpParser\Parsers\Helper\AstNodeInspector;
 use voku\SimplePhpParser\Parsers\PhpCodeParser;
 
@@ -533,7 +534,7 @@ final class PhpRulePortFacts
     private static function nextStatementAfter(Node $node): ?Stmt
     {
         $cursor = $node;
-        while (($parent = self::parent($cursor)) !== null) {
+        while (($parent = ParentNode::of($cursor)) !== null) {
             if ($cursor instanceof Stmt) {
                 $statements = self::statementChildren($parent);
                 if ($statements !== null) {
@@ -639,7 +640,7 @@ final class PhpRulePortFacts
 
     private static function statusEnvelopeContextKind(Expr\Array_ $array): string
     {
-        $parent = self::parent($array);
+        $parent = ParentNode::of($array);
         if ($parent instanceof Stmt\Return_ && $parent->expr === $array) {
             return 'returned-generic-status-envelope';
         }
@@ -648,7 +649,7 @@ final class PhpRulePortFacts
             return 'assigned-generic-status-envelope';
         }
 
-        $call = self::parent($parent);
+        $call = ParentNode::of($parent);
         if ($call instanceof Expr\MethodCall
             && $call->name instanceof Identifier
             && strtolower($call->name->toString()) === 'json'
@@ -848,7 +849,7 @@ final class PhpRulePortFacts
 
     private static function belongsToStructuredFailureRecord(Node\ArrayItem $item): bool
     {
-        $array = self::parent($item);
+        $array = ParentNode::of($item);
         if (!$array instanceof Expr\Array_) {
             return false;
         }
@@ -868,12 +869,12 @@ final class PhpRulePortFacts
 
     private static function belongsToCatch(Node $node, Stmt\Catch_ $catch): bool
     {
-        $parent = self::parent($node);
+        $parent = ParentNode::of($node);
         while ($parent !== null) {
             if ($parent instanceof Stmt\Catch_) {
                 return $parent === $catch;
             }
-            $parent = self::parent($parent);
+            $parent = ParentNode::of($parent);
         }
 
         return false;
@@ -916,7 +917,7 @@ final class PhpRulePortFacts
         string $variable,
         Stmt\Catch_ $catch,
     ): bool {
-        $parent = self::parent($variableNode);
+        $parent = ParentNode::of($variableNode);
         while ($parent !== null) {
             if ($parent === $catch) {
                 return true;
@@ -941,7 +942,7 @@ final class PhpRulePortFacts
                 return false;
             }
 
-            $parent = self::parent($parent);
+            $parent = ParentNode::of($parent);
         }
 
         return false;
@@ -1007,10 +1008,4 @@ final class PhpRulePortFacts
         }
     }
 
-    private static function parent(Node $node): ?Node
-    {
-        $parent = $node->getAttribute('parent');
-
-        return $parent instanceof Node ? $parent : null;
-    }
 }

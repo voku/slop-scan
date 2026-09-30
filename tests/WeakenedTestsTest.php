@@ -148,6 +148,58 @@ PHP;
         self::assertTrue($this->contains($messages, 'totals > it rounds'));
     }
 
+    public function testCodeceptionCestTracksActorAssertionsAndIgnoresLifecycleMethods(): void
+    {
+        $path = 'Acceptance/CheckoutCest.php';
+        $before = <<<'PHP'
+<?php
+final class CheckoutCest
+{
+    public function _before(AcceptanceTester $I): void
+    {
+        $I->amOnPage('/checkout');
+        $I->see('setup marker');
+    }
+
+    public function checkout(AcceptanceTester $I): void
+    {
+        $I->amOnPage('/checkout');
+        $I->see('Checkout');
+        $I->dontSee('Payment failed');
+    }
+}
+PHP;
+        $after = <<<'PHP'
+<?php
+final class CheckoutCest
+{
+    public function _before(AcceptanceTester $I): void
+    {
+        $I->amOnPage('/checkout');
+        $I->see('setup marker');
+    }
+
+    public function checkout(AcceptanceTester $I): void
+    {
+        $I->amOnPage('/checkout');
+        $I->see('Checkout');
+    }
+}
+PHP;
+
+        $inventory = TestInventory::fromSource($before, $path);
+        self::assertNotNull($inventory);
+        self::assertArrayHasKey('CheckoutCest::checkout', $inventory);
+        self::assertArrayNotHasKey('CheckoutCest::_before', $inventory);
+        self::assertSame(2, $inventory['CheckoutCest::checkout']->assertions);
+
+        $findings = $this->compare($before, $after, $path);
+
+        self::assertCount(1, $findings);
+        self::assertStringContainsString('CheckoutCest::checkout()', $findings[0]->message);
+        self::assertStringContainsString('down from 2', $findings[0]->message);
+    }
+
     public function testDeletedTestWithoutReplacementIsReported(): void
     {
         $before = <<<'PHP'
@@ -180,9 +232,11 @@ PHP;
     /**
      * @return list<\SlopScan\Model\Finding>
      */
-    private function compare(?string $before, string $after): array
-    {
-        $path = 'tests/Feature/InvoiceTest.php';
+    private function compare(
+        ?string $before,
+        string $after,
+        string $path = 'tests/Feature/InvoiceTest.php',
+    ): array {
         $beforeInventory = $before === null ? [] : TestInventory::fromSource($before, $path);
         $afterInventory = TestInventory::fromSource($after, $path);
 
