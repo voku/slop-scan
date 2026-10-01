@@ -66,18 +66,31 @@ PHP;
         self::assertStringContainsString('cannot fail', $findings[0]->message);
     }
 
-    public function testRenameWithComparableAssertionsDoesNotLookDeleted(): void
+    public function testRenameWithUnchangedBodyDoesNotLookDeleted(): void
+    {
+        $body = '$this->assertSame(120, Invoice::make(100)->total());';
+        $before = $this->phpUnitTest($body, 'testTotals');
+        $after = $this->phpUnitTest($body, 'testTotalsIncludeTax');
+
+        self::assertSame([], $this->compare($before, $after));
+    }
+
+    public function testUnrelatedAddedTestWithSameAssertionCountDoesNotReplaceDeletedTest(): void
     {
         $before = $this->phpUnitTest(
             '$this->assertSame(120, Invoice::make(100)->total());',
             'testTotals',
         );
         $after = $this->phpUnitTest(
-            '$this->assertSame(121, Invoice::make(101)->total());',
-            'testTotalsIncludeTax',
+            '$this->assertSame("ok", Exporter::run());',
+            'testCsvExport',
         );
 
-        self::assertSame([], $this->compare($before, $after));
+        $findings = $this->compare($before, $after);
+
+        self::assertCount(1, $findings);
+        self::assertStringContainsString('testTotals()', $findings[0]->message);
+        self::assertStringContainsString('was deleted', $findings[0]->message);
     }
 
     public function testAssertionsMovedIntoLocalHelperAreStillCounted(): void
@@ -330,6 +343,60 @@ PHP;
         $after = $this->phpUnitTest("Invoice::make(1)->total();\n\$this->addToAssertionCount(1);");
 
         self::assertSame([], $this->compare(null, $after));
+    }
+
+    public function testNewTestWithMeaningfulAndTrivialAssertionIsNotReported(): void
+    {
+        $after = $this->phpUnitTest(<<<'PHP'
+        $this->assertSame(120, Invoice::make(100)->total());
+        $this->assertTrue(true);
+PHP);
+
+        self::assertSame([], $this->compare(null, $after));
+    }
+
+    public function testMovedTestThatBecomesSkippedIsStillReported(): void
+    {
+        $base = sys_get_temp_dir() . '/slop-scan-weakened-base-' . bin2hex(random_bytes(4));
+        $head = sys_get_temp_dir() . '/slop-scan-weakened-head-' . bin2hex(random_bytes(4));
+        mkdir($base . '/Acceptance', 0777, true);
+        mkdir($head . '/Moved', 0777, true);
+
+        $before = <<<'PHP'
+<?php
+final class CheckoutCest
+{
+    public function checkout(AcceptanceTester $I): void
+    {
+        $I->see('Checkout');
+    }
+}
+PHP;
+        $after = <<<'PHP'
+<?php
+final class CheckoutCest
+{
+    #[Skip('temporarily disabled')]
+    public function checkout(AcceptanceTester $I): void
+    {
+        $I->see('Checkout');
+    }
+}
+PHP;
+
+        file_put_contents($base . '/Acceptance/CheckoutCest.php', $before);
+        file_put_contents($head . '/Moved/CheckoutCest.php', $after);
+
+        try {
+            $findings = WeakenedTests::comparePaths($base, $head);
+
+            self::assertCount(1, $findings);
+            self::assertStringContainsString('CheckoutCest::checkout()', $findings[0]->message);
+            self::assertStringContainsString('was deleted', $findings[0]->message);
+        } finally {
+            $this->remove($base);
+            $this->remove($head);
+        }
     }
 
     private function phpUnitTest(string $body, string $name = 'testTotals'): string

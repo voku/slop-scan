@@ -87,7 +87,9 @@ final class WeakenedTests
                 continue;
             }
 
-            if ($test->trivial > ($old->trivial ?? 0)) {
+            if ($test->trivial > ($old->trivial ?? 0)
+                && ($old instanceof TestBody || $test->nonTrivialAssertions() === 0)
+            ) {
                 $existing = $old instanceof TestBody;
                 $findings[] = self::finding(
                     $path,
@@ -149,6 +151,7 @@ final class WeakenedTests
 
             $text = file_get_contents($file->absolutePath);
             if ($text === false) {
+                $inventories[$file->path] = null;
                 continue;
             }
 
@@ -218,7 +221,7 @@ final class WeakenedTests
     private static function movedTo(TestBody $removed, string $path, array $relocations): ?string
     {
         foreach ($relocations as $key => $candidate) {
-            if (!str_starts_with($key, $path . "\0") && $candidate->hash === $removed->hash) {
+            if (!str_starts_with($key, $path . "\0") && self::preservesEvidence($removed, $candidate)) {
                 return $key;
             }
         }
@@ -252,19 +255,21 @@ final class WeakenedTests
     private static function replacementFor(TestBody $removed, array $added): ?string
     {
         foreach ($added as $name => $candidate) {
-            if ($candidate->hash === $removed->hash) {
-                return $name;
-            }
-        }
-
-        $needed = $removed->nonTrivialAssertions();
-        foreach ($added as $name => $candidate) {
-            if ($candidate->nonTrivialAssertions() >= $needed) {
+            if (self::preservesEvidence($removed, $candidate)) {
                 return $name;
             }
         }
 
         return null;
+    }
+
+    private static function preservesEvidence(TestBody $removed, TestBody $candidate): bool
+    {
+        return $candidate->hash === $removed->hash
+            && ($removed->skipped || !$candidate->skipped)
+            && $candidate->assertions >= $removed->assertions
+            && $candidate->nonTrivialAssertions() >= $removed->nonTrivialAssertions()
+            && $candidate->trivial <= $removed->trivial;
     }
 
     /**
