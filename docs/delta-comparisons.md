@@ -19,6 +19,15 @@ php bin/slop-scan.php delta \
   --json
 ```
 
+## Change-relative review evidence
+
+When `delta` compares two real paths (not saved reports), it also reports evidence that only exists between a base and a head tree. These findings join the delta as `added` changes; ordinary `scan` and report-to-report `delta` never produce them.
+
+- `php.weakened-tests`: tests that became skipped, lost assertions, gained assertions that cannot fail, or were deleted without a deterministic replacement.
+- `php.static-analysis-baseline-growth`: source files that gained suppressed PHPStan errors. It reads `phpstan-baseline.neon` (and `*baseline*.neon` files listed under `includes:` in `phpstan.neon` / `phpstan.neon.dist`), sums the `count` of each entry per source path, and reports every path whose total grew, naming the baseline and the number of added entries. A baseline that did not exist in the base tree is reported once, with the number of errors it accepts. Reordered or regenerated baselines with the same effective counts, and shrinking baselines, stay quiet.
+
+The baseline check is review evidence, not a verdict that baselines are wrong. It uses a small reader for the structure PHPStan writes (including multi-line `rawMessage` blocks), never runs PHPStan, and never modifies the baseline. A baseline that exists but is not in that structure makes `delta` fail with an explicit message instead of being read as "no growth". Psalm XML and `.php` baselines are not read.
+
 ## Compare saved reports
 
 ```bash
