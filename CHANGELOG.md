@@ -2,16 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.1.13 - 2026-10-01
 
-- Fixed an out-of-memory crash (and a fatal when a scanned parent class could not be autoloaded) while extracting PHPDoc facts: the vendored parser defaulted to reflection enrichment, which autoloaded every scanned class-like into the scanner process and recursed without bound on self-referencing or aliased parents such as php-parser's `if (false) { class ArrayItem extends \\PhpParser\\Node\\ArrayItem }` shims. Scans now use `ParserOptions::astOnly()`, so PHPDoc facts depend only on the scanned source, never on the scanner's own autoloader. Requires `voku/simple-php-code-parser` ^0.22.5.
-- Bumped the `php.structure` cache schema and baseline rule-semantics compatibility because PHPDoc facts no longer include reflection-derived inherited data.
-
+- Added deterministic weakened-test detection to `delta` when real base/head paths are compared (issue #60): tests that become skipped, lose assertions, gain assertions that cannot fail, or are deleted without a deterministic replacement are reported as `php.weakened-tests`. Report-to-report `delta` and ordinary `scan` are unchanged.
 - Extended `php.placeholder-method-bodies` with explicit unfinished-implementation evidence (issue #59): not-implemented-only exception bodies, short elision comments inside a method, and a leading `TODO`/`FIXME`/`XXX` comment on an empty or constant-return body. Concrete-reason exceptions, interface/abstract/trait methods, test files and test doubles, and marker words inside explanatory prose stay quiet. Idea inspired by Heyosseus/sloppy `SL112` (MIT); no code was copied.
-- Bumped the `php.structure` cache schema and baseline rule-semantics compatibility because the function summaries gained facts and the rule's finding surface widened.
-
 - Refined `php.placeholder-comments` so prose that explains an already resolved/removed/deleted TODO no longer reads as deferred work; comments that open with `TODO`/`FIXME`/`HACK`/`XXX` still report, even when they mention removal.
-- Bumped baseline rule-semantics compatibility because the existing rule ID now has a narrower finding surface.
+- Fixed an out-of-memory crash (and a fatal when a scanned parent class could not be autoloaded) while extracting PHPDoc facts: the vendored parser defaulted to reflection enrichment, which autoloaded every scanned class-like into the scanner process and recursed without bound on self-referencing or aliased parents such as php-parser's `if (false) { class ArrayItem extends \\PhpParser\\Node\\ArrayItem }` shims. Scans now use `ParserOptions::astOnly()`, so PHPDoc facts depend only on the scanned source, never on the scanner's own autoloader. Requires `voku/simple-php-code-parser` ^0.22.5.
+- Fixed `--json` output failing with "Inf and NaN cannot be JSON encoded" when a scanned file contains a numeric literal that overflows to infinity (for example `1e999`); the source spelling is kept instead.
+- Bumped the `php.structure` cache schema and baseline rule-semantics compatibility because function summaries gained facts, PHPDoc facts no longer include reflection-derived inherited data, and two existing rule IDs changed their finding surface.
 
 ## 0.1.12 - 2026-09-29
 

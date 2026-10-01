@@ -176,7 +176,7 @@ final class PhpFacts
         $parents = [];
         foreach (self::nodeFinder()->findInstanceOf($statements, Stmt\Class_::class) as $class) {
             $name = $class->namespacedName?->toLowerString();
-            $parent = $class->extends?->getAttribute('resolvedName');
+            $parent = $class->extends?->getAttribute('resolvedName') ?? $class->extends;
             if ($name !== null && $parent instanceof Name) {
                 $parents[$name] = $parent->toLowerString();
             }
