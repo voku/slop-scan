@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Require `voku/simple-php-code-parser` ^0.22.8, which stops its PHPDoc parser from recursing without bound when a class or interface extends itself (and fixes a `self::CONSTANT` lookup that never advanced up the `extends` chain). The scanner's own cyclic-inheritance guard stays in place as defense in depth.
+
 ## 0.1.14 - 2026-10-01
 
 - Added `php.static-analysis-baseline-growth` to path-based `delta` (issue #61): source files that gained suppressed PHPStan errors in `phpstan-baseline.neon` are reported with the baseline path and the number of added entries, and a newly introduced baseline is reported once with the number of errors it accepts. Reordered, regenerated, and shrinking baselines stay quiet, and an unreadable baseline fails explicitly. Idea inspired by Heyosseus/sloppy `SL502` (MIT); no code was copied.
