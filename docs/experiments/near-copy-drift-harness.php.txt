@@ -1,0 +1,200 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Read-only prototype for issue #62: near-copy ("drift") candidates vs php.clone-cluster.
+ * usage: php neardup.php <dir> [--budget=N] [--min-tokens=N] [--max-dist=N] [--json=out.json]
+ */
+require getenv('SLOP_SCAN_ROOT') . '/vendor/autoload.php'; // run with SLOP_SCAN_ROOT=<path to this repository>
+
+use SlopScan\Fact\PhpFacts;
+
+$exhaustive = false; $root = null; $budget = 300000; $minTokens = 40; $maxDist = 3; $jsonOut = null; $excludeTests = true;
+foreach (array_slice($argv, 1) as $arg) {
+    if (str_starts_with($arg, '--budget=')) { $budget = (int) substr($arg, 9); }
+    elseif (str_starts_with($arg, '--min-tokens=')) { $minTokens = (int) substr($arg, 13); }
+    elseif (str_starts_with($arg, '--max-dist=')) { $maxDist = (int) substr($arg, 11); }
+    elseif (str_starts_with($arg, '--json=')) { $jsonOut = substr($arg, 7); }
+    elseif ($arg === '--with-tests') { $excludeTests = false; }
+    elseif ($arg === '--exhaustive') { $exhaustive = true; }
+    else { $root = rtrim($arg, '/'); }
+}
+$t0 = microtime(true);
+
+/** @return list<array{path:string,line:int,name:string,className:?string,ns:?string,body:string}> */
+function collect(string $root, bool $excludeTests): array
+{
+    $out = [];
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+    $files = [];
+    foreach ($it as $f) {
+        $p = (string) $f;
+        if (!str_ends_with($p, '.php')) { continue; }
+        $rel = substr($p, strlen($root) + 1);
+        if (preg_match('~(^|/)(vendor|node_modules)/~', $rel)) { continue; }
+        if ($excludeTests && preg_match('~(^|/)(tests?|Tests?|fixtures?)/~', $rel)) { continue; }
+        $files[] = $rel;
+    }
+    sort($files, SORT_STRING);
+    foreach ($files as $rel) {
+        $text = file_get_contents($root . '/' . $rel);
+        if ($text === false) { continue; }
+        foreach (PhpFacts::functions($text) as $fn) {
+            if (($fn['body'] ?? '') === '') { continue; }
+            $out[] = ['path' => $rel, 'line' => $fn['line'], 'name' => $fn['name'], 'className' => $fn['className'], 'ns' => $fn['namespaceName'], 'body' => $fn['body']];
+        }
+    }
+    return $out;
+}
+
+/** alpha-renamed token strings ("$0","$1",...); literals/identifiers kept verbatim */
+function tokens(string $body): array
+{
+    $map = []; $out = [];
+    foreach (token_get_all('<?php ' . $body) as $t) {
+        if (!is_array($t)) { $out[] = $t; continue; }
+        [$id, $text] = $t;
+        if (in_array($id, [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT, T_OPEN_TAG], true)) { continue; }
+        if ($id === T_VARIABLE) {
+            $out[] = $text === '$this' ? '$this' : ($map[$text] ??= '$' . count($map));
+            continue;
+        }
+        $out[] = $text;
+    }
+    return $out;
+}
+
+/** bounded Levenshtein on token arrays; returns distance or null if > k */
+function bounded(array $a, array $b, int $k): ?int
+{
+    $n = count($a); $m = count($b);
+    if (abs($n - $m) > $k) { return null; }
+    // trim common prefix/suffix
+    $s = 0; while ($s < $n && $s < $m && $a[$s] === $b[$s]) { $s++; }
+    $e = 0; while ($e < $n - $s && $e < $m - $s && $a[$n - 1 - $e] === $b[$m - 1 - $e]) { $e++; }
+    $a = array_slice($a, $s, $n - $s - $e); $b = array_slice($b, $s, $m - $s - $e);
+    $n = count($a); $m = count($b);
+    if ($n === 0 || $m === 0) { return max($n, $m) <= $k ? max($n, $m) : null; }
+    if (abs($n - $m) > $k) { return null; }
+    $inf = $k + 1;
+    $prev = [];
+    for ($j = 0; $j <= min($m, $k); $j++) { $prev[$j] = $j; }
+    for ($i = 1; $i <= $n; $i++) {
+        $cur = []; $rowMin = $inf;
+        $lo = max(0, $i - $k); $hi = min($m, $i + $k);
+        for ($j = $lo; $j <= $hi; $j++) {
+            if ($j === 0) { $cur[0] = $i; $rowMin = min($rowMin, $i); continue; }
+            $v = ($prev[$j - 1] ?? $inf) + ($a[$i - 1] === $b[$j - 1] ? 0 : 1);
+            $v = min($v, ($prev[$j] ?? $inf) + 1, ($cur[$j - 1] ?? $inf) + 1);
+            $cur[$j] = min($v, $inf);
+            $rowMin = min($rowMin, $cur[$j]);
+        }
+        if ($rowMin > $k) { return null; }
+        $prev = $cur;
+    }
+    $d = $prev[$m] ?? $inf;
+    return $d <= $k ? $d : null;
+}
+
+/** first differing region, for display */
+function divergence(array $a, array $b): string
+{
+    $n = count($a); $m = count($b);
+    $s = 0; while ($s < $n && $s < $m && $a[$s] === $b[$s]) { $s++; }
+    $e = 0; while ($e < $n - $s && $e < $m - $s && $a[$n - 1 - $e] === $b[$m - 1 - $e]) { $e++; }
+    $da = array_slice($a, $s, $n - $s - $e); $db = array_slice($b, $s, $m - $s - $e);
+    $ctx = implode(' ', array_slice($a, max(0, $s - 4), min(4, $s)));
+    return sprintf('…%s [%s] → [%s]', $ctx, implode(' ', $da), implode(' ', $db));
+}
+
+$fns = collect($root, $excludeTests);
+$tCollect = microtime(true) - $t0;
+
+// ---- exact clone groups, replicating FunctionDuplicationFactProvider + CloneClusterRule filters
+$groups = [];
+foreach ($fns as $i => $f) {
+    if (in_array(strtolower($f['name']), ['__construct', '__destruct', '_before', '_after', 'setup', 'teardown'], true)) { continue; }
+    if (strlen($f['body']) >= 40) { $groups[preg_replace('/\s+/', ' ', strtolower(trim($f['body'])))][] = $i; }
+}
+$reportedClone = [];  // function index => true when clone-cluster would report its group
+$cloneClusters = 0;
+foreach ($groups as $idxs) {
+    if (count($idxs) < 2) { continue; }
+    $ns = array_values(array_unique(array_filter(array_map(fn ($i) => $fns[$i]['ns'] ?: null, $idxs))));
+    $pre = array_unique(array_map(function ($i) use ($fns) {
+        $d = trim(str_replace('\\', '/', dirname($fns[$i]['path'])), '/');
+        return $d === '.' || $d === '' ? '' : implode('/', array_slice(explode('/', $d), 0, 3));
+    }, $idxs));
+    if (count($ns) === 1 || count($pre) === 1) { continue; }
+    $cloneClusters++;
+    foreach ($idxs as $i) { $reportedClone[$i] = true; }
+}
+
+// ---- candidates
+$cands = [];
+foreach ($fns as $i => $f) {
+    if (in_array(strtolower($f['name']), ['__construct', '__destruct'], true)) { continue; }
+    $tk = tokens($f['body']);
+    if (count($tk) < $minTokens) { continue; }
+    $cands[$i] = $tk;
+}
+$buckets = [];
+foreach ($cands as $i => $tk) {
+    $buckets['p:' . md5(implode(' ', array_slice($tk, 0, 16)))][] = $i;
+    $buckets['s:' . md5(implode(' ', array_slice($tk, -16)))][] = $i;
+}
+ksort($buckets, SORT_STRING);
+if ($exhaustive) { $buckets = ['all' => array_keys($cands)]; }
+$comparisons = 0; $truncated = false; $seen = []; $pairs = []; $bucketStats = ['max' => 0, 'n' => 0];
+foreach ($buckets as $key => $idxs) {
+    if (count($idxs) < 2) { continue; }
+    $bucketStats['n']++; $bucketStats['max'] = max($bucketStats['max'], count($idxs));
+    sort($idxs);
+    $c = count($idxs);
+    for ($x = 0; $x < $c; $x++) {
+        for ($y = $x + 1; $y < $c; $y++) {
+            $a = $idxs[$x]; $b = $idxs[$y];
+            if (isset($seen[$a . ':' . $b])) { continue; }
+            $seen[$a . ':' . $b] = true;
+            if ($comparisons >= $budget) { $truncated = true; break 3; }
+            $comparisons++;
+            $la = count($cands[$a]); $lb = count($cands[$b]);
+            $k = min($maxDist, max(1, (int) floor(0.05 * max($la, $lb))));
+            $d = bounded($cands[$a], $cands[$b], $k);
+            if ($d === null || $d === 0) { continue; }
+            $pairs[] = [$a, $b, $d];
+        }
+    }
+}
+usort($pairs, fn ($p, $q) => [$p[2], $fns[$p[0]]['path'], $fns[$p[0]]['line'], $fns[$p[1]]['path']] <=> [$q[2], $fns[$q[0]]['path'], $fns[$q[0]]['line'], $fns[$q[1]]['path']]);
+
+$tokGroup = [];
+foreach ($cands as $i => $tk) { $tokGroup[md5(implode(' ', $tk))][] = $i; }
+$groupSize = [];
+foreach ($tokGroup as $idxs) { foreach ($idxs as $i) { $groupSize[$i] = count($idxs); } }
+$majorityMinority = 0; $mmList = [];
+foreach ($pairs as [$a, $b, $d]) {
+    if (($groupSize[$a] >= 2) xor ($groupSize[$b] >= 2)) { $majorityMinority++; $mmList[] = [$a, $b, $d]; }
+}
+$overlap = 0; $unique = []; $sameClass = 0; $sameFile = 0;
+foreach ($pairs as [$a, $b, $d]) {
+    $fa = $fns[$a]; $fb = $fns[$b];
+    if (isset($reportedClone[$a]) || isset($reportedClone[$b])) { $overlap++; continue; }
+    $unique[] = [$a, $b, $d];
+    if ($fa['path'] === $fb['path']) { $sameFile++; }
+}
+$elapsed = microtime(true) - $t0;
+printf("corpus=%s functions=%d candidates(>=%d tokens)=%d\n", $root, count($fns), $minTokens, count($cands));
+printf("exact groups: %d total, %d reported by clone-cluster\n", count(array_filter($groups, fn ($g) => count($g) > 1)), $cloneClusters);
+printf("buckets>1: %d (largest %d) comparisons=%d budget=%d truncated=%s\n", $bucketStats['n'], $bucketStats['max'], $comparisons, $budget, $truncated ? 'YES' : 'no');
+printf("near pairs: %d  | involving a clone-cluster member: %d | unique: %d (same file: %d)\n", count($pairs), $overlap, count($unique), $sameFile);
+printf("majority/minority pairs (one side has an identical sibling, the other is alone): %d\n", $majorityMinority);
+printf("time: collect=%.1fs total=%.1fs peak=%dMB\n", $tCollect, $elapsed, memory_get_peak_usage(true) / 1048576);
+$out = [];
+foreach ($unique as [$a, $b, $d]) {
+    $fa = $fns[$a]; $fb = $fns[$b];
+    $out[] = ['dist' => $d, 'a' => "{$fa['path']}:{$fa['line']} " . ($fa['className'] ? $fa['className'] . '::' : '') . $fa['name'], 'b' => "{$fb['path']}:{$fb['line']} " . ($fb['className'] ? $fb['className'] . '::' : '') . $fb['name'], 'diff' => divergence($cands[$a], $cands[$b]), 'tokens' => [count($cands[$a]), count($cands[$b])]];
+}
+foreach ($mmList as [$a, $b, $d]) { $mm = ($groupSize[$a] >= 2) ? [$a, $b] : [$b, $a]; printf("MM d=%d majority(x%d) %s:%d %s  vs  %s:%d %s\n    %s\n", $d, $groupSize[$mm[0]], $fns[$mm[0]]['path'], $fns[$mm[0]]['line'], $fns[$mm[0]]['name'], $fns[$mm[1]]['path'], $fns[$mm[1]]['line'], $fns[$mm[1]]['name'], substr(divergence($cands[$mm[0]], $cands[$mm[1]]), 0, 200)); }
+if ($jsonOut) { file_put_contents($jsonOut, json_encode(['summary' => ['functions' => count($fns), 'comparisons' => $comparisons, 'truncated' => $truncated, 'pairs' => count($pairs), 'overlap' => $overlap, 'unique' => count($unique)], 'unique' => $out], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)); }
+foreach (array_slice($out, 0, (int) (getenv('SHOW') ?: 12)) as $o) { printf("\n[d=%d, %s tokens]\n  %s\n  %s\n  %s\n", $o['dist'], implode('/', $o['tokens']), $o['a'], $o['b'], $o['diff']); }
