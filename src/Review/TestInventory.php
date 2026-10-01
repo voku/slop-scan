@@ -24,7 +24,6 @@ use SlopScan\Support\ParentNode;
 final class TestInventory
 {
     private const SKIP_METHODS = ['marktestskipped', 'marktestincomplete'];
-    private const PEST_SKIP_METHODS = ['skip', 'todo'];
     private const MOCK_EXPECTATIONS = ['shouldreceive', 'shouldhavereceived', 'shouldnothavereceived'];
     private const CODECEPTION_ASSERTION_PREFIXES = ['see', 'dontsee', 'cansee', 'cantsee', 'assert'];
 
