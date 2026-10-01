@@ -43,6 +43,60 @@ final class Delta
     }
 
     /**
+     * @param array<string,mixed> $delta
+     * @param list<Finding> $findings
+     * @return array<string,mixed>
+     */
+    public static function withAddedFindings(array $delta, array $findings): array
+    {
+        /** @var list<array<string,mixed>> $changes */
+        $changes = is_array($delta['changes'] ?? null) ? array_values($delta['changes']) : [];
+        /** @var array<string,mixed> $summary */
+        $summary = is_array($delta['summary'] ?? null) ? $delta['summary'] : [];
+        $addedCount = (int) ($summary['added'] ?? 0);
+
+        foreach ($findings as $finding) {
+            $report = $finding->toReport();
+            $identity = $report['deltaIdentity'] ?? null;
+            $occurrences = is_array($identity) && is_array($identity['occurrences'] ?? null)
+                ? $identity['occurrences']
+                : [];
+
+            foreach ($occurrences as $occurrence) {
+                if (!is_array($occurrence)) {
+                    continue;
+                }
+
+                $fingerprint = (string) ($occurrence['fingerprint'] ?? '');
+                if ($fingerprint === '') {
+                    continue;
+                }
+
+                $changes[] = [
+                    'status' => 'added',
+                    'fingerprint' => $fingerprint,
+                    'finding' => $report,
+                ];
+                ++$addedCount;
+            }
+        }
+
+        usort(
+            $changes,
+            static fn (array $left, array $right): int => strcmp(
+                (string) ($left['fingerprint'] ?? ''),
+                (string) ($right['fingerprint'] ?? ''),
+            ),
+        );
+
+        $summary['added'] = $addedCount;
+        $delta['summary'] = $summary;
+        $delta['changes'] = $changes;
+
+        return $delta;
+    }
+
+    /**
      * @param array<string,array{finding:array<string,mixed>,occurrence:array<string,mixed>}> $resolved
      * @param array<string,array{finding:array<string,mixed>,occurrence:array<string,mixed>}> $added
      * @return array{
