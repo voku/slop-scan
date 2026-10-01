@@ -204,7 +204,7 @@ final class WeakenedTests
                 'deleted',
                 'weak',
                 'medium',
-                self::label($name) . ' was deleted without a comparably asserting replacement in the same file',
+                self::label($name) . ' was deleted without an equivalent replacement in the change',
                 ['assertions-before=' . $test->assertions],
                 'Confirm that the covered behavior was removed intentionally or restore an equivalent test.',
             );
