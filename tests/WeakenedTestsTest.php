@@ -48,6 +48,20 @@ PHP);
         self::assertStringContainsString('is now skipped', $findings[0]->message);
     }
 
+    public function testConditionalPhpUnitSkipDoesNotDisableWholeTest(): void
+    {
+        $before = $this->phpUnitTest('$this->assertSame(120, Invoice::make(100)->total());');
+        $after = $this->phpUnitTest(<<<'PHP'
+        if (!extension_loaded('intl')) {
+            $this->markTestSkipped('intl is required');
+        }
+
+        $this->assertSame(120, Invoice::make(100)->total());
+PHP);
+
+        self::assertSame([], $this->compare($before, $after));
+    }
+
     public function testFlagsTrivialAssertionInNewPestTestAtWeakSeverity(): void
     {
         $after = <<<'PHP'
@@ -93,6 +107,20 @@ PHP;
         self::assertStringContainsString('was deleted', $findings[0]->message);
     }
 
+    public function testForeignAssertMethodIsNotCountedAsPhpUnitAssertion(): void
+    {
+        $before = $this->phpUnitTest(<<<'PHP'
+        $service->assertReady();
+        $this->assertSame(120, Invoice::make(100)->total());
+PHP);
+        $after = $this->phpUnitTest(<<<'PHP'
+        $service->checkReady();
+        $this->assertSame(120, Invoice::make(100)->total());
+PHP);
+
+        self::assertSame([], $this->compare($before, $after));
+    }
+
     public function testAssertionsMovedIntoLocalHelperAreStillCounted(): void
     {
         $before = $this->phpUnitTest(<<<'PHP'
@@ -118,6 +146,24 @@ final class InvoiceTest extends TestCase
         $this->assertSame(120, $invoice->total());
     }
 }
+PHP;
+
+        self::assertSame([], $this->compare($before, $after));
+    }
+
+    public function testConditionalPestSkipFalseDoesNotDisableTest(): void
+    {
+        $before = <<<'PHP'
+<?php
+it('adds tax', function (): void {
+    expect(Invoice::make(100)->total())->toBe(120);
+});
+PHP;
+        $after = <<<'PHP'
+<?php
+it('adds tax', function (): void {
+    expect(Invoice::make(100)->total())->toBe(120);
+})->skip(false);
 PHP;
 
         self::assertSame([], $this->compare($before, $after));
@@ -210,6 +256,41 @@ PHP;
 
         self::assertCount(1, $findings);
         self::assertStringContainsString('CheckoutCest::checkout()', $findings[0]->message);
+        self::assertStringContainsString('down from 2', $findings[0]->message);
+    }
+
+    public function testCodeceptionActorAssertPrefixRemainsAssertionEvidence(): void
+    {
+        $path = 'Acceptance/CheckoutCest.php';
+        $before = <<<'PHP'
+<?php
+final class CheckoutCest
+{
+    public function checkout(AcceptanceTester $I): void
+    {
+        $I->assertEquals('Checkout', Page::title());
+        $I->see('Checkout');
+    }
+}
+PHP;
+        $after = <<<'PHP'
+<?php
+final class CheckoutCest
+{
+    public function checkout(AcceptanceTester $I): void
+    {
+        $I->assertEquals('Checkout', Page::title());
+    }
+}
+PHP;
+
+        $inventory = TestInventory::fromSource($before, $path);
+        self::assertNotNull($inventory);
+        self::assertSame(2, $inventory['CheckoutCest::checkout']->assertions);
+
+        $findings = $this->compare($before, $after, $path);
+
+        self::assertCount(1, $findings);
         self::assertStringContainsString('down from 2', $findings[0]->message);
     }
 
