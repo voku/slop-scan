@@ -26,7 +26,7 @@ final class TestInventory
     private const SKIP_METHODS = ['marktestskipped', 'marktestincomplete'];
     private const PEST_SKIP_METHODS = ['skip', 'todo'];
     private const MOCK_EXPECTATIONS = ['shouldreceive', 'shouldhavereceived', 'shouldnothavereceived'];
-    private const CODECEPTION_ASSERTION_PREFIXES = ['see', 'dontsee', 'cansee', 'cantsee'];
+    private const CODECEPTION_ASSERTION_PREFIXES = ['see', 'dontsee', 'cansee', 'cantsee', 'assert'];
 
     /** @var array<string,int> */
     private array $helpers = [];
@@ -170,7 +170,7 @@ final class TestInventory
             name: $name,
             line: max(1, $node->getStartLine()),
             assertions: $this->assertionsIn($statements, $codeceptionActors),
-            skipped: $skippedByChain || $this->callsAny($statements, self::SKIP_METHODS),
+            skipped: $skippedByChain || $this->hasUnconditionalSkip($statements),
             trivial: $this->trivialAssertionsIn($statements),
             hash: hash('sha256', $this->printer->prettyPrint($statements)),
         );
@@ -208,8 +208,15 @@ final class TestInventory
         $cursor = $call;
         while (($parent = ParentNode::of($cursor)) instanceof Expr\MethodCall && $parent->var === $cursor) {
             $name = $this->callName($parent);
-            if ($name !== null && in_array(strtolower($name), self::PEST_SKIP_METHODS, true)) {
-                return true;
+            if ($name !== null) {
+                $normalized = strtolower($name);
+                if ($normalized === 'todo') {
+                    return true;
+                }
+
+                if ($normalized === 'skip' && $this->pestSkipIsUnconditional($parent)) {
+                    return true;
+                }
             }
             $cursor = $parent;
         }
@@ -232,8 +239,7 @@ final class TestInventory
                 continue;
             }
 
-            if (str_starts_with($name, 'assert')
-                || str_starts_with($name, 'expectexception')
+            if ($this->isPhpUnitAssertion($call, $name)
                 || in_array($name, self::MOCK_EXPECTATIONS, true)
                 || $this->isPestMatcher($call)
                 || $this->isCodeceptionAssertion($call, $codeceptionActors)
@@ -255,12 +261,13 @@ final class TestInventory
             $name = strtolower($this->callName($call) ?? '');
             $arguments = $this->argumentValues($call);
 
+            $phpUnitReceiver = $this->isPhpUnitAssertionReceiver($call);
             $trivial = match (true) {
-                $name === 'addtoassertioncount' => !$exercisesCode,
-                $name === 'asserttrue' => $this->isConstant($arguments[0] ?? null, 'true'),
-                $name === 'assertfalse' => $this->isConstant($arguments[0] ?? null, 'false'),
-                $name === 'assertnull' => $this->isConstant($arguments[0] ?? null, 'null'),
-                in_array($name, ['assertsame', 'assertequals'], true) => $this->samePrinted($arguments[0] ?? null, $arguments[1] ?? null),
+                $phpUnitReceiver && $name === 'addtoassertioncount' => !$exercisesCode,
+                $phpUnitReceiver && $name === 'asserttrue' => $this->isConstant($arguments[0] ?? null, 'true'),
+                $phpUnitReceiver && $name === 'assertfalse' => $this->isConstant($arguments[0] ?? null, 'false'),
+                $phpUnitReceiver && $name === 'assertnull' => $this->isConstant($arguments[0] ?? null, 'null'),
+                $phpUnitReceiver && in_array($name, ['assertsame', 'assertequals'], true) => $this->samePrinted($arguments[0] ?? null, $arguments[1] ?? null),
                 default => $this->isTrivialPestMatcher($call, $name, $arguments),
             };
 
@@ -408,17 +415,57 @@ final class TestInventory
             && in_array(strtolower($call->class->toString()), ['self', 'static'], true);
     }
 
-    /** @param list<Stmt> $statements @param list<string> $names */
-    private function callsAny(array $statements, array $names): bool
+    /** @param list<Stmt> $statements */
+    private function hasUnconditionalSkip(array $statements): bool
     {
-        foreach ($this->calls($statements) as $call) {
+        foreach ($statements as $statement) {
+            if (!$statement instanceof Stmt\Expression) {
+                continue;
+            }
+
+            $call = $statement->expr;
+            if (!$this->isPhpUnitAssertionReceiver($call)) {
+                continue;
+            }
+
             $name = strtolower($this->callName($call) ?? '');
-            if (in_array($name, $names, true)) {
+            if (in_array($name, self::SKIP_METHODS, true)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private function pestSkipIsUnconditional(Expr\MethodCall $call): bool
+    {
+        $argument = $call->args[0] ?? null;
+        if (!$argument instanceof Arg) {
+            return true;
+        }
+
+        if ($argument->value instanceof Node\Scalar\String_) {
+            return true;
+        }
+
+        return $this->isConstant($argument->value, 'true');
+    }
+
+    private function isPhpUnitAssertion(Node $call, string $name): bool
+    {
+        return $this->isPhpUnitAssertionReceiver($call)
+            && (str_starts_with($name, 'assert') || str_starts_with($name, 'expectexception'));
+    }
+
+    private function isPhpUnitAssertionReceiver(Node $call): bool
+    {
+        if ($call instanceof Expr\MethodCall || $call instanceof Expr\NullsafeMethodCall) {
+            return $call->var instanceof Expr\Variable && $call->var->name === 'this';
+        }
+
+        return $call instanceof Expr\StaticCall
+            && $call->class instanceof Name
+            && in_array(strtolower($call->class->toString()), ['self', 'static'], true);
     }
 
     /** @param list<Stmt> $statements @return list<Node> */
