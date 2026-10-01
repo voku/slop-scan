@@ -2,9 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.1.14 - 2026-10-01
 
 - Added `php.static-analysis-baseline-growth` to path-based `delta` (issue #61): source files that gained suppressed PHPStan errors in `phpstan-baseline.neon` are reported with the baseline path and the number of added entries, and a newly introduced baseline is reported once with the number of errors it accepts. Reordered, regenerated, and shrinking baselines stay quiet, and an unreadable baseline fails explicitly. Idea inspired by Heyosseus/sloppy `SL502` (MIT); no code was copied.
+- Recorded the near-copy drift experiment (issue #62) under `docs/experiments/`: a bounded token-distance detector found almost only intentional variants, so no new rule was added and `php.clone-cluster` remains the duplication rule.
 
 ## 0.1.13 - 2026-10-01
 
