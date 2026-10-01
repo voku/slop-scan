@@ -165,6 +165,127 @@ PHP);
         self::assertSame(1.0, $result->repoScore);
     }
 
+    public function testPlaceholderCommentsKeepDirectiveMarkersThatMentionRemoval(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Notes.php', <<<'PHP'
+<?php
+// TODO: remove the deleted-user branch
+// The resolved TODO docblock was removed by hand
+// FIXME handle the removed flag
+PHP);
+
+        try {
+            $result = (new Analyzer())->analyze($fixture, Config::load($fixture), DefaultRegistry::create());
+            $lines = [];
+            foreach ($result->findings as $finding) {
+                if ($finding->ruleId === 'php.placeholder-comments') {
+                    $lines[] = $finding->locations[0]['line'];
+                }
+            }
+
+            self::assertSame([2, 4], $lines);
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
+    public function testTrivialBodyWithDeferredMarkerReportsPlaceholderMethodBody(): void
+    {
+        $result = $this->scanStoredFixture('slop', 'placeholder-todo-trivial-body.fixture', 'src/PlaceholderTodo.php');
+        $methodFindings = array_values(array_filter(
+            $result->findings,
+            static fn ($finding): bool => $finding->ruleId === 'php.placeholder-method-bodies'
+        ));
+
+        self::assertCount(1, $methodFindings);
+        self::assertSame('Found trivial method body marked as unfinished work', $methodFindings[0]->message);
+    }
+
+    public function testPlaceholderMethodBodiesIgnoreMarkerWordsInProseAndTestDoubles(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        mkdir($fixture . '/tests', 0777, true);
+        file_put_contents($fixture . '/src/TokenShapes.php', <<<'PHP'
+<?php
+final class TokenShapes
+{
+    public function shapes(): array
+    {
+        // Three accepted shapes: a ticket key (ABC-123), an explicit TODO marker, or a URL.
+        return [];
+    }
+}
+PHP);
+        file_put_contents($fixture . '/tests/Helper.php', <<<'PHP'
+<?php
+final class Helper
+{
+    public function run(): void
+    {
+        throw new \RuntimeException('Not implemented');
+    }
+}
+PHP);
+
+        try {
+            $result = (new Analyzer())->analyze($fixture, Config::load($fixture), DefaultRegistry::create());
+
+            self::assertNotContains('php.placeholder-method-bodies', $this->ruleIds($result->findings));
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
+    public function testScanParsesSelfReferencingClassesWithoutAutoloadingOrUnboundedRecursion(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Cycle.php', <<<'PHP'
+<?php
+namespace Cycle;
+
+if (false) {
+    class Node extends \Cycle\Node
+    {
+    }
+}
+PHP);
+
+        try {
+            $command = sprintf(
+                '%s -d memory_limit=96M %s scan %s --json 2>&1',
+                escapeshellarg(PHP_BINARY),
+                escapeshellarg(dirname(__DIR__) . '/bin/slop-scan.php'),
+                escapeshellarg($fixture),
+            );
+            exec($command, $output, $status);
+
+            self::assertStringNotContainsString('Allowed memory size', implode("\n", $output));
+            self::assertContains($status, [0, 1]);
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
+    public function testScanSurvivesNumericLiteralsThatOverflowToInfinity(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Overflow.php', "<?php\nfunction huge(): float\n{\n    return 1e999 * 3;\n}\n");
+
+        try {
+            $result = (new Analyzer())->analyze($fixture, Config::load($fixture), DefaultRegistry::create());
+
+            self::assertNotEmpty($this->ruleIds($result->findings));
+            self::assertNotSame('', Json::encode(array_map(static fn ($finding): array => $finding->evidence, $result->findings)));
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
     public function testConfigIgnoreErrorsCountLeavesAdditionalMatchesVisible(): void
     {
         $fixture = $this->makeFixture();
@@ -788,6 +909,8 @@ PHP);
             'pass through wrapper' => ['pass-through-wrapper.fixture', 'src/PassThroughWrapper.php', 'php.pass-through-wrappers'],
             'return constant stub' => ['return-constant-stub.fixture', 'src/ReturnConstantStub.php', 'php.return-constant-stub'],
             'placeholder method body' => ['placeholder-method-body.fixture', 'src/PlaceholderMethodBody.php', 'php.placeholder-method-bodies'],
+            'placeholder elision comment' => ['placeholder-elision-comment.fixture', 'src/PlaceholderElision.php', 'php.placeholder-method-bodies'],
+            'placeholder not implemented throw' => ['placeholder-not-implemented-throw.fixture', 'src/PlaceholderThrow.php', 'php.placeholder-method-bodies'],
             'type escape hotspot' => ['type-escape-hotspot.fixture', 'src/TypeEscapeHotspot.php', 'php.type-escape-hotspots'],
             'generic status envelope' => ['generic-status-envelope.fixture', 'src/GenericStatusEnvelope.php', 'php.generic-status-envelopes'],
             'low-signal markdown' => ['low-signal-markdown.fixture', 'docs/implementation-summary.md', 'markdown.low-signal'],
@@ -816,6 +939,8 @@ PHP);
     {
         return [
             'handled catch with return' => ['handled-catch-return.fixture', 'src/HandledCatch.php'],
+            'placeholder look-alikes' => ['placeholder-lookalikes.fixture', 'src/PlaceholderLookalikes.php'],
+            'resolved todo described historically' => ['resolved-todo-comment.fixture', 'src/ResolvedTodo.php'],
             'exception wrap with previous' => ['exception-wrap-with-previous.fixture', 'src/ExceptionWrapWithPrevious.php'],
             'error wrapping with previous' => ['error-wrapping-with-previous.fixture', 'src/ErrorWrappingWithPrevious.php'],
             'test with mocks and assertions' => ['test-with-mocks-and-real-assertions.fixture', 'tests/MockAssertionsTest.php'],

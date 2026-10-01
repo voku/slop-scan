@@ -21,12 +21,15 @@ use voku\SimplePhpParser\Model\PHPProperty;
 use voku\SimplePhpParser\Model\PHPTrait;
 use voku\SimplePhpParser\Parsers\Helper\AstNodeInspector;
 use voku\SimplePhpParser\Parsers\Helper\ParserContainer;
+use voku\SimplePhpParser\Parsers\Helper\ParserOptions;
 use voku\SimplePhpParser\Parsers\PhpCodeParser;
 
 final class PhpFacts
 {
     private const RECOGNIZED_DEBUG_FUNCTIONS = ['dd', 'print_r', 'ray', 'var_dump'];
     private const EXCEPTION_PREVIOUS_ARGUMENT_INDEX = 2;
+    private const NOT_IMPLEMENTED_CLASS_PATTERN = '/^(?:Not(?:Yet)?Implemented|Unimplemented)(?:Exception|Error)?$/i';
+    private const NOT_IMPLEMENTED_MESSAGE_PATTERN = '/^(?:(?:\S+\s+){0,3}?(?:is\s+)?(?:not\s+(?:yet\s+)?implemented(?:\s+yet)?|unimplemented|to\s+be\s+implemented)|todo|fixme|stub|placeholder|implement\s+me)[.!]?$/i';
     private const GENERIC_EXCEPTION_CLASSES = [
         'exception',
         'errorexception',
@@ -57,7 +60,7 @@ final class PhpFacts
         return $comments;
     }
 
-    /** @param null|list<Stmt> $statements @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,magicNumbers:list<array{value:string,normalized:string,kind:string,line:int,column:int}>,classKind:?string,className:?string,namespaceName:?string}> */
+    /** @param null|list<Stmt> $statements @return list<array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,endLine:int,placeholderThrow:?string,magicNumbers:list<array{value:string,normalized:string,kind:string,line:int,column:int}>,classKind:?string,className:?string,namespaceName:?string}> */
     public static function functions(string $text, ?array $statements = null): array
     {
         $statements ??= self::parseStatements($text);
@@ -112,8 +115,12 @@ final class PhpFacts
             return [];
         }
 
+        if (self::hasCyclicClassInheritance($absolutePath)) {
+            return [];
+        }
+
         try {
-            $container = PhpCodeParser::getPhpFiles($absolutePath);
+            $container = PhpCodeParser::getPhpFiles($absolutePath, [], [], [], ParserOptions::astOnly());
         } catch (\Throwable) {
             return [];
         }
@@ -148,6 +155,45 @@ final class PhpFacts
         );
 
         return $entries;
+    }
+
+    /**
+     * The PHPDoc parser walks `extends` chains recursively without a visited set, so a class that
+     * (transitively) extends itself, e.g. a mistaken shim, would exhaust memory instead of failing.
+     */
+    private static function hasCyclicClassInheritance(string $absolutePath): bool
+    {
+        $text = file_get_contents($absolutePath);
+        if ($text === false || stripos($text, 'extends') === false) {
+            return false;
+        }
+
+        $statements = self::parseStatements($text);
+        if ($statements === null) {
+            return false;
+        }
+
+        $parents = [];
+        foreach (self::nodeFinder()->findInstanceOf($statements, Stmt\Class_::class) as $class) {
+            $name = $class->namespacedName?->toLowerString();
+            $parent = $class->extends?->getAttribute('resolvedName') ?? $class->extends;
+            if ($name !== null && $parent instanceof Name) {
+                $parents[$name] = $parent->toLowerString();
+            }
+        }
+
+        foreach ($parents as $name => $parent) {
+            $seen = [$name => true];
+            while (isset($parents[$parent]) && !isset($seen[$parent])) {
+                $seen[$parent] = true;
+                $parent = $parents[$parent];
+            }
+            if (isset($seen[$parent])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -359,7 +405,7 @@ final class PhpFacts
         }
     }
 
-    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,magicNumbers:list<array{value:string,normalized:string,kind:string,line:int,column:int}>,classKind:?string,className:?string,namespaceName:?string} */
+    /** @return array{name:string,signature:string,line:int,body:string,params:list<string>,passThroughCall:null|array{callee:string,args:list<string>},constantReturn:?string,endLine:int,placeholderThrow:?string,magicNumbers:list<array{value:string,normalized:string,kind:string,line:int,column:int}>,classKind:?string,className:?string,namespaceName:?string} */
     private static function functionSummary(Stmt\ClassMethod|Stmt\Function_ $function, ?string $className, ?string $classKind, ?string $namespaceName, string $text): array
     {
         $name = $function->name->toString();
@@ -377,6 +423,8 @@ final class PhpFacts
             'params' => $params,
             'passThroughCall' => self::passThroughCallSummary($function, $params),
             'constantReturn' => self::singleConstantReturnKind($function),
+            'endLine' => $function->getEndLine(),
+            'placeholderThrow' => self::placeholderThrowMessage($function),
             'magicNumbers' => self::magicNumberSummaries($function, $text),
             'classKind' => $classKind,
             'className' => $className,
@@ -729,6 +777,37 @@ final class PhpFacts
         return self::defaultLiteralKind($stmts[0]->expr);
     }
 
+    /**
+     * Returns the literal message (or class name) when the body only throws an unmistakable
+     * "not implemented" exception; unsupported operations with a concrete reason stay null.
+     */
+    private static function placeholderThrowMessage(Stmt\ClassMethod|Stmt\Function_ $function): ?string
+    {
+        $stmts = $function->stmts ?? [];
+        if (count($stmts) !== 1 || !$stmts[0] instanceof Stmt\Expression || !$stmts[0]->expr instanceof Node\Expr\Throw_) {
+            return null;
+        }
+
+        $thrown = $stmts[0]->expr->expr;
+        if (!$thrown instanceof Node\Expr\New_ || !$thrown->class instanceof Name) {
+            return null;
+        }
+
+        $message = '';
+        $first = $thrown->args[0] ?? null;
+        if ($first instanceof Node\Arg && $first->value instanceof Node\Scalar\String_) {
+            $message = trim($first->value->value);
+        } elseif ($first !== null) {
+            return null;
+        }
+
+        if (preg_match(self::NOT_IMPLEMENTED_CLASS_PATTERN, $thrown->class->getLast()) === 1) {
+            return $message !== '' ? $message : $thrown->class->getLast();
+        }
+
+        return $message !== '' && preg_match(self::NOT_IMPLEMENTED_MESSAGE_PATTERN, $message) === 1 ? $message : null;
+    }
+
     /** @return list<array{value:string,normalized:string,kind:string,line:int,column:int}> */
     private static function magicNumberSummaries(Stmt\ClassMethod|Stmt\Function_ $function, string $text): array
     {
@@ -901,7 +980,13 @@ final class PhpFacts
             return null;
         }
 
-        return json_encode(0 + $value, JSON_THROW_ON_ERROR);
+        $number = 0 + $value;
+        if (is_float($number) && !is_finite($number)) {
+            // Literals such as 1e999 overflow to INF, which JSON cannot represent; keep the source spelling.
+            return strtolower(trim($value));
+        }
+
+        return json_encode($number, JSON_THROW_ON_ERROR);
     }
 
     /**

@@ -1,0 +1,10 @@
+<?php
+
+final class InvoiceRepository
+{
+    public function findOverdue(): array
+    {
+        // TODO: query the overdue invoices
+        return [];
+    }
+}
