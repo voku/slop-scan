@@ -12,11 +12,6 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\NodeFinder;
 use PhpParser\Node\Stmt;
-use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitor\NameResolver;
-use PhpParser\NodeVisitor\ParentConnectingVisitor;
-use PhpParser\Parser;
-use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
 use voku\SimplePhpParser\Model\PHPClass;
 use voku\SimplePhpParser\Model\PHPEnum;
@@ -24,6 +19,7 @@ use voku\SimplePhpParser\Model\PHPFunction;
 use voku\SimplePhpParser\Model\PHPInterface;
 use voku\SimplePhpParser\Model\PHPProperty;
 use voku\SimplePhpParser\Model\PHPTrait;
+use voku\SimplePhpParser\Parsers\Helper\AstNodeInspector;
 use voku\SimplePhpParser\Parsers\Helper\ParserContainer;
 use voku\SimplePhpParser\Parsers\PhpCodeParser;
 
@@ -46,8 +42,8 @@ final class PhpFacts
         'unexpectedvalueexception',
     ];
 
-    /** @var null|callable():Parser */
-    private static $parserFactory = null;
+    /** @var null|callable(string): list<Stmt> */
+    private static $astLoader = null;
 
     /** @return list<array{text:string,line:int}> */
     public static function comments(string $text): array
@@ -260,22 +256,20 @@ final class PhpFacts
     }
 
     /**
-     * @param null|callable():Parser $parserFactory Factory returning a nikic/php-parser parser instance.
+     * @param null|callable(string): list<Stmt> $astLoader
      */
-    public static function useParserFactoryForTesting(?callable $parserFactory): void
+    public static function useAstLoaderForTesting(?callable $astLoader): void
     {
-        self::$parserFactory = $parserFactory;
+        self::$astLoader = $astLoader;
     }
 
     /** @return array{statements:null|list<Stmt>,error:?string} */
     public static function parseSyntax(string $text): array
     {
         try {
-            $statements = self::parser()->parse($text) ?? [];
-            $statements = (new NodeTraverser(
-                new ParentConnectingVisitor(),
-                new NameResolver(null, ['replaceNodes' => false]),
-            ))->traverse($statements);
+            $statements = self::$astLoader !== null
+                ? (self::$astLoader)($text)
+                : PhpCodeParser::getAstFromString($text);
             /** @var list<Stmt> $statements */
 
             return ['statements' => $statements, 'error' => null];
@@ -301,7 +295,7 @@ final class PhpFacts
     /** @return array{available:bool,classCount:int,functionCount:int,error?:string} */
     public static function parserSummary(string $absolutePath): array
     {
-        if (self::$parserFactory === null && !class_exists(ParserFactory::class)) {
+        if (self::$astLoader === null && !class_exists(PhpCodeParser::class)) {
             return ['available' => false, 'classCount' => 0, 'functionCount' => 0];
         }
 
@@ -394,13 +388,6 @@ final class PhpFacts
     private static function parseStatements(string $text): ?array
     {
         return self::parseSyntax($text)['statements'];
-    }
-
-    private static function parser(): Parser
-    {
-        return self::$parserFactory !== null
-            ? (self::$parserFactory)()
-            : (new ParserFactory())->createForHostVersion();
     }
 
     private static function nodeFinder(): NodeFinder
@@ -852,12 +839,12 @@ final class PhpFacts
                 'normalized' => $normalized,
                 'kind' => 'numeric-string',
                 'line' => $node->getStartLine(),
-                'column' => self::nodeStartColumn($node, $text),
+                'column' => AstNodeInspector::startColumn($node, $text),
             ];
         }
 
         if (($node instanceof Node\Scalar\LNumber || $node instanceof Node\Scalar\DNumber) && !self::isSignedNumericChild($node, $parent)) {
-            $value = self::nodeSourceText($node, $text) ?? (string) $node->value;
+            $value = AstNodeInspector::sourceText($node, $text) ?? (string) $node->value;
             $normalized = self::normalizeNumericValue($value);
             if ($normalized === null) {
                 return null;
@@ -868,14 +855,14 @@ final class PhpFacts
                 'normalized' => $normalized,
                 'kind' => 'numeric',
                 'line' => $node->getStartLine(),
-                'column' => self::nodeStartColumn($node, $text),
+                'column' => AstNodeInspector::startColumn($node, $text),
             ];
         }
 
         if (($node instanceof Expr\UnaryMinus || $node instanceof Expr\UnaryPlus)
             && ($node->expr instanceof Node\Scalar\LNumber || $node->expr instanceof Node\Scalar\DNumber)
         ) {
-            $value = self::nodeSourceText($node, $text);
+            $value = AstNodeInspector::sourceText($node, $text);
             if ($value === null) {
                 $sign = $node instanceof Expr\UnaryMinus ? '-' : '+';
                 $value = $sign . (string) $node->expr->value;
@@ -891,7 +878,7 @@ final class PhpFacts
                 'normalized' => $normalized,
                 'kind' => 'numeric',
                 'line' => $node->getStartLine(),
-                'column' => self::nodeStartColumn($node, $text),
+                'column' => AstNodeInspector::startColumn($node, $text),
             ];
         }
 
@@ -915,30 +902,6 @@ final class PhpFacts
         }
 
         return json_encode(0 + $value, JSON_THROW_ON_ERROR);
-    }
-
-    private static function nodeStartColumn(Node $node, string $text): int
-    {
-        $start = $node->getStartFilePos();
-        if ($start < 0) {
-            return 1;
-        }
-
-        $prefix = substr($text, 0, $start);
-        $lineStart = strrpos($prefix, "\n");
-
-        return $lineStart === false ? $start + 1 : $start - $lineStart;
-    }
-
-    private static function nodeSourceText(Node $node, string $text): ?string
-    {
-        $start = $node->getStartFilePos();
-        $end = $node->getEndFilePos();
-        if ($start < 0 || $end < $start) {
-            return null;
-        }
-
-        return substr($text, $start, $end - $start + 1);
     }
 
     /**

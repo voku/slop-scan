@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace SlopScan\Tests;
 
-use PhpParser\Parser;
-use PhpParser\ParserFactory;
+use PhpParser\Node\Stmt;
 use PHPUnit\Framework\TestCase;
 use SlopScan\Analyzer;
 use SlopScan\Config;
 use SlopScan\DefaultRegistry;
 use SlopScan\Fact\PhpFacts;
 use SlopScan\Fact\PhpRulePortFacts;
+use voku\SimplePhpParser\Parsers\PhpCodeParser;
 
 final class PhpStructureParseOnceTest extends TestCase
 {
@@ -37,18 +37,24 @@ final class Example
 PHP);
 
         $parserCalls = 0;
-        PhpFacts::useParserFactoryForTesting(static function () use (&$parserCalls): Parser {
-            $parserCalls++;
+        PhpFacts::useAstLoaderForTesting(
+            /** @return list<Stmt> */
+            static function (string $text) use (&$parserCalls): array {
+                $parserCalls++;
 
-            return (new ParserFactory())->createForHostVersion();
-        });
+                /** @var list<Stmt> $statements */
+                $statements = PhpCodeParser::getAstFromString($text);
+
+                return $statements;
+            },
+        );
 
         try {
             (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create());
 
             self::assertSame(1, $parserCalls, 'php.structure should parse one uncached PHP source once for raw AST-derived facts.');
         } finally {
-            PhpFacts::useParserFactoryForTesting(null);
+            PhpFacts::useAstLoaderForTesting(null);
             $this->remove($fixture);
         }
     }

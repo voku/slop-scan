@@ -7,8 +7,8 @@ namespace SlopScan\Tests;
 use HelgeSverre\Toon\Toon;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use PhpParser\Parser;
-use PhpParser\ParserFactory;
+use PhpParser\Node\Stmt;
+use voku\SimplePhpParser\Parsers\PhpCodeParser;
 use SlopScan\Analyzer;
 use SlopScan\Baseline;
 use SlopScan\BaselineCompatibility;
@@ -1053,11 +1053,17 @@ try {
 PHP);
         $cacheFile = $fixture . '/.slop-scan.cache.json';
         $parserCalls = 0;
-        PhpFacts::useParserFactoryForTesting(static function () use (&$parserCalls): Parser {
-            $parserCalls++;
+        PhpFacts::useAstLoaderForTesting(
+            /** @return list<Stmt> */
+            static function (string $text) use (&$parserCalls): array {
+                $parserCalls++;
 
-            return (new ParserFactory())->createForHostVersion();
-        });
+                /** @var list<Stmt> $statements */
+                $statements = PhpCodeParser::getAstFromString($text);
+
+                return $statements;
+            },
+        );
 
         try {
             $first = (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create(), $cacheFile);
@@ -1074,7 +1080,7 @@ PHP);
                 array_map(static fn(Finding $finding): array => $finding->toReport(), $second->findings)
             );
         } finally {
-            PhpFacts::useParserFactoryForTesting(null);
+            PhpFacts::useAstLoaderForTesting(null);
             $this->remove($fixture);
         }
     }
@@ -1091,11 +1097,17 @@ function proxy($value) {
 PHP);
         $cacheFile = $fixture . '/.slop-scan.cache.json';
         $parserCalls = 0;
-        PhpFacts::useParserFactoryForTesting(static function () use (&$parserCalls): Parser {
-            $parserCalls++;
+        PhpFacts::useAstLoaderForTesting(
+            /** @return list<Stmt> */
+            static function (string $text) use (&$parserCalls): array {
+                $parserCalls++;
 
-            return (new ParserFactory())->createForHostVersion();
-        });
+                /** @var list<Stmt> $statements */
+                $statements = PhpCodeParser::getAstFromString($text);
+
+                return $statements;
+            },
+        );
 
         try {
             (new Analyzer())->analyze($fixture, Config::defaults(), DefaultRegistry::create(), $cacheFile);
@@ -1117,7 +1129,7 @@ PHP);
             self::assertGreaterThan(0, $parserCalls);
             self::assertContains('php.empty-catch', $this->ruleIds($result->findings));
         } finally {
-            PhpFacts::useParserFactoryForTesting(null);
+            PhpFacts::useAstLoaderForTesting(null);
             $this->remove($fixture);
         }
     }
@@ -1804,11 +1816,17 @@ PHP);
         file_put_contents($fixture . '/src/A.php', "<?php\nvar_dump(\$value);\n");
         $cacheFile = ScanCache::defaultPath($fixture);
         $parserCalls = 0;
-        PhpFacts::useParserFactoryForTesting(static function () use (&$parserCalls): Parser {
-            $parserCalls++;
+        PhpFacts::useAstLoaderForTesting(
+            /** @return list<Stmt> */
+            static function (string $text) use (&$parserCalls): array {
+                $parserCalls++;
 
-            return (new ParserFactory())->createForHostVersion();
-        });
+                /** @var list<Stmt> $statements */
+                $statements = PhpCodeParser::getAstFromString($text);
+
+                return $statements;
+            },
+        );
 
         try {
             $scanTester = new CommandTester(new ScanCommand());
@@ -1827,7 +1845,7 @@ PHP);
             self::assertSame(['php.debug-output'], array_column($firstReport['findings'], 'ruleId'));
             self::assertSame(['php.debug-output'], array_column($secondReport['findings'], 'ruleId'));
         } finally {
-            PhpFacts::useParserFactoryForTesting(null);
+            PhpFacts::useAstLoaderForTesting(null);
             $this->remove($fixture);
         }
     }
@@ -2114,7 +2132,7 @@ PHP;
         self::assertSame(['callee' => 'keep', 'args' => ['$value']], $functions[0]['passThroughCall']);
         self::assertTrue($catches[0]['hasReturn']);
         self::assertSame([], $catches[0]['defaultReturnKinds']);
-        self::assertStringContainsString('return fallback', $catches[0]['body']);
+        self::assertMatchesRegularExpression('/return \\\\?fallback/', $catches[0]['body']);
     }
 
     public function testCatchDefaultFallbackRuleDetectsLiteralFallbacksOnly(): void
@@ -3171,7 +3189,7 @@ PHP);
         $file = $this->fixtureDir . '/src/ParserSummary.php';
         file_put_contents($file, "<?php\nclass Parsed {}\nfunction parsed() {}\n");
 
-        if (!class_exists(\PhpParser\ParserFactory::class)) {
+        if (!class_exists(PhpCodeParser::class)) {
             $unavailable = PhpFacts::parserSummary($file);
 
             self::assertSame([
@@ -3181,12 +3199,21 @@ PHP);
             ], $unavailable);
         }
 
-        PhpFacts::useParserFactoryForTesting(static fn(): Parser => new ParserStub());
-        ParserStub::$statements = [
-            new \PhpParser\Node\Stmt\Class_(new \PhpParser\Node\Identifier('Parsed')),
-            new \PhpParser\Node\Stmt\Function_(new \PhpParser\Node\Identifier('parsed')),
-        ];
-        ParserStub::$exceptionMessage = null;
+        /** @var ?string $parseError */
+        $parseError = null;
+        PhpFacts::useAstLoaderForTesting(
+            /** @return list<Stmt> */
+            static function (string $text) use (&$parseError): array {
+                if (is_string($parseError)) {
+                    throw new \RuntimeException($parseError);
+                }
+
+                return [
+                    new \PhpParser\Node\Stmt\Class_(new \PhpParser\Node\Identifier('Parsed')),
+                    new \PhpParser\Node\Stmt\Function_(new \PhpParser\Node\Identifier('parsed')),
+                ];
+            },
+        );
 
         try {
             $success = PhpFacts::parserSummary($file);
@@ -3197,7 +3224,7 @@ PHP);
                 'functionCount' => 1,
             ], $success);
 
-            ParserStub::$exceptionMessage = 'parse failed';
+            $parseError = 'parse failed';
 
             $error = PhpFacts::parserSummary($file);
 
@@ -3206,9 +3233,7 @@ PHP);
             self::assertSame(0, $error['functionCount']);
             self::assertSame('parse failed', $error['error']);
         } finally {
-            PhpFacts::useParserFactoryForTesting(null);
-            ParserStub::$statements = [];
-            ParserStub::$exceptionMessage = null;
+            PhpFacts::useAstLoaderForTesting(null);
         }
     }
 
@@ -3414,25 +3439,6 @@ MD);
     }
 }
 
-final class ParserStub implements Parser
-{
-    /** @var list<\PhpParser\Node\Stmt> */
-    public static array $statements = [];
-    public static ?string $exceptionMessage = null;
-
-    public function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler = null): array
-    {
-        if (self::$exceptionMessage !== null) {
-            throw new \RuntimeException(self::$exceptionMessage);
-        }
-        return self::$statements;
-    }
-
-    public function getTokens(): array
-    {
-        return [];
-    }
-}
 
 final class ConsoleOutputStub extends BufferedOutput implements \Symfony\Component\Console\Output\ConsoleOutputInterface
 {
