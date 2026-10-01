@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SlopScan\Console;
 
 use SlopScan\Delta;
+use SlopScan\Review\PhpStanBaselineGrowth;
 use SlopScan\Review\WeakenedTests;
 use SlopScan\Support\Json;
 use Symfony\Component\Console\Command\Command;
@@ -55,12 +56,15 @@ final class DeltaCommand extends Command
             if (!$usesReportInput && $base !== null && $base !== '') {
                 $delta = Delta::withAddedFindings(
                     $delta,
-                    WeakenedTests::comparePaths(
-                        $base,
-                        $head,
-                        $ignore,
-                        $baseConfigFile,
-                        $headConfigFile,
+                    array_merge(
+                        WeakenedTests::comparePaths(
+                            $base,
+                            $head,
+                            $ignore,
+                            $baseConfigFile,
+                            $headConfigFile,
+                        ),
+                        PhpStanBaselineGrowth::comparePaths($base, $head),
                     ),
                 );
             }
