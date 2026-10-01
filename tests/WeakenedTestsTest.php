@@ -437,6 +437,16 @@ PHP;
         }
     }
 
+    public function testForeignAssertMethodExercisesCodeBeforeAssertionCount(): void
+    {
+        $after = $this->phpUnitTest(<<<'PHP'
+        $service->assertReady();
+        $this->addToAssertionCount(1);
+PHP);
+
+        self::assertSame([], $this->compare(null, $after));
+    }
+
     public function testNoExceptionSmokeTestWithAssertionCountIsNotTrivial(): void
     {
         $after = $this->phpUnitTest("Invoice::make(1)->total();\n\$this->addToAssertionCount(1);");

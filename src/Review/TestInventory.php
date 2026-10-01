@@ -170,7 +170,7 @@ final class TestInventory
             line: max(1, $node->getStartLine()),
             assertions: $this->assertionsIn($statements, $codeceptionActors),
             skipped: $skippedByChain || $this->hasUnconditionalSkip($statements),
-            trivial: $this->trivialAssertionsIn($statements),
+            trivial: $this->trivialAssertionsIn($statements, $codeceptionActors),
             hash: hash('sha256', $this->printer->prettyPrint($statements)),
         );
     }
@@ -250,12 +250,12 @@ final class TestInventory
         return $count;
     }
 
-    /** @param list<Stmt> $statements */
-    private function trivialAssertionsIn(array $statements): int
+    /** @param list<Stmt> $statements @param list<string> $codeceptionActors */
+    private function trivialAssertionsIn(array $statements, array $codeceptionActors = []): int
     {
         $count = 0;
         $calls = $this->calls($statements);
-        $exercisesCode = $this->exercisesCode($calls);
+        $exercisesCode = $this->exercisesCode($calls, $codeceptionActors);
         foreach ($calls as $call) {
             $name = strtolower($this->callName($call) ?? '');
             $arguments = $this->argumentValues($call);
@@ -282,14 +282,26 @@ final class TestInventory
      * `addToAssertionCount()` after a call under test is the "must not throw" idiom, not an empty test.
      *
      * @param iterable<Node> $calls
+     * @param list<string> $codeceptionActors
      */
-    private function exercisesCode(iterable $calls): bool
+    private function exercisesCode(iterable $calls, array $codeceptionActors = []): bool
     {
         foreach ($calls as $call) {
             $name = strtolower($this->callName($call) ?? '');
-            if ($name !== '' && !str_starts_with($name, 'assert') && !str_starts_with($name, 'expect') && $name !== 'addtoassertioncount') {
-                return true;
+            if ($name === '' || $name === 'addtoassertioncount') {
+                continue;
             }
+
+            if ($this->isPhpUnitAssertion($call, $name)
+                || in_array($name, self::MOCK_EXPECTATIONS, true)
+                || $this->isPestMatcher($call)
+                || ($call instanceof Expr\FuncCall && $this->functionName($call) === 'expect')
+                || $this->isCodeceptionAssertion($call, $codeceptionActors)
+            ) {
+                continue;
+            }
+
+            return true;
         }
 
         return false;
