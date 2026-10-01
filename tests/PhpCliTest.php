@@ -239,6 +239,53 @@ PHP);
         }
     }
 
+    public function testScanParsesSelfReferencingClassesWithoutAutoloadingOrUnboundedRecursion(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Cycle.php', <<<'PHP'
+<?php
+namespace Cycle;
+
+if (false) {
+    class Node extends \Cycle\Node
+    {
+    }
+}
+PHP);
+
+        try {
+            $command = sprintf(
+                '%s -d memory_limit=96M %s scan %s --json 2>&1',
+                escapeshellarg(PHP_BINARY),
+                escapeshellarg(dirname(__DIR__) . '/bin/slop-scan.php'),
+                escapeshellarg($fixture),
+            );
+            exec($command, $output, $status);
+
+            self::assertStringNotContainsString('Allowed memory size', implode("\n", $output));
+            self::assertContains($status, [0, 1]);
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
+    public function testScanSurvivesNumericLiteralsThatOverflowToInfinity(): void
+    {
+        $fixture = $this->makeFixture();
+        mkdir($fixture . '/src', 0777, true);
+        file_put_contents($fixture . '/src/Overflow.php', "<?php\nfunction huge(): float\n{\n    return 1e999 * 3;\n}\n");
+
+        try {
+            $result = (new Analyzer())->analyze($fixture, Config::load($fixture), DefaultRegistry::create());
+
+            self::assertNotEmpty($this->ruleIds($result->findings));
+            self::assertNotSame('', Json::encode(array_map(static fn ($finding): array => $finding->evidence, $result->findings)));
+        } finally {
+            $this->remove($fixture);
+        }
+    }
+
     public function testConfigIgnoreErrorsCountLeavesAdditionalMatchesVisible(): void
     {
         $fixture = $this->makeFixture();

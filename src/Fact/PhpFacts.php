@@ -25,6 +25,7 @@ use voku\SimplePhpParser\Model\PHPInterface;
 use voku\SimplePhpParser\Model\PHPProperty;
 use voku\SimplePhpParser\Model\PHPTrait;
 use voku\SimplePhpParser\Parsers\Helper\ParserContainer;
+use voku\SimplePhpParser\Parsers\Helper\ParserOptions;
 use voku\SimplePhpParser\Parsers\PhpCodeParser;
 
 final class PhpFacts
@@ -118,8 +119,12 @@ final class PhpFacts
             return [];
         }
 
+        if (self::hasCyclicClassInheritance($absolutePath)) {
+            return [];
+        }
+
         try {
-            $container = PhpCodeParser::getPhpFiles($absolutePath);
+            $container = PhpCodeParser::getPhpFiles($absolutePath, [], [], [], ParserOptions::astOnly());
         } catch (\Throwable) {
             return [];
         }
@@ -154,6 +159,45 @@ final class PhpFacts
         );
 
         return $entries;
+    }
+
+    /**
+     * The PHPDoc parser walks `extends` chains recursively without a visited set, so a class that
+     * (transitively) extends itself, e.g. a mistaken shim, would exhaust memory instead of failing.
+     */
+    private static function hasCyclicClassInheritance(string $absolutePath): bool
+    {
+        $text = file_get_contents($absolutePath);
+        if ($text === false || stripos($text, 'extends') === false) {
+            return false;
+        }
+
+        $statements = self::parseStatements($text);
+        if ($statements === null) {
+            return false;
+        }
+
+        $parents = [];
+        foreach (self::nodeFinder()->findInstanceOf($statements, Stmt\Class_::class) as $class) {
+            $name = $class->namespacedName?->toLowerString();
+            $parent = $class->extends?->getAttribute('resolvedName');
+            if ($name !== null && $parent instanceof Name) {
+                $parents[$name] = $parent->toLowerString();
+            }
+        }
+
+        foreach ($parents as $name => $parent) {
+            $seen = [$name => true];
+            while (isset($parents[$parent]) && !isset($seen[$parent])) {
+                $seen[$parent] = true;
+                $parent = $parents[$parent];
+            }
+            if (isset($seen[$parent])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -949,7 +993,13 @@ final class PhpFacts
             return null;
         }
 
-        return json_encode(0 + $value, JSON_THROW_ON_ERROR);
+        $number = 0 + $value;
+        if (is_float($number) && !is_finite($number)) {
+            // Literals such as 1e999 overflow to INF, which JSON cannot represent; keep the source spelling.
+            return strtolower(trim($value));
+        }
+
+        return json_encode($number, JSON_THROW_ON_ERROR);
     }
 
     private static function nodeStartColumn(Node $node, string $text): int

@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Fixed an out-of-memory crash (and a fatal when a scanned parent class could not be autoloaded) while extracting PHPDoc facts: the vendored parser defaulted to reflection enrichment, which autoloaded every scanned class-like into the scanner process and recursed without bound on self-referencing or aliased parents such as php-parser's `if (false) { class ArrayItem extends \\PhpParser\\Node\\ArrayItem }` shims. Scans now use `ParserOptions::astOnly()`, so PHPDoc facts depend only on the scanned source, never on the scanner's own autoloader. Requires `voku/simple-php-code-parser` ^0.22.5.
+- Bumped the `php.structure` cache schema and baseline rule-semantics compatibility because PHPDoc facts no longer include reflection-derived inherited data.
+
 - Extended `php.placeholder-method-bodies` with explicit unfinished-implementation evidence (issue #59): not-implemented-only exception bodies, short elision comments inside a method, and a leading `TODO`/`FIXME`/`XXX` comment on an empty or constant-return body. Concrete-reason exceptions, interface/abstract/trait methods, test files and test doubles, and marker words inside explanatory prose stay quiet. Idea inspired by Heyosseus/sloppy `SL112` (MIT); no code was copied.
 - Bumped the `php.structure` cache schema and baseline rule-semantics compatibility because the function summaries gained facts and the rule's finding surface widened.
 
