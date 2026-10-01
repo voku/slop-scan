@@ -169,6 +169,24 @@ PHP;
         self::assertSame([], $this->compare($before, $after));
     }
 
+    public function testReorderedNamedPestSkipFalseDoesNotDisableTest(): void
+    {
+        $before = <<<'PHP'
+<?php
+it('adds tax', function (): void {
+    expect(Invoice::make(100)->total())->toBe(120);
+});
+PHP;
+        $after = <<<'PHP'
+<?php
+it('adds tax', function (): void {
+    expect(Invoice::make(100)->total())->toBe(120);
+})->skip(message: 'requires intl', conditionOrMessage: false);
+PHP;
+
+        self::assertSame([], $this->compare($before, $after));
+    }
+
     public function testPestDescribeTracksAssertionLossAndSkip(): void
     {
         $before = <<<'PHP'

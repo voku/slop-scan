@@ -438,7 +438,27 @@ final class TestInventory
 
     private function pestSkipIsUnconditional(Expr\MethodCall $call): bool
     {
-        $argument = $call->args[0] ?? null;
+        $namedCondition = null;
+        $positionalCondition = null;
+
+        foreach ($call->args as $argument) {
+            if (!$argument instanceof Arg) {
+                continue;
+            }
+
+            if ($argument->name instanceof Identifier) {
+                if (strtolower($argument->name->toString()) === 'conditionormessage') {
+                    $namedCondition = $argument;
+                    break;
+                }
+
+                continue;
+            }
+
+            $positionalCondition ??= $argument;
+        }
+
+        $argument = $namedCondition ?? $positionalCondition;
         if (!$argument instanceof Arg) {
             return true;
         }
