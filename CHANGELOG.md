@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Reduced `php.weakened-tests` noise on renamed-and-edited tests: a removed test is no longer reported as deleted when the file was rewritten in place, i.e. the added tests are related by name (two shared meaningful words, or the shorter name contained in the longer one) and are at least as many and as strongly asserting as the removed ones. Dogfooding 60 merged PRs of a real consumer repository cut 24 findings to 5, and a holdout of 232 PRs across four other repositories silenced 8 of 20 deleted-test findings without adding any; unrelated replacements, fewer assertions and outright deletions are still reported. Remaining findings now carry the file's removed and added assertion totals as evidence.
 - Require `voku/simple-php-code-parser` ^0.22.8, which stops its PHPDoc parser from recursing without bound when a class or interface extends itself (and fixes a `self::CONSTANT` lookup that never advanced up the `extends` chain). The scanner's own cyclic-inheritance guard stays in place as defense in depth.
 
 ## 0.1.14 - 2026-10-01
