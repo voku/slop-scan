@@ -12,6 +12,8 @@ use SlopScan\Model\Finding;
 final class WeakenedTests
 {
     private const RULE_ID = 'php.weakened-tests';
+    private const MIN_SHARED_NAME_WORDS = 2;
+    private const NAME_STOP_WORDS = ['a', 'an', 'the', 'is', 'are', 'and', 'or', 'of', 'to', 'in', 'on', 'for', 'with', 'without', 'does', 'do', 'not', 'only', 'when', 'it', 'as', 'by', 'if', 'test', 'should'];
     private const WEAK_SCORE = 1.25;
     private const MEDIUM_SCORE = 2.0;
 
@@ -179,7 +181,7 @@ final class WeakenedTests
             $after,
             static fn (TestBody $test): bool => !isset($before[$test->name]),
         );
-        $findings = [];
+        $unmatched = [];
 
         foreach ($before as $name => $test) {
             if (isset($after[$name])) {
@@ -198,6 +200,15 @@ final class WeakenedTests
                 continue;
             }
 
+            $unmatched[$name] = $test;
+        }
+
+        if ($unmatched !== [] && self::rewrittenInPlace($unmatched, $added)) {
+            return [];
+        }
+
+        $findings = [];
+        foreach ($unmatched as $name => $test) {
             $findings[] = self::finding(
                 $path,
                 new TestBody($name, 1, $test->assertions, false, $test->trivial, $test->hash),
@@ -205,12 +216,95 @@ final class WeakenedTests
                 'weak',
                 'medium',
                 self::label($name) . ' was deleted without an equivalent replacement in the change',
-                ['assertions-before=' . $test->assertions],
+                [
+                    'assertions-before=' . $test->assertions,
+                    'file-removed-assertions=' . self::nonTrivialTotal($unmatched),
+                    'file-added-assertions=' . self::nonTrivialTotal(self::active($added)),
+                ],
                 'Confirm that the covered behavior was removed intentionally or restore an equivalent test.',
             );
         }
 
         return $findings;
+    }
+
+    /**
+     * Tests that were renamed and edited in the same change have no identical body to match, so a
+     * per-test comparison reports them as deleted even when the file ends up asserting more. When
+     * every unmatched removed test has a same-file counterpart with a related name (see
+     * namesRelated()) and the added tests together keep at least as many tests and non-trivial assertions, the
+     * change is a rewrite rather than a deletion. Unrelated additions never qualify, and skipped
+     * additions provide no evidence.
+     *
+     * @param array<string,TestBody> $removed
+     * @param array<string,TestBody> $added
+     */
+    private static function rewrittenInPlace(array $removed, array $added): bool
+    {
+        $candidates = self::active($added);
+
+        if (count($candidates) < count($removed)
+            || self::nonTrivialTotal($candidates) < self::nonTrivialTotal($removed)
+        ) {
+            return false;
+        }
+
+        foreach ($removed as $name => $_) {
+            $related = false;
+            foreach ($candidates as $candidate => $__) {
+                if (self::namesRelated($name, $candidate)) {
+                    $related = true;
+                    break;
+                }
+            }
+            if (!$related) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<string,TestBody> $tests
+     * @return array<string,TestBody>
+     */
+    private static function active(array $tests): array
+    {
+        return array_filter($tests, static fn (TestBody $test): bool => !$test->skipped);
+    }
+
+    /** @param array<string,TestBody> $tests */
+    private static function nonTrivialTotal(array $tests): int
+    {
+        return array_sum(array_map(static fn (TestBody $test): int => $test->nonTrivialAssertions(), $tests));
+    }
+
+    /**
+     * Two test names are related when they share at least two meaningful words, or when the shorter
+     * name is fully contained in the longer one (`testTotals` -> `testTotalsIncludeTax`). A single
+     * shared generic word such as "get" is not enough evidence that a new test replaces an old one.
+     */
+    private static function namesRelated(string $left, string $right): bool
+    {
+        $leftWords = self::nameWords($left);
+        $rightWords = self::nameWords($right);
+        $shared = count(array_intersect($leftWords, $rightWords));
+        $shorter = min(count($leftWords), count($rightWords));
+
+        return $shared >= self::MIN_SHARED_NAME_WORDS || ($shared >= 1 && $shared === $shorter);
+    }
+
+    /** @return list<string> */
+    private static function nameWords(string $name): array
+    {
+        $method = str_contains($name, '::') ? substr($name, (int) strrpos($name, ':') + 1) : $name;
+        $words = preg_split('/(?=[A-Z])|[^A-Za-z0-9]+/', $method, flags: PREG_SPLIT_NO_EMPTY) ?: [];
+
+        return array_values(array_diff(
+            array_unique(array_map('strtolower', $words)),
+            self::NAME_STOP_WORDS,
+        ));
     }
 
     /**

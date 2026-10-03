@@ -508,6 +508,104 @@ PHP;
         }
     }
 
+    public function testRenamedAndRewrittenTestWithMoreAssertionsIsNotReportedAsDeleted(): void
+    {
+        $before = $this->phpUnitTests([
+            'testCloseRefusesWithholding' => '$this->assertSame(1, Close::run()->status());',
+        ]);
+        $after = $this->phpUnitTests([
+            'testCloseRefusesWithholdingFromAnUnselectedEvent' => '$this->assertSame(1, Close::run()->status());' . "\n" . '$this->assertSame("refused", Close::run()->reason());',
+        ]);
+
+        self::assertSame([], $this->compare($before, $after));
+    }
+
+    public function testOneTestSplitIntoRelatedTestsIsNotReportedAsDeleted(): void
+    {
+        $before = $this->phpUnitTests([
+            'testCheckMode' => '$this->assertTrue(Config::check("a"));' . "\n" . '$this->assertTrue(Config::check("b"));',
+        ]);
+        $after = $this->phpUnitTests([
+            'testCheckModeDefaultConfig' => '$this->assertSame("a", Config::check("a"));',
+            'testCheckModeWhenAddingConfig' => '$this->assertSame("b", Config::check("b"));',
+        ]);
+
+        self::assertSame([], $this->compare($before, $after));
+    }
+
+    public function testRewriteWithFewerTotalAssertionsStillReportsTheDeletedTest(): void
+    {
+        $before = $this->phpUnitTests([
+            'testHandoffIsRoutedThroughWorkflowCli' => '$this->assertSame(1, Cli::run());' . "\n" . '$this->assertSame(2, Cli::runner());' . "\n" . '$this->assertSame(3, Cli::shared());',
+        ]);
+        $after = $this->phpUnitTests([
+            'testHandoffIsRoutedThroughRecallOwner' => '$this->assertSame(1, Cli::run());',
+        ]);
+
+        $findings = $this->compare($before, $after);
+
+        self::assertCount(1, $findings);
+        self::assertStringContainsString('was deleted', $findings[0]->message);
+        self::assertContains('file-removed-assertions=3', $findings[0]->evidence);
+        self::assertContains('file-added-assertions=1', $findings[0]->evidence);
+    }
+
+    public function testOneSharedGenericNameWordDoesNotMakeAnUnrelatedTestAReplacement(): void
+    {
+        $before = $this->phpUnitTests(['testGetLexer' => '$this->assertNotNull(Parser::make()->getLexer());']);
+        $after = $this->phpUnitTests(['testGetTokens' => '$this->assertNotNull(Parser::make()->getTokens());']);
+
+        $findings = $this->compare($before, $after);
+
+        self::assertCount(1, $findings);
+        self::assertStringContainsString('testGetLexer()', $findings[0]->message);
+    }
+
+    public function testRenameThatKeepsTheWholeShorterNameIsRelated(): void
+    {
+        $before = $this->phpUnitTest('$this->assertSame(120, Invoice::make(100)->total());', 'testTotals');
+        $after = $this->phpUnitTest('$this->assertSame(120, Invoice::make(100)->withTax()->total());', 'testTotalsIncludeTax');
+
+        self::assertSame([], $this->compare($before, $after));
+    }
+
+    public function testFewerAddedTestsThanRemovedStillReportsDeletion(): void
+    {
+        $before = $this->phpUnitTests([
+            'testExportCsvHeader' => '$this->assertSame("id", Export::csv()->header());',
+            'testExportCsvRows' => '$this->assertCount(2, Export::csv()->rows());',
+        ]);
+        $after = $this->phpUnitTests([
+            'testExportCsvHeaderAndRows' => '$this->assertSame("id", Export::csv()->header());' . "\n" . '$this->assertCount(2, Export::csv()->rows());',
+        ]);
+
+        self::assertCount(2, $this->compare($before, $after));
+    }
+
+    public function testSkippedReplacementProvidesNoEvidence(): void
+    {
+        $before = $this->phpUnitTests(['testCloseRefusesWithholding' => '$this->assertSame(1, Close::run()->status());']);
+        $after = $this->phpUnitTests([
+            'testCloseRefusesWithholdingFromAnUnselectedEvent' => '$this->markTestSkipped("later");' . "\n" . '$this->assertSame(1, Close::run()->status());',
+        ]);
+
+        $findings = $this->compare($before, $after);
+
+        self::assertCount(1, $findings);
+        self::assertStringContainsString('was deleted', $findings[0]->message);
+    }
+
+    /** @param array<string,string> $tests */
+    private function phpUnitTests(array $tests): string
+    {
+        $methods = '';
+        foreach ($tests as $name => $body) {
+            $methods .= "    public function {$name}(): void\n    {\n{$body}\n    }\n\n";
+        }
+
+        return "<?php\nfinal class InvoiceTest extends TestCase\n{\n" . $methods . "}\n";
+    }
+
     private function phpUnitTest(string $body, string $name = 'testTotals'): string
     {
         return <<<PHP
